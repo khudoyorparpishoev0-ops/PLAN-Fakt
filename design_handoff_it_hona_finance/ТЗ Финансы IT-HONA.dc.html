@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Golos Text',system-ui,sans-serif;color:#1B1F1E;-webkit-font-smoothing:antialiased}
+a{color:#1B7A3C} a:hover{color:#156430}
+ul{margin:6px 0 14px;padding-left:20px} li{margin:4px 0;line-height:1.55}
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" hint-size="100%,100%">
+  <div slot="header" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#8A918D;padding-bottom:6px;border-bottom:1px solid #E7E5E0">
+    <span style="display:inline-flex;align-items:center;gap:7px;font-weight:700;color:#1B1F1E"><svg width="14" height="12" viewBox="0 0 40 34"><path d="M20 1L39 33H1Z" fill="#37B15A"></path><path d="M20 12.5L30.5 31h-21z" fill="#0E3A24"></path></svg>IT-HONA LLC</span>
+    <span>Техническое задание · v1.0 · 29.07.2026</span>
+  </div>
+
+  <div style="font-size:15px;line-height:1.6">
+    <div style="margin:44px 0 26px">
+      <div style="font-size:27px;font-weight:800;letter-spacing:-.01em;line-height:1.25">Техническое задание для разработчика<br>Модуль «Финансы: План-Факт» и кабинет бухгалтера</div>
+      <div style="display:flex;gap:26px;flex-wrap:wrap;font-size:13px;color:#5A625E;margin-top:12px">
+        <span><b style="color:#1B1F1E">Заказчик:</b> IT-HONA LLC</span>
+        <span><b style="color:#1B1F1E">Версия:</b> 1.0 от 29.07.2026</span>
+        <span><b style="color:#1B1F1E">Основание:</b> утверждённый дизайн-прототип</span>
+      </div>
+    </div>
+
+    <div style="font-size:18px;font-weight:800;margin:22px 0 8px"><span style="color:#1B7A3C">1.</span> Общие сведения</div>
+    <ul>
+      <li><b>Цель:</b> учёт доходов и расходов по проектам в разрезе «план — факт», согласование заявок сотрудников директором.</li>
+      <li><b>Платформа:</b> веб-приложение (десктоп + адаптив под телефон).</li>
+      <li><b>Язык:</b> русский. <b>Базовая валюта:</b> TJS (сомони); справочно USD, EUR, RUB, CNY с курсом на дату операции.</li>
+      <li><b>Состав:</b> админ-панель «Финансы План-Факт» и личный кабинет операционного бухгалтера.</li>
+    </ul>
+
+    <div style="font-size:18px;font-weight:800;margin:22px 0 8px"><span style="color:#1B7A3C">2.</span> Роли и права</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin:4px 0 14px">
+      <tr style="background:#F4F6F4"><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Роль</th><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Права</th></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Администратор / Руководитель</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Полный доступ: все разделы, справочники, пользователи, настройки, архив, экспорт.</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Директор</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Утверждение / отклонение заявок на оплату, поездки и авто-расходы.</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Операционный бухгалтер</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Свой кабинет: создание заявок, свои списки и история, проекты — только суммы своих заявок.</td></tr>
+    </table>
+    <div style="font-size:13px;color:#5A625E">Учётные записи создаются администратором в разделе «Настройки → Пользователи» (одна основная запись администратора на первом этапе).</div>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">3.</span> Админ-панель «Финансы План-Факт»</div>
+    <div style="font-weight:700;margin:12px 0 4px">3.1. План-Факт (дашборд)</div>
+    <ul>
+      <li>Шапка: заголовок раздела, подпись «месяц · TJS», переключатель «Компьютер / Телефон», селектор юрлица «IT-HONA LLC», колокольчик с бейджем непрочитанных.</li>
+      <li>Панель периода: сегмент-контрол День / Неделя / Месяц / Квартал / Год + фильтры «Проект», «Статус», «Валюта» + поиск. Выбор периода пересчитывает все карточки и таблицы без перезагрузки.</li>
+      <li>KPI-карточки (4): План, Факт, Выполнение % (прогресс-бар), Отклонение/Осталось. Формат чисел: пробел-разделитель тысяч, tabular-nums, код валюты 11–12px.</li>
+      <li>Статусы отклонений по порогам недорасхода: 0% — «По плану» (серый), ≤5% — «В норме» (зелёный), 5–20% — «Экономия» (зелёный), &gt;20% — «Проверить план» (жёлтый). Перерасход — красный.</li>
+      <li>Таблица план-факт по статьям: иерархия статей с раскрытием, колонки План / Факт / Откл. / % / статус-бейдж; клик по строке — детализация операций статьи.</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">3.2. Операции (единый журнал)</div>
+    <ul>
+      <li>Панель фильтров слева 236px, сворачивается в узкую полосу 38px с иконкой воронки; состояние запоминается на пользователя.</li>
+      <li>Блоки фильтров: тип операции — чекбоксы Поступление / Выплата / Перемещение / Начисление; дата оплаты — Подтверждена / Не подтверждена + поле периода; параметры — выпадающие мультиселекты Юрлица и счета, Контрагенты, Статьи учёта, Проекты; диапазон «Сумма от / до». Все фильтры комбинируются по И, применяются мгновенно.</li>
+      <li>Колонки таблицы: ☐ чекбокс массовых действий · Дата (сортировка ▾ по умолчанию — новые сверху) · Счёт · Тип (← зелёная стрелка приход, → красная расход) · Контрагент · Статья: название + тег [Доходы]/[Расходы] + серое примечание второй строкой · Проект · Сумма: +/− с цветом, десятичные «,00 TJS», иконка 💬 при комментарии.</li>
+      <li>Группировка строк: «Сегодня» (или «Сегодня нет операций») и «Вчера и ранее». Клик по строке — карточка операции; чекбоксы включают панель массовых действий (подтвердить, удалить, сменить проект).</li>
+      <li>Поиск сверху ищет по контрагенту, статье, примечанию, сумме. Кнопка «⋯» — экспорт и настройка колонок.</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">3.3. Проекты</div>
+    <ul>
+      <li>Виды списка: по проектам / по группам проектов; показатели: прибыль начислением, прибыль кассовым методом, движение денег; опция «Показывать план».</li>
+      <li>Статусы: Плановый (автоматически), В работе (автоматически), Завершён (вручную); фильтр по датам начала/окончания, архив; итоговая строка по выборке.</li>
+      <li>Действия: карточка проекта по клику, архивирование, редактирование, удаление, экспорт в Excel, группировка.</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">3.4. Справочники</div>
+    <ul>
+      <li>Подменю: Контрагенты, Учётные статьи, Мои счета, Мои юрлица — Товары, Услуги (со счётчиками записей).</li>
+      <li>Учётные статьи: вкладки Доходы / Расходы / Активы / Обязательства / Капитал; иерархия с подстатьями («+»), системные статьи с замком (не удаляются), меню действий.</li>
+      <li>Остальные справочники: список с поиском и кнопкой добавления.</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">3.5. Настройки</div>
+    <ul><li>Профиль компании, пользователи и учётные записи, права по ролям.</li></ul>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">4.</span> Кабинет операционного бухгалтера</div>
+    <div style="font-weight:700;margin:12px 0 4px">4.1. Заявки на оплату</div>
+    <ul>
+      <li>Форма: 1) Проект — селект из активных проектов, обязательное; 2) Сумма — число &gt; 0, до 2 знаков после запятой, + валюта (TJS по умолчанию); 3) Наименование — текст 3–200 символов, обязательное; 4) Документ — JPG/PNG/PDF до 10 МБ, опционально.</li>
+      <li>Кнопка «Отправить на утверждение Директору» активна только при валидной форме; после отправки — тост «Заявка №… отправлена», форма очищается, запись появляется первой строкой со статусом «Отправлено» без перезагрузки.</li>
+      <li>Таблица «Мои последние заявки» (10 последних): Дата · Проект · Наименование · Сумма · Статус (свой) · Директор (второй бейдж). Полный список — в «Список всего / История».</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">4.2. Заявки на машину</div>
+    <ul>
+      <li>Две вкладки-сегмента: «Заявка на поездку» / «Расходы на авто», под каждой — своя форма и своя таблица «Мои…».</li>
+      <li>Поездка: Проект (обязательное) · Цель поездки (текст 3–120) · Км — целое число &gt; 0 + обязательное фото одометра (JPG/PNG до 10 МБ) · Контрагент (текст/выбор из справочника).</li>
+      <li>Расход на авто: Проект · Категория — селект Бензин / Ремонт / Мойка / Штраф / Запчасти · Сумма &gt; 0 + валюта · Чек (обязателен для сумм ≥ 100 TJS).</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">4.3. Список всего / История</div>
+    <ul>
+      <li>4 карточки-фильтра: Проект · Тип (Оплата / Поездка / Авто) · Период (месяц / квартал / год / всё время) · Статус; применяются к реестру и графикам одновременно.</li>
+      <li>Мини-графики: пончик «Расходы по категориям» (доли Оплаты / Поездки / Авто) и линия «Статистика по месяцам» — только по своим заявкам.</li>
+      <li>Главный реестр, вкладки Оплаты / Поездки / Авто. Колонки: ID (кликабелен) · Дата · Проект · Наименование · Сумма/Км · Директор (статус) · Действия: 👁 просмотр (карточка заявки с историей статусов), 📷 фото км, 📄 документ/чек, 🗑 удаление — только «Черновик».</li>
+    </ul>
+    <div style="font-weight:700;margin:12px 0 4px">4.4. Проекты</div>
+    <ul><li>Список проектов с ответственным, числом моих заявок, суммами «Одобрено» / «Ждёт решения» и статусом. Чужие финансовые данные скрыты.</li></ul>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">5.</span> Статусные модели</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin:4px 0 14px">
+      <tr style="background:#F4F6F4"><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Объект</th><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Статусы</th></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Заявка</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Черновик → Отправлено → На рассмотрении → Одобрено / Отклонено. Редактирование автором — только в «Черновик» и «Отклонено»; удаление — только «Черновик»; «Одобрено» создаёт плановую операцию расхода и далее неизменяемо (только сторнирование директором).</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Проект</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Плановый → В работе → Завершён (+ Архив)</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Оплата</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Подтверждена / Не подтверждена</td></tr>
+    </table>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">6.</span> Требования к дизайну</div>
+    <ul>
+      <li><b>Бренд IT-HONA:</b> тёмно-зелёный сайдбар #123A26, акцент #1B7A3C (#37B15A — логотип), фон #EEF1EE, поверхности #FFFFFF с границей #E7E5E0.</li>
+      <li><b>Шрифты:</b> Golos Text (интерфейс), IBM Plex Sans (цифры, табличные значения, tabular-nums).</li>
+      <li>Статус-бейджи с цветной точкой; таблицы с hover-строками; переключатель «Компьютер / Телефон»; мобильные цели нажатия ≥44px.</li>
+    </ul>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">7.</span> Модель данных (основные сущности)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin:4px 0 14px">
+      <tr style="background:#F4F6F4"><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Сущность</th><th style="text-align:left;padding:8px 10px;border:1px solid #E7E5E0">Ключевые поля</th></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">User</td><td style="padding:8px 10px;border:1px solid #E7E5E0">id, name, role (admin | director | accountant), email, active</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Project</td><td style="padding:8px 10px;border:1px solid #E7E5E0">id, name, group_id, responsible_id, status (plan | work | done), archived, start/end — вычисляются по первой/последней операции</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Article (статья)</td><td style="padding:8px 10px;border:1px solid #E7E5E0">id, name, type (income | expense | asset | liability | equity), parent_id (иерархия), system (замок — не удаляется)</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Operation</td><td style="padding:8px 10px;border:1px solid #E7E5E0">id, date, type (in | out | move | accrual), account_id, contragent_id, article_id, project_id, amount, currency, rate, confirmed, comment</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Request (заявка)</td><td style="padding:8px 10px;border:1px solid #E7E5E0">id, kind (payment | trip | auto), author_id, project_id, name/цель, amount | km, currency, category, attachments[], status, director_status, created_at</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Справочники</td><td style="padding:8px 10px;border:1px solid #E7E5E0">Contragent, Account, LegalEntity, Good, Service — id, name, реквизиты/единицы</td></tr>
+      <tr><td style="padding:8px 10px;border:1px solid #E7E5E0;font-weight:600">Plan</td><td style="padding:8px 10px;border:1px solid #E7E5E0">project_id, article_id, period (месяц), amount — база сравнения «план–факт»</td></tr>
+    </table>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">8.</span> Бизнес-правила и расчёты</div>
+    <ul>
+      <li>Отклонение = факт − план; % выполнения = факт / план. Пороги недорасхода: 0% «По плану», ≤5% «В норме», 5–20% «Экономия», &gt;20% «Проверить план».</li>
+      <li>Статус проекта: «Плановый» — нет фактических платежей; «В работе» — есть факт; «Завершён» — только вручную. Автопересчёт при каждой операции.</li>
+      <li>Заявка после отправки редактируется автором только в статусе «Черновик» / «Отклонено»; одобрение директора создаёт плановую операцию расхода по проекту.</li>
+      <li>Мультивалютность: суммы хранятся в валюте операции + курс на дату; агрегаты считаются в TJS.</li>
+      <li>Удаление системных статей и справочников, на которые есть ссылки, запрещено (только архив).</li>
+      <li>Права: бухгалтер видит только свои заявки и агрегаты по ним; полные суммы проектов — админ/директор.</li>
+    </ul>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">9.</span> API (эскиз, REST/JSON)</div>
+    <ul style="font-family:'IBM Plex Sans',sans-serif;font-size:13px">
+      <li>GET/POST <b>/api/operations</b> — фильтры: type[], confirmed, date_from/to, account, contragent, article, project, amount_min/max, q</li>
+      <li>GET/POST/PATCH <b>/api/projects</b>, GET <b>/api/projects/:id/summary</b> (план, факт, отклонение по статьям), GET <b>/api/projects.xlsx</b></li>
+      <li>CRUD <b>/api/articles</b>, <b>/api/contragents</b>, <b>/api/accounts</b>, <b>/api/entities</b>, <b>/api/goods</b>, <b>/api/services</b></li>
+      <li>POST <b>/api/requests</b> (+ multipart вложения) · PATCH <b>/api/requests/:id/status</b> (director) · GET <b>/api/requests?kind=&amp;status=</b></li>
+      <li>Auth: JWT, роли в токене; все списки — пагинация limit/offset (default 50), сортировка sort=field:dir; ошибки — {"error":{"code","message","field?"}} c HTTP 400/403/404/422.</li>
+    </ul>
+    <div style="font-size:13px;color:#5A625E;margin:-4px 0 6px">Пример: POST /api/requests</div>
+    <pre style="background:#F4F6F4;border:1px solid #E7E5E0;border-radius:8px;padding:12px 14px;font-family:'IBM Plex Sans',monospace;font-size:12.5px;line-height:1.5;overflow-x:auto;margin:0 0 14px">{"kind":"payment","project_id":12,"name":"Оплата хостинга за июль 2026",
+ "amount":1200.00,"currency":"TJS","attachments":["file_8f2a"]}
+→ 201 {"id":101,"status":"sent","director_status":"pending","created_at":"2026-07-29T10:42:00+05:00"}</pre>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">10.</span> Нефункциональные требования</div>
+    <ul>
+      <li>Отклик списков ≤ 300 мс при 10 000 операций; пагинация серверная.</li>
+      <li>Вложения: JPG/PNG/PDF до 10 МБ, хранение в объектном хранилище, превью в UI.</li>
+      <li>Аудит-лог изменений (кто, что, когда) для операций, заявок, справочников.</li>
+      <li>Адаптив от 360px; целевые браузеры — Chrome/Safari/Edge последних 2 версий.</li>
+    </ul>
+
+    <div style="font-size:18px;font-weight:800;margin:24px 0 8px"><span style="color:#1B7A3C">11.</span> Этапность и приёмка</div>
+    <ul>
+      <li><b>Этап 1 (текущий прототип):</b> План-Факт, Показатели, Операции, Проекты, Справочники, Пользователи/Настройки, кабинет бухгалтера.</li>
+      <li><b>Этап 2:</b> Задачи, Планирование, Закупки, Склад, Клиенты; уведомления; выгрузки по расписанию.</li>
+      <li><b>Критерии приёмки:</b> пиксельное соответствие прототипу на 1280/360px; сквозной сценарий «бухгалтер создал заявку → директор одобрил → плановая операция появилась в журнале и в план-факте проекта»; фильтры журнала работают комбинированно; экспорт Excel открывается без ошибок.</li>
+    </ul>
+    <div style="font-size:13px;color:#5A625E;border-top:1px solid #E7E5E0;padding-top:10px;margin-top:22px">Эталон визуала и поведения — файлы «Финансы План-Факт.dc.html» и «Кабинет Бухгалтера.dc.html». Спорные случаи трактуются по прототипу.</div>
+  </div>
+</x-import>
+</x-dc>
+</body>
+</html>

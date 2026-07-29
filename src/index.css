@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #F3F5F3;
+  font-family: 'Golos Text', system-ui, sans-serif;
+  color: #1B1F1E;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #1B7A3C; }
+a:hover { color: #156430; }
+input, select, textarea { font-family: inherit; color: #1B1F1E; }
+::placeholder { color: #A9AFAB; }
+
+@keyframes finFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes finSlide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Hover utilities — replacements for the prototype's style-hover attributes.
+   !important lets a hover win over an inline background (e.g. striped rows). */
+.hv-row:hover { background: #F8F7F4 !important; }
+.hv-soft:hover { background: #F6F5F1 !important; }
+.hv-cream:hover { background: #F1F0EB !important; }
+.hv-red:hover { background: #FAE7E4 !important; }
+.hv-paper:hover { background: #FAF9F6 !important; }
+.hv-chip:hover { background: #EFEEE9 !important; }
+.hv-acc:hover { background: #E6F2EA !important; }
+.hv-dim:hover { filter: brightness(0.94); }
+.hv-side:hover { background: rgba(255, 255, 255, 0.07); }
