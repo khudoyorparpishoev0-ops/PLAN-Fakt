@@ -1,0 +1,120 @@
+import { ACC, PLEX, num } from '../theme';
+import { Badge } from '../components/ui';
+import type { ExpRow } from '../lib/rows';
+
+export interface ExpenseDrawerProps {
+  sel: ExpRow;
+  onClose: () => void;
+  approve: (n: string) => void;
+  decline: (n: string) => void;
+}
+
+/** Номер текущего шага согласования по статусу заявки (−1 — отклонено). */
+const STEP_BY_STATUS: Record<string, number> = {
+  'Черновик': 0, 'На согласовании': 2, 'Согласовано': 3, 'Ожидает оплаты': 3,
+  'Частично оплачено': 3, 'Просрочено': 3, 'Оплачено': 5, 'Отклонено': -1,
+};
+
+interface Step { label: string; sub: string; bg: string; fg: string; bd: string; ch: string; labFg: string; lineBg: string }
+
+function buildSteps(sel: ExpRow): Step[] {
+  const cur = STEP_BY_STATUS[sel.status] ?? 5;
+  const defs: [string, string][] = [
+    ['Инициатор — заявка создана', sel.resp],
+    ['Бухгалтер — проверка', 'М. Саидова'],
+    ['Руководитель — согласование', 'Р. Рахимов'],
+    ['Кассир / банк — оплата', 'З. Юсупова'],
+    ['Оплачено — в отчёте «План–Факт»', 'автоматически'],
+  ];
+  return defs.map((d, i) => {
+    const rejected = cur === -1 && i === 2;
+    const done = cur === 5 || i < cur, curr = !done && i === cur && !rejected;
+    return {
+      label: d[0], sub: rejected ? 'Отклонено руководителем' : done ? d[1] : curr ? d[1] + ' · сейчас' : d[1],
+      bg: rejected ? '#D24A3D' : done ? ACC : '#fff', fg: rejected || done ? '#fff' : curr ? ACC : '#A6ACA8',
+      bd: done || rejected ? 'none' : curr ? '2px solid ' + ACC : '2px solid #E5E3DD',
+      ch: rejected ? '✕' : done ? '✓' : String(i + 1),
+      labFg: done || curr || rejected ? '#1B1F1E' : '#A6ACA8',
+      lineBg: i === defs.length - 1 ? 'transparent' : done ? ACC : '#E9E7E1',
+    };
+  });
+}
+
+const secHead = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8' } as const;
+const detRow = { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, borderBottom: '1px dashed #EFEDE8', padding: '5px 0' } as const;
+const docChip = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' } as const;
+
+export default function ExpenseDrawer(props: ExpenseDrawerProps) {
+  const { sel, onClose } = props;
+  const steps = buildSteps(sel);
+  const hasReason = sel.fact > sel.plan;
+  const reason = sel.reason ?? 'Рост цены';
+  const approval = sel.status === 'На согласовании';
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.38)', animation: 'finFade .15s ease' }} />
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '94vw', background: '#fff', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 22px', borderBottom: '1px solid #EFEEE9' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{sel.cat}</div>
+            <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>Заявка {sel.n} · {sel.proj}</div>
+          </div>
+          <div style={{ flex: 1 }} />
+          <Badge b={sel.b} style={{ marginTop: 2 }} />
+          <div onClick={onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg></div>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, background: '#FAF9F6', border: '1px solid #EFEDE8', borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
+            <div><div style={{ fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 }}>ПЛАН</div><div style={{ fontSize: 15, fontWeight: 600, ...num }}>{sel.planF}</div></div>
+            <div><div style={{ fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 }}>ФАКТ</div><div style={{ fontSize: 15, fontWeight: 700, ...num }}>{sel.factF}</div></div>
+            <div><div style={{ fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 }}>ОТКЛОНЕНИЕ</div><div style={{ fontSize: 15, fontWeight: 700, color: sel.devFg, ...num }}>{sel.devF}</div></div>
+          </div>
+          <div style={{ ...secHead, margin: '0 0 12px' }}>СОГЛАСОВАНИЕ</div>
+          {steps.map((st, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: st.bg, color: st.fg, border: st.bd, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{st.ch}</div>
+                <div style={{ width: 2, flex: 1, minHeight: 16, background: st.lineBg, margin: '3px 0' }} />
+              </div>
+              <div style={{ paddingBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: st.labFg }}>{st.label}</div>
+                <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{st.sub}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ ...secHead, margin: '6px 0 10px' }}>ДЕТАЛИ</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 16 }}>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Получатель</span><span style={{ fontWeight: 500 }}>{sel.payee}</span></div>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Способ</span><span style={{ fontWeight: 500 }}>Банковский перевод</span></div>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Дата план</span><span style={{ fontWeight: 500, fontFamily: PLEX }}>{sel.pdate + '.2026'}</span></div>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Дата факт</span><span style={{ fontWeight: 500, fontFamily: PLEX }}>{sel.fdate}</span></div>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Валюта</span><span style={{ fontWeight: 500 }}>TJS — сомони</span></div>
+            <div style={detRow}><span style={{ color: '#8A918D' }}>Инициатор</span><span style={{ fontWeight: 500 }}>{sel.resp}</span></div>
+          </div>
+          {hasReason && (
+            <div style={{ background: '#FBECDE', border: '1px solid #F2D9C2', borderRadius: 10, padding: '11px 13px', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#B25313', letterSpacing: '.04em', marginBottom: 3 }}>ПРИЧИНА ОТКЛОНЕНИЯ</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{reason}</div>
+              <div style={{ fontSize: 12, color: '#8A6A4B', marginTop: 2 }}>Комментарий обязателен при значительном отклонении от плана.</div>
+            </div>
+          )}
+          <div style={{ ...secHead, margin: '0 0 10px' }}>ДОКУМЕНТЫ</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="hv-row" style={docChip}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /></svg>Счёт №214.pdf</div>
+            <div className="hv-row" style={docChip}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" /><path d="M1.5 9l3-3 3 3 2-2 3 3" /></svg>Накладная.jpg</div>
+          </div>
+        </div>
+        {approval ? (
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid #EFEEE9' }}>
+            <div onClick={() => props.decline(sel.n)} className="hv-red" style={{ border: '1px solid #F0CFC9', color: '#B93227', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Отклонить</div>
+            <div onClick={() => props.approve(sel.n)} className="hv-dim" style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Согласовать</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid #EFEEE9' }}>
+            <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Закрыть</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

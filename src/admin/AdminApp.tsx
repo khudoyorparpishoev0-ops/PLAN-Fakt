@@ -66,7 +66,11 @@ const I = {
   set: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="2.1" /><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.35 1.35M11.05 11.05l1.35 1.35M12.4 3.6l-1.35 1.35M4.95 11.05L3.6 12.4" /></svg>,
 };
 
-export default function AdminApp() {
+export interface AdminAppProps {
+  onSwitchRole?: () => void;
+}
+
+export default function AdminApp({ onSwitchRole }: AdminAppProps) {
   const [screen, setScreen] = useState<Screen>('panel');
   const [setTab, setSetTab] = useState('profile');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
@@ -153,6 +157,11 @@ export default function AdminApp() {
                 <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
                 <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
               </div>
+              {onSwitchRole && (
+                <div onClick={onSwitchRole} className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
+                  Кабинет бухгалтера →
+                </div>
+              )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
               {screen === 'panel' && <PanelScreen expenses={expenses} totals={totals} approve={approve} decline={decline} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}

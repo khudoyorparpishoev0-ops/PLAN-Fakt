@@ -1,0 +1,97 @@
+import { useState, type CSSProperties } from 'react';
+import type { Expense } from '../data/admin';
+import type { Totals } from '../lib/compute';
+import { ROW_PAD, SOFT, num } from '../theme';
+import { fmt, sgn, pct1 } from '../lib/format';
+import { badge, incDevB, expDevB, profDevB, devInfo, type BadgeData } from '../lib/badges';
+import { Badge, Th } from '../components/ui';
+
+export interface ReportScreenProps {
+  expenses: Expense[];
+  totals: Totals;
+}
+
+interface RepRow {
+  name: string; planF: string; factF: string; devF: string; devPctF: string; devFg: string;
+  b: BadgeData; chev: string; cur: 'default' | 'pointer'; rowBg: string;
+  fw: number; fwF: number; nameFg: string; padL: string; resp: string;
+  toggle?: () => void;
+}
+
+const expBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' };
+
+export default function ReportScreen(props: ReportScreenProps) {
+  const { incPlan, incFact, expPlan, expFact, profPlan, profFact } = props.totals;
+  const [expandAvans, setExpandAvans] = useState(false);
+
+  const rows: RepRow[] = [];
+  const push = (o: Partial<RepRow> & Pick<RepRow, 'name' | 'planF' | 'factF' | 'devF' | 'devPctF' | 'devFg' | 'b'>) =>
+    rows.push({ chev: '', cur: 'default', rowBg: 'transparent', fw: 500, fwF: 600, nameFg: '#1B1F1E', padL: '16px', resp: '', toggle: undefined, ...o });
+  const grp = (name: string, plan: number, fact: number, b: BadgeData) => push({ name, planF: fmt(plan), factF: fmt(fact), devF: sgn(fact - plan), devPctF: (fact - plan > 0 ? '+' : '−') + pct1(Math.abs((fact - plan) / plan * 100)) + '%', devFg: '#1B1F1E', b, rowBg: '#F3F2EE', fw: 700, fwF: 700 });
+  grp('Доходы — всего', incPlan, incFact, incDevB(incPlan, incFact));
+  push({ name: 'Аванс от заказчика', planF: fmt(750000), factF: fmt(450000), ...devInfo('inc', 750000, 450000), b: incDevB(750000, 450000), resp: 'М. Саидова', chev: expandAvans ? '▾' : '▸', cur: 'pointer', toggle: () => setExpandAvans(v => !v) });
+  if (expandAvans) {
+    push({ name: 'Насосная станция Вахдат', planF: fmt(500000), factF: fmt(450000), ...devInfo('inc', 500000, 450000), b: incDevB(500000, 450000), padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8' });
+    push({ name: 'ГЭС Помир-1 · 2-я очередь', planF: fmt(250000), factF: '—', devF: '—', devPctF: '—', devFg: '#9AA29E', b: badge('Ожидается', 'gray'), padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8' });
+  }
+  const iCat = (name: string, plan: number, fact: number, resp: string, pending?: boolean) => push({ name, planF: fmt(plan), factF: pending && !fact ? '—' : fmt(fact), ...devInfo('inc', plan, fact, pending), b: incDevB(plan, fact, pending), resp });
+  iCat('Промежуточный платёж', 320000, 320000, 'М. Саидова');
+  iCat('Монтажные работы', 145000, 145000, 'Ф. Назаров');
+  iCat('Окончательный платёж', 180000, 120000, 'М. Саидова');
+  iCat('Сервисное обслуживание', 60000, 60000, 'Ф. Назаров');
+  iCat('Продажа оборудования', 95000, 110000, 'Ф. Назаров');
+  iCat('Техническая поддержка', 40000, 40000, 'М. Саидова');
+  grp('Расходы — всего', expPlan, expFact, expDevB(expPlan, expFact));
+  const eCat = (name: string, plan: number, fact: number, resp: string, pending?: boolean) => push({ name, planF: fmt(plan), factF: pending && !fact ? '—' : fmt(fact), ...devInfo('exp', plan, fact, pending), b: expDevB(plan, fact, pending), resp });
+  eCat('Закупка оборудования', 200000, 225000, 'А. Хакимов');
+  eCat('Закупка материалов', 120000, 118500, 'А. Хакимов');
+  eCat('Заработная плата', 100000, 100000, 'М. Саидова');
+  eCat('Подрядчики', 140000, 95000, 'А. Хакимов');
+  eCat('Транспорт', 30000, 27000, 'Ф. Назаров');
+  eCat('Доставка', 35000, 36200, 'Ф. Назаров');
+  eCat('Командировочные', 18000, 19300, 'Ф. Назаров');
+  eCat('Аренда', 25000, 25000, 'М. Саидова');
+  eCat('Налоги', 85000, 0, 'М. Саидова', true);
+  eCat('Программное обеспечение', 12000, 0, 'А. Хакимов', true);
+  eCat('Связь и интернет', 4500, 4500, 'М. Саидова');
+  push({ name: 'ПРИБЫЛЬ', planF: fmt(profPlan), factF: fmt(profFact), devF: sgn(profFact - profPlan), devPctF: '−' + pct1(Math.abs((profFact - profPlan) / profPlan * 100)) + '%', devFg: '#B93227', b: profDevB(profPlan, profFact), rowBg: SOFT, fw: 700, fwF: 700 });
+
+  return (
+    <div data-screen-label="Сводный План-Факт">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>Октябрь 2026</b> · все проекты · в сомони</div>
+        <div style={{ flex: 1 }} />
+        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
+        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>
+        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="1.5" width="8" height="4" rx="1" /><rect x="1.5" y="5.5" width="11" height="5" rx="1.5" /><rect x="4" y="9" width="6" height="3.5" rx="1" /></svg>Печать</div>
+      </div>
+      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <Th style={{ padding: '8px 12px 8px 16px' }}>Категория</Th>
+            <Th right>План</Th>
+            <Th right>Факт</Th>
+            <Th right>Отклонение</Th>
+            <Th right>Откл. %</Th>
+            <Th>Статус</Th>
+            <Th style={{ padding: '8px 16px 8px 12px' }}>Ответственный</Th>
+          </tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} onClick={r.toggle} style={{ cursor: r.cur, background: r.rowBg }}>
+                <td style={{ padding: ROW_PAD, paddingLeft: r.padL, borderBottom: '1px solid #F3F2ED', fontSize: 13, fontWeight: r.fw, color: r.nameFg }}><span style={{ display: 'inline-block', width: 14, color: '#A6ACA8', fontSize: 10 }}>{r.chev}</span>{r.name}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fw, ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fwF, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devPctF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED' }}><Badge b={r.b} /></td>
+                <td style={{ padding: ROW_PAD, paddingRight: 16, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{r.resp}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
+    </div>
+  );
+}

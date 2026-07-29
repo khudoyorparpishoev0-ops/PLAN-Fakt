@@ -42,7 +42,11 @@ const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) 
   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'rgba(255,255,255,.4)', padding: `${pt}px 22px 6px` }}>{children}</div>
 );
 
-export default function CabinetApp() {
+export interface CabinetAppProps {
+  onSwitchRole?: () => void;
+}
+
+export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
   const [screen, setScreen] = useState<CabScreen>('pay');
   const [pays, setPays] = useState<PayReq[]>(PAY);
   const [trips, setTrips] = useState<TripReq[]>(TRIPS);
@@ -103,6 +107,11 @@ export default function CabinetApp() {
             <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
             <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>1</span>
           </div>
+          {onSwitchRole && (
+            <div onClick={onSwitchRole} className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
+              ← Панель руководителя
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
           {screen === 'pay' && <PayRequestsScreen pays={pays} trips={trips} cars={cars} addPay={addPay} toast={toast} />}
