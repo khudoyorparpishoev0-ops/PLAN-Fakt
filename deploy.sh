@@ -332,7 +332,7 @@ case "$health" in
     [ -n "$IP" ] || IP="IP-сервера"
     echo ""
     echo "ГОТОВО, откройте http://$IP/"
-    echo "  Приложение: http://$IP/          (интерфейс, пока на фикстурах)"
+    echo "  Приложение: http://$IP/          (интерфейс на данных API — ШАГ 3)"
     echo "  API:        http://$IP/api/health -> $health"
     echo "  Пароли тестовых пользователей — в $ENV_FILE (SEED_PASSWORD_*)."
     ;;
