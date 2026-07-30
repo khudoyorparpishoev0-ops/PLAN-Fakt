@@ -6,6 +6,11 @@ import { AllExceptionsFilter } from './http-exception.filter';
 
 /** Конфигурация — только из переменных окружения (см. .env.example). */
 async function bootstrap() {
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    // eslint-disable-next-line no-console
+    console.error('JWT_SECRET не задан — в production запуск запрещён.');
+    process.exit(1);
+  }
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');

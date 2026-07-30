@@ -145,8 +145,8 @@ curl -I http://localhost/
 ```
 
 Ожидаемо: `HTTP/1.1 200 OK` (отдаёт index.html приложения через прокси).
-В браузере по IP сервера должна открыться админ-панель «Финансы План-Факт»;
-переключатель ролей в шапке ведёт в кабинет бухгалтера (`#/cabinet`).
+В браузере по IP сервера открывается экран входа; интерфейс (админ-панель
+или кабинет бухгалтера) определяется ролью учётной записи (ШАГ 2).
 
 ## 5. Сертификат TLS — выполнить позже, когда появится домен
 
@@ -270,3 +270,35 @@ docker compose exec postgres psql -U <PG_USER> -d <PG_DB> -c \
 
 Примечание: фронтенд к API пока не подключён (шаг 3) — интерфейс продолжает
 работать на фикстурах; бэкенд отдаёт только `/api/health`.
+
+---
+
+# Авторизация (ШАГ 2)
+
+Вход по email/паролю (bcrypt), JWT access (15 мин) + refresh (7 дней), роль в
+токене. Интерфейс: admin и director → админ-панель, accountant → кабинет
+бухгалтера. Демо-переключатель ролей удалён — вместо него настоящие вход и
+выход. Пока `must_change_password = true` (временный пароль из seed), сервер
+отвечает 403 `password_change_required` на все защищённые эндпоинты, а
+интерфейс форсирует экран смены пароля.
+
+Требование: `JWT_SECRET` в `/opt/app/.env` обязателен (в production без него
+backend не стартует). TTL настраиваются `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL`
+(необязательные).
+
+Эндпоинты: `POST /api/auth/login`, `POST /api/auth/refresh`,
+`GET /api/auth/me`, `POST /api/auth/password`, `GET /api/users` (только admin).
+Выход — на клиенте (токены удаляются; серверного отзыва токенов нет — при
+компрометации сменить JWT_SECRET).
+
+Проверка после деплоя:
+
+```bash
+# вход (вернёт токены и пользователя; при временном пароле mustChangePassword=true)
+curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"admin@it-hona.tj","password":"<SEED_PASSWORD_ADMIN>"}'
+
+# чужой эндпоинт возвращает 403: возьмите accessToken бухгалтера и вызовите
+curl -s -w '\n%{http_code}\n' http://localhost/api/users -H "Authorization: Bearer <ACCESS_БУХГАЛТЕРА>"
+# → {"error":{"code":"forbidden",...}} 403
+```

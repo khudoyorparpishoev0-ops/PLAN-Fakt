@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars } from '../theme';
 import { EXPENSES, PROJECTS, type Expense, type Project } from '../data/admin';
-import { computeTotals } from '../lib/compute';
+import { computeTotals, initials } from '../lib/compute';
+import { ROLE_LABELS, type AuthUser } from '../lib/api';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
 import PanelScreen from './PanelScreen';
@@ -67,10 +68,11 @@ const I = {
 };
 
 export interface AdminAppProps {
-  onSwitchRole?: () => void;
+  user?: AuthUser;
+  onLogout?: () => void;
 }
 
-export default function AdminApp({ onSwitchRole }: AdminAppProps) {
+export default function AdminApp({ user, onLogout }: AdminAppProps) {
   const [screen, setScreen] = useState<Screen>('panel');
   const [setTab, setSetTab] = useState('profile');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
@@ -133,10 +135,10 @@ export default function AdminApp({ onSwitchRole }: AdminAppProps) {
             <NavItem label="Пользователи" icon={I.users} active={screen === 'settings' && setTab === 'users'} onClick={goUsers} />
             <NavItem label="Настройки" icon={I.set} active={screen === 'settings' && setTab !== 'users'} onClick={goSettings} />
             <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>РР</div>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'РР' : 'РР'}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Руслан Рахмонов</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Руководитель</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.name ?? 'Руслан Рахмонов'}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{user ? ROLE_LABELS[user.role] : 'Руководитель'}</div>
               </div>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
             </div>
@@ -157,9 +159,10 @@ export default function AdminApp({ onSwitchRole }: AdminAppProps) {
                 <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
                 <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
               </div>
-              {onSwitchRole && (
-                <div onClick={onSwitchRole} className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
-                  Кабинет бухгалтера →
+              {onLogout && (
+                <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
+                  Выйти
                 </div>
               )}
             </div>

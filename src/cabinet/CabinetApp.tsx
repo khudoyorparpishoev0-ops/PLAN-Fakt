@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
 import { fmt } from '../lib/format';
+import { initials } from '../lib/compute';
+import { ApiError, ROLE_LABELS, type AuthUser } from '../lib/api';
 import { Logo } from '../components/ui';
 import {
   PAY, TRIPS, CARS, CB,
@@ -83,13 +85,33 @@ const CHIP: React.CSSProperties = { display: 'inline-flex', alignItems: 'center'
 const PWD_LAB: React.CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
 const PWD_INP: React.CSSProperties = { width: '100%', height: 38, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 11px', fontSize: 13, outline: 'none', background: '#fff' };
 
-/** Модалка «Сменить пароль» (пароли из первоначальной настройки — временные).
- *  Демо-поведение до подключения API (шаг 3): валидация + тост. */
-function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+/** Модалка «Сменить пароль». Если передан submit (API из ШАГА 2) — меняет
+ *  пароль по-настоящему и показывает ошибки сервера. */
+function ChangePasswordModal({ onClose, onDone, submit }: {
+  onClose: () => void;
+  onDone: () => void;
+  submit?: (current: string, next: string) => Promise<void>;
+}) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
-  const valid = current.length > 0 && next.length >= 8 && repeat === next;
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const valid = current.length > 0 && next.length >= 8 && repeat === next && !busy;
+
+  const doSubmit = async () => {
+    if (!valid) return;
+    if (!submit) { onDone(); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await submit(current, next);
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось сменить пароль.');
+      setBusy(false);
+    }
+  };
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
@@ -117,15 +139,16 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
           {repeat.length > 0 && repeat !== next && (
             <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>Пароли не совпадают</div>
           )}
+          {error && <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отменить</div>
           <div
-            onClick={valid ? onDone : undefined}
+            onClick={valid ? doSubmit : undefined}
             className={valid ? 'hv-dim' : undefined}
             style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
           >
-            Сменить пароль
+            {busy ? 'Сохраняем…' : 'Сменить пароль'}
           </div>
         </div>
       </div>
@@ -134,10 +157,12 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
 }
 
 export interface CabinetAppProps {
-  onSwitchRole?: () => void;
+  user?: AuthUser;
+  onLogout?: () => void;
+  onChangePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
-export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
+export default function CabinetApp({ user, onLogout, onChangePassword }: CabinetAppProps) {
   const [screen, setScreen] = useState<CabScreen>('pay');
   const [period, setPeriod] = useState('Месяц');
   const [pays, setPays] = useState<PayReq[]>(PAY);
@@ -196,10 +221,10 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
         <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => setScreen('history')} />
         <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => setScreen('projects')} />
         <div onClick={() => setPwdModal(true)} title="Сменить пароль" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>Ф</div>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'Ф' : 'Ф'}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Фаридун</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Операционный бухгалтер</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.name ?? 'Фаридун'}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{user ? ROLE_LABELS[user.role] : 'Операционный бухгалтер'}</div>
           </div>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
         </div>
@@ -220,9 +245,10 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
             <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
             <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
           </div>
-          {onSwitchRole && (
-            <div onClick={onSwitchRole} className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
-              ← Панель руководителя
+          {onLogout && (
+            <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
+              Выйти
             </div>
           )}
         </div>
@@ -264,6 +290,7 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
         <ChangePasswordModal
           onClose={() => setPwdModal(false)}
           onDone={() => { setPwdModal(false); toast('Пароль обновлён'); }}
+          submit={onChangePassword}
         />
       )}
       {toastMsg && (
