@@ -93,6 +93,22 @@ export function bindApiSession(s: Session | null, onAuthLost?: () => void) {
 
 let refreshing: Promise<void> | null = null;
 
+/** Одно прозрачное обновление пары токенов по refresh; false — сессия потеряна. */
+async function tryRefresh(): Promise<boolean> {
+  if (!activeSession) return false;
+  try {
+    refreshing ??= api.refresh(activeSession.refreshToken).then((s) => { saveSession(s); });
+    await refreshing;
+    return true;
+  } catch {
+    clearSession();
+    authLostHandler?.();
+    return false;
+  } finally {
+    refreshing = null;
+  }
+}
+
 /** Запрос с токеном активной сессии; при 401 — одно обновление по refresh. */
 async function authedReq<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
   if (!activeSession) throw new ApiError(401, 'unauthorized', 'Требуется вход');
@@ -100,24 +116,46 @@ async function authedReq<T>(path: string, opts: { method?: string; body?: unknow
     return await req<T>(path, { ...opts, token: activeSession.accessToken });
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 401 || !activeSession) throw e;
-    try {
-      refreshing ??= api.refresh(activeSession.refreshToken).then((s) => { saveSession(s); });
-      await refreshing;
-    } catch {
-      clearSession();
-      authLostHandler?.();
-      throw e;
-    } finally {
-      refreshing = null;
-    }
+    if (!(await tryRefresh())) throw e;
     return req<T>(path, { ...opts, token: activeSession.accessToken });
   }
+}
+
+/** «Сырой» запрос с токеном (multipart / скачивание файлов), с тем же
+ *  одноразовым обновлением по refresh при 401. */
+async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  if (!activeSession) throw new ApiError(401, 'unauthorized', 'Требуется вход');
+  const run = () =>
+    fetch(`/api${path}`, {
+      ...init,
+      headers: { ...(init.headers ?? {}), Authorization: `Bearer ${activeSession!.accessToken}` },
+    });
+  let res: Response;
+  try {
+    res = await run();
+  } catch {
+    throw new ApiError(0, 'network_error', 'Сервер недоступен. Проверьте соединение.');
+  }
+  if (res.status === 401 && (await tryRefresh())) res = await run();
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string; field?: string } } | null;
+    throw new ApiError(res.status, data?.error?.code ?? 'error', data?.error?.message ?? `Ошибка ${res.status}`, data?.error?.field);
+  }
+  return res;
 }
 
 /* ── Типы данных (формы ответов сервера, деньги в сомони) ────────────────── */
 
 export type ApiReqKind = 'payment' | 'trip' | 'auto';
 export type ApiReqStatus = 'draft' | 'sent' | 'review' | 'approved' | 'rejected';
+
+export interface ApiAttachment {
+  id: number;
+  kind: string;
+  fileName: string;
+  /** false — имя-заглушка из демо-данных, файла в хранилище нет. */
+  hasFile: boolean;
+}
 
 export interface ApiRequest {
   id: number;
@@ -137,7 +175,17 @@ export interface ApiRequest {
   decidedBy: string | null;
   decidedAt: string | null;
   decisionComment: string | null;
-  attachments: { kind: string; fileName: string }[];
+  stornoBy: string | null;
+  stornoAt: string | null;
+  attachments: ApiAttachment[];
+}
+
+/** Загруженный файл (POST /api/uploads) для передачи в POST /api/requests. */
+export interface UploadedRef {
+  key: string;
+  fileName: string;
+  mime?: string;
+  size?: number;
 }
 
 export interface CreateRequestPayload {
@@ -149,7 +197,7 @@ export interface CreateRequestPayload {
   km?: number;
   category?: string;
   counterpartyName?: string;
-  attachment?: string;
+  attachment?: UploadedRef;
 }
 
 export interface ApiOperation {
@@ -179,6 +227,10 @@ export interface ApiPlanFactRow {
   resp: string;
   pending: boolean;
   reason?: string;
+  /** Для строк из заявок кабинета. */
+  requestId?: number;
+  storno?: boolean;
+  attachments?: { id: number; fileName: string; hasFile: boolean }[];
 }
 
 export interface ApiProject {
@@ -190,15 +242,81 @@ export interface ApiProject {
   archived: boolean;
   start: string | null;
   end: string | null;
+  /** Суммы (сомони) — только для админа/директора. */
+  inF?: number;
+  outF?: number;
+  inP?: number;
+  outP?: number;
 }
 
+export interface ApiProjectSummary {
+  id: number;
+  name: string;
+  rows: { article: string; type: 'income' | 'expense'; plan: number; fact: number }[];
+}
+
+export interface NamedRef { id: number; name: string; note: string }
+
 export interface ApiDictionaries {
-  articles: Record<'income' | 'expense' | 'asset' | 'liability' | 'equity', { name: string; children: string[]; isSystem: boolean }[]>;
-  counterparties: { name: string; note: string }[];
-  accounts: { name: string; note: string }[];
-  entities: { name: string; note: string }[];
-  goods: { name: string; note: string }[];
-  services: { name: string; note: string }[];
+  articles: Record<'income' | 'expense' | 'asset' | 'liability' | 'equity', { id: number; name: string; children: { id: number; name: string }[]; isSystem: boolean }[]>;
+  counterparties: NamedRef[];
+  accounts: NamedRef[];
+  entities: NamedRef[];
+  goods: NamedRef[];
+  services: NamedRef[];
+}
+
+/** Фильтры журнала операций (серверные, ТЗ п. 9). */
+export interface OperationQuery {
+  type?: string[]; // in | out | move | accrual
+  confirmed?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  account?: number;
+  counterparty?: number;
+  article?: number;
+  project?: number;
+  amountMin?: number;
+  amountMax?: number;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreateOperationPayload {
+  date: string;
+  type: 'in' | 'out';
+  isPlan?: boolean;
+  amount: number;
+  currency?: string;
+  rate?: number;
+  articleName: string;
+  projectId?: number;
+  accountId?: number;
+  counterpartyName?: string;
+  comment?: string;
+}
+
+export interface ApiUser {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  active: boolean;
+  mustChangePassword: boolean;
+  role: { code: RoleCode; name: string };
+}
+
+export interface ApiRate { code: string; name: string; rate: number | null; rateDate: string | null }
+
+export interface ApiAuditRow {
+  id: number;
+  at: string;
+  user: string;
+  entity: string;
+  entityId: string;
+  action: string;
+  newValue: unknown;
 }
 
 export const api = {
@@ -231,13 +349,91 @@ export const api = {
 
   deleteRequest: (id: number) => authedReq<void>(`/requests/${id}`, { method: 'DELETE' }),
 
-  operations: () => authedReq<ApiOperation[]>('/operations'),
+  /** Сторнирование одобренной заявки (директор/админ). */
+  stornoRequest: (id: number, comment?: string) =>
+    authedReq<ApiRequest>(`/requests/${id}/storno`, { method: 'PATCH', body: comment ? { comment } : {} }),
+
+  operations: (query: OperationQuery = {}) => {
+    const q = new URLSearchParams();
+    if (query.type?.length) q.set('type', query.type.join(','));
+    if (query.confirmed !== undefined) q.set('confirmed', String(query.confirmed));
+    if (query.dateFrom) q.set('date_from', query.dateFrom);
+    if (query.dateTo) q.set('date_to', query.dateTo);
+    if (query.account != null) q.set('account', String(query.account));
+    if (query.counterparty != null) q.set('counterparty', String(query.counterparty));
+    if (query.article != null) q.set('article', String(query.article));
+    if (query.project != null) q.set('project', String(query.project));
+    if (query.amountMin != null) q.set('amount_min', String(query.amountMin));
+    if (query.amountMax != null) q.set('amount_max', String(query.amountMax));
+    if (query.q) q.set('q', query.q);
+    if (query.limit != null) q.set('limit', String(query.limit));
+    if (query.offset != null) q.set('offset', String(query.offset));
+    const qs = q.toString();
+    return authedReq<{ rows: ApiOperation[]; total: number }>(`/operations${qs ? `?${qs}` : ''}`);
+  },
+
+  createOperation: (payload: CreateOperationPayload) =>
+    authedReq<ApiOperation>('/operations', { method: 'POST', body: payload }),
 
   planFact: () => authedReq<{ incomes: ApiPlanFactRow[]; expenses: ApiPlanFactRow[] }>('/planfact'),
 
   projects: () => authedReq<ApiProject[]>('/projects'),
 
+  projectSummary: (id: number) => authedReq<ApiProjectSummary>(`/projects/${id}/summary`),
+
+  archiveProject: (id: number, archived: boolean) =>
+    authedReq<{ id: number; archived: boolean }>(`/projects/${id}`, { method: 'PATCH', body: { archived } }),
+
   dictionaries: () => authedReq<ApiDictionaries>('/dictionaries'),
 
   settings: () => authedReq<{ kmRate: number }>('/settings'),
+
+  updateSettings: (kmRate: number) =>
+    authedReq<{ kmRate: number }>('/settings', { method: 'PATCH', body: { kmRate } }),
+
+  rates: () => authedReq<ApiRate[]>('/rates'),
+
+  addRate: (currency: string, date: string, rate: number) =>
+    authedReq<{ currency: string; date: string; rate: number }>('/rates', { method: 'POST', body: { currency, date, rate } }),
+
+  audit: (limit = 100) => authedReq<ApiAuditRow[]>(`/audit?limit=${limit}`),
+
+  users: () => authedReq<{ items: ApiUser[] }>('/users'),
+
+  createUser: (payload: { name: string; email: string; phone?: string; role: RoleCode }) =>
+    authedReq<{ user: ApiUser; tempPassword: string }>('/users', { method: 'POST', body: payload }),
+
+  updateUser: (id: number, payload: { name?: string; phone?: string; role?: RoleCode; active?: boolean }) =>
+    authedReq<ApiUser>(`/users/${id}`, { method: 'PATCH', body: payload }),
+
+  /** Загрузка файла вложения (JPG/PNG/PDF до 10 МБ) → ключ хранилища. */
+  upload: async (file: File): Promise<UploadedRef> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await authedFetch('/uploads', { method: 'POST', body: form });
+    return (await res.json()) as UploadedRef;
+  },
+
+  /** Открыть вложение в новой вкладке (файл отдаётся только с токеном). */
+  openAttachment: async (id: number): Promise<void> => {
+    const res = await authedFetch(`/attachments/${id}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
+
+  /** Скачать Excel-экспорт (report | projects). */
+  downloadExport: async (name: 'report' | 'projects'): Promise<void> => {
+    const res = await authedFetch(`/export/${name}.xlsx`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name === 'report' ? 'план-факт.xlsx' : 'проекты.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
 };

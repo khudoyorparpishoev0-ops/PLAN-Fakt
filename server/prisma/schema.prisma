@@ -48,6 +48,7 @@ model User {
 
   requests         Request[]  @relation("RequestAuthor")
   decisions        Request[]  @relation("RequestDecider")
+  stornos          Request[]  @relation("RequestStorno")
   auditLogs        AuditLog[]
   responsibleFor   Project[]  @relation("ProjectResponsible")
 
@@ -326,6 +327,11 @@ model Request {
   decisionBy       User?         @relation("RequestDecider", fields: [decisionById], references: [id])
   decisionAt       DateTime?     @map("decision_at")
   decisionComment  String?       @map("decision_comment")
+  // Сторнирование одобренной заявки директором (ТЗ, п. 5): плановая операция
+  // гасится обратной записью, заявка остаётся одобренной с отметкой сторно.
+  stornoById       Int?          @map("storno_by_id")
+  stornoBy         User?         @relation("RequestStorno", fields: [stornoById], references: [id])
+  stornoAt         DateTime?     @map("storno_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
   deletedAt        DateTime?     @map("deleted_at")

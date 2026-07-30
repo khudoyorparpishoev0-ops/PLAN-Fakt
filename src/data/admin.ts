@@ -13,6 +13,9 @@ export interface Income {
 export interface Expense {
   n: string; cat: string; proj: string; payee: string; pdate: string; fdate: string;
   plan: number; fact: number; status: string; resp: string; reason?: string; pending?: boolean;
+  /** Для строк из заявок кабинета (ШАГ 4): id заявки, сторно, вложения. */
+  requestId?: number; storno?: boolean;
+  attachments?: { id: number; fileName: string; hasFile: boolean }[];
 }
 export interface Project {
   id: string; name: string; group: string; status: 'plan' | 'work' | 'done';

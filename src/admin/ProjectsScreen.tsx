@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from 'react';
 import type { Project } from '../data/admin';
 import { PRJ_GROUPS } from '../data/admin';
+import { api } from '../lib/api';
 import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD, pct1, plural } from '../lib/format';
 import { badge, type BadgeData } from '../lib/badges';
@@ -132,7 +133,7 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject }:
             <span style={{ width: 34, height: 20, borderRadius: 99, background: showPlan ? ACC : '#D8D5CE', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)', transform: `translateX(${showPlan ? '14px' : '0px'})`, transition: 'transform .15s' }} /></span>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: '#3E4643' }}>Показывать план</span>
           </div>
-          <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5" /><path d="M2.5 12h9" /></svg>Excel</div>
+          <div onClick={() => void api.downloadExport('projects')} title="Скачать проекты.xlsx" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5" /><path d="M2.5 12h9" /></svg>Excel</div>
         </div>
         <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

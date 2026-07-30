@@ -324,9 +324,9 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
             <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
             <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="#FAE7E4" iconFg="#B93227" b={CB.rejected} />
           </div>
-          {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} />}
-          {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} />}
-          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} deleteReq={deleteReq} />}
+          {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
+          {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
+          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} deleteReq={deleteReq} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
         </div>
       </div>

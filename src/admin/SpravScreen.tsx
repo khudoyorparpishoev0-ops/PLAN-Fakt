@@ -37,7 +37,7 @@ export default function SpravScreen({ dicts }: SpravScreenProps) {
   /* Формы данных прототипа (ART / GEN) собираются из ответа API */
   const ART: Record<string, ArtRow[]> = {};
   for (const tab of ART_TABS) {
-    ART[tab] = (dicts?.articles[TAB_TYPE[tab]] ?? []).map((a) => [a.name, a.children, a.isSystem]);
+    ART[tab] = (dicts?.articles[TAB_TYPE[tab]] ?? []).map((a) => [a.name, a.children.map((c) => c.name), a.isSystem]);
   }
   const GEN: Record<string, GenList> = {
     contragents: { title: 'Контрагенты', add: 'Контрагент', rows: (dicts?.counterparties ?? []).map((r) => [r.name, r.note]) },

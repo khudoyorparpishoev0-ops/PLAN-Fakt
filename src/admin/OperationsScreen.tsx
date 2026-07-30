@@ -1,24 +1,99 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ACC, PLEX, num } from '../theme';
 import { fmt } from '../lib/format';
-import type { JournalRow } from '../lib/mapping';
+import { api, ApiError, type ApiDictionaries, type ApiOperation, type ApiProject } from '../lib/api';
+import { ruDate } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
 
-const PARAM_DROPS = ['Загрузка', 'Юрлица и счета', 'Контрагенты', 'Статьи учёта', 'Проекты'];
+const PAGE = 50;
 
 export interface OperationsScreenProps {
-  /** Журнал операций из API (GET /api/operations). */
-  ops: JournalRow[];
-  openIncome: () => void;
+  dicts: ApiDictionaries | null;
+  projects: ApiProject[];
+  /** Открыть форму добавления операции (доход/расход). */
+  openCreate: (kind: 'in' | 'out') => void;
+  /** Растёт при каждом добавлении операции — сигнал перезагрузить список. */
+  refreshTick: number;
+  onError: (msg: string) => void;
 }
 
+const selS: React.CSSProperties = { width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#5A625E', marginBottom: 8, outline: 'none' };
+const inpS: React.CSSProperties = { height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none' };
+
+/** Журнал операций: данные и фильтры — серверные (GET /api/operations,
+ *  ТЗ п. 9: комбинируемые фильтры, лимит/оффсет). */
 export default function OperationsScreen(props: OperationsScreenProps) {
+  const { dicts, projects } = props;
   const [filtersOn, setFiltersOn] = useState(true);
   const [opType, setOpType] = useState({ in: true, out: true, move: true, accr: true });
   const [payConf, setPayConf] = useState({ conf: true, unconf: true });
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [fAccount, setFAccount] = useState('');
+  const [fParty, setFParty] = useState('');
+  const [fArticle, setFArticle] = useState('');
+  const [fProject, setFProject] = useState('');
+  const [sumMin, setSumMin] = useState('');
+  const [sumMax, setSumMax] = useState('');
+  const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
+
+  const [rows, setRows] = useState<ApiOperation[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const seq = useRef(0);
 
   const toggleType = (k: keyof typeof opType) => setOpType(st => ({ ...st, [k]: !st[k] }));
   const togglePay = (k: keyof typeof payConf) => setPayConf(st => ({ ...st, [k]: !st[k] }));
+
+  // Поиск с задержкой, чтобы не дёргать сервер на каждый символ
+  useEffect(() => {
+    const t = setTimeout(() => setQ(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const buildQuery = (offset: number) => {
+    const types: string[] = [];
+    if (opType.in) types.push('in');
+    if (opType.out) types.push('out');
+    if (opType.move) types.push('move');
+    if (opType.accr) types.push('accrual');
+    return {
+      type: types,
+      confirmed: payConf.conf === payConf.unconf ? undefined : payConf.conf,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      account: fAccount ? Number(fAccount) : undefined,
+      counterparty: fParty ? Number(fParty) : undefined,
+      article: fArticle ? Number(fArticle) : undefined,
+      project: fProject ? Number(fProject) : undefined,
+      amountMin: sumMin.trim() ? Number(sumMin.trim().replace(/\s/g, '').replace(',', '.')) : undefined,
+      amountMax: sumMax.trim() ? Number(sumMax.trim().replace(/\s/g, '').replace(',', '.')) : undefined,
+      q: q || undefined,
+      limit: PAGE,
+      offset,
+    };
+  };
+
+  const load = async (offset: number) => {
+    const my = ++seq.current;
+    setLoading(true);
+    try {
+      const res = await api.operations(buildQuery(offset));
+      if (my !== seq.current) return; // пришёл более свежий запрос
+      setRows(r => (offset === 0 ? res.rows : [...r, ...res.rows]));
+      setTotal(res.total);
+    } catch (e) {
+      props.onError(e instanceof ApiError ? e.message : 'Не удалось загрузить операции');
+    } finally {
+      if (my === seq.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opType, payConf, dateFrom, dateTo, fAccount, fParty, fArticle, fProject, sumMin, sumMax, q, props.refreshTick]);
 
   const opTypeChecks: [string, boolean, () => void][] = [
     ['Поступление', opType.in, () => toggleType('in')],
@@ -31,18 +106,26 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     ['Не подтверждена', payConf.unconf, () => togglePay('unconf')],
   ];
 
-  const rows = props.ops.filter(o => (o.dirIn ? opType.in : opType.out)).map(o => {
-    const whole = Math.floor(o.amount);
-    const dirams = Math.round((o.amount - whole) * 100);
+  const articleOptions = dicts
+    ? [...dicts.articles.income, ...dicts.articles.expense].flatMap(a => [
+        { id: a.id, name: a.name },
+        ...a.children,
+      ])
+    : [];
+
+  const view = rows.map(o => {
+    const whole = Math.floor(Math.abs(o.amount));
+    const dirams = Math.round((Math.abs(o.amount) - whole) * 100);
+    const sign = o.amount < 0 ? '−' : o.type === 'in' ? '+' : '−';
     return {
       key: o.id,
-      date: o.date, account: o.account, dirIn: o.dirIn,
-      party: o.party, article: o.article, sub: o.sub, project: o.project,
+      date: ruDate(o.date), account: o.account ?? '—', dirIn: o.type === 'in',
+      party: o.party ?? '—', article: o.article ?? '—', sub: o.comment ?? '', project: o.project ?? '—',
       // Плановые операции (из одобренных заявок) помечаются в журнале тегом «План»
-      tag: o.isPlan ? 'План' : o.dirIn ? 'Доходы' : 'Расходы',
-      sumMain: (o.dirIn ? '+' : '−') + fmt(whole),
+      tag: o.isPlan ? 'План' : o.type === 'in' ? 'Доходы' : 'Расходы',
+      sumMain: sign + fmt(whole),
       sumFrac: ',' + String(dirams).padStart(2, '0') + ' TJS',
-      sumFg: o.dirIn ? '#1A7A4B' : '#B93227',
+      sumFg: o.type === 'in' ? '#1A7A4B' : '#B93227',
     };
   });
 
@@ -60,14 +143,30 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           {opTypeChecks.map(([t, on, fn]) => <CheckRow key={t} on={on} label={t} onClick={fn} />)}
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '14px 0 7px' }}>ДАТА ОПЛАТЫ</div>
           {payChecks.map(([t, on, fn]) => <CheckRow key={t} on={on} label={t} onClick={fn} />)}
-          <input placeholder="Укажите период" style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none', margin: '9px 0 0' }} />
+          <div style={{ display: 'flex', gap: 8, margin: '9px 0 0' }}>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Период с" style={{ ...inpS, width: '50%', padding: '0 6px' }} />
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Период по" style={{ ...inpS, width: '50%', padding: '0 6px' }} />
+          </div>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '16px 0 8px' }}>ПАРАМЕТРЫ</div>
-          {PARAM_DROPS.map(d => (
-            <div key={d} className="hv-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E0DED8', borderRadius: 8, padding: '8px 11px', fontSize: 12.5, color: '#5A625E', marginBottom: 8, cursor: 'pointer' }}>{d} <span style={{ color: '#A6ACA8' }}>▾</span></div>
-          ))}
+          <select value={fAccount} onChange={e => setFAccount(e.target.value)} style={selS}>
+            <option value="">Юрлица и счета: все</option>
+            {(dicts?.accounts ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={fParty} onChange={e => setFParty(e.target.value)} style={selS}>
+            <option value="">Контрагенты: все</option>
+            {(dicts?.counterparties ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={fArticle} onChange={e => setFArticle(e.target.value)} style={selS}>
+            <option value="">Статьи учёта: все</option>
+            {articleOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={fProject} onChange={e => setFProject(e.target.value)} style={selS}>
+            <option value="">Проекты: все</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
           <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-            <input placeholder="Сумма от" style={{ width: '50%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
-            <input placeholder="до" style={{ width: '50%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
+            <input value={sumMin} onChange={e => setSumMin(e.target.value)} placeholder="Сумма от" style={{ ...inpS, width: '50%' }} />
+            <input value={sumMax} onChange={e => setSumMax(e.target.value)} placeholder="до" style={{ ...inpS, width: '50%' }} />
           </div>
         </div>
       ) : (
@@ -77,14 +176,14 @@ export default function OperationsScreen(props: OperationsScreenProps) {
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, color: '#8A918D' }}>{loading ? 'Загрузка…' : `Всего: ${fmt(total)}`}</div>
           <div style={{ flex: 1 }} />
           <div style={{ position: 'relative' }}>
-            <input placeholder="Поиск по операциям" style={{ width: 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по операциям" style={{ width: 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" strokeWidth="1.5" style={{ position: 'absolute', left: 11, top: 10 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
           </div>
-          <div onClick={props.openIncome} title="Добавить операцию" className="hv-soft" style={{ width: 36, height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}>
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.3" /><circle cx="8" cy="8" r="1.3" /><circle cx="13" cy="8" r="1.3" /></svg>
-          </div>
+          <div onClick={() => props.openCreate('in')} title="Добавить доход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#1A7A4B', fontSize: 12.5, fontWeight: 600 }}>+ Доход</div>
+          <div onClick={() => props.openCreate('out')} title="Добавить расход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#B93227', fontSize: 12.5, fontWeight: 600 }}>+ Расход</div>
         </div>
         <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
@@ -100,9 +199,10 @@ export default function OperationsScreen(props: OperationsScreenProps) {
                 <Th right style={{ padding: '9px 16px 9px 12px' }}>Сумма</Th>
               </tr></thead>
               <tbody>
-                <tr><td colSpan={8} style={{ padding: '8px 16px', fontSize: 12, color: '#A6ACA8', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED' }}>Сегодня нет операций</td></tr>
-                <tr><td colSpan={8} style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#5A625E', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED' }}>Вчера и ранее</td></tr>
-                {rows.map((r) => (
+                {view.length === 0 && !loading && (
+                  <tr><td colSpan={8} style={{ padding: '16px', fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
+                )}
+                {view.map((r) => (
                   <tr key={r.key} className="hv-row">
                     <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid #F3F2ED' }}><span style={{ width: 16, height: 16, borderRadius: 4, border: '1.5px solid #CFCCC4', display: 'inline-block', verticalAlign: 'middle', cursor: 'pointer' }} /></td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#3E4643', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
@@ -125,6 +225,11 @@ export default function OperationsScreen(props: OperationsScreenProps) {
               </tbody>
             </table>
           </div>
+          {rows.length < total && (
+            <div onClick={loading ? undefined : () => void load(rows.length)} className="hv-soft" style={{ padding: '11px', textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', borderTop: '1px solid #F0EFEA' }}>
+              {loading ? 'Загрузка…' : `Показать ещё (${fmt(total - rows.length)})`}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { ACC, PLEX, num } from '../theme';
+import { api, ApiError } from '../lib/api';
 import { Badge } from '../components/ui';
 import type { ExpRow } from '../lib/rows';
 
@@ -7,6 +8,9 @@ export interface ExpenseDrawerProps {
   onClose: () => void;
   approve: (n: string) => void;
   decline: (n: string) => void;
+  /** Сторнирование одобренной заявки (строки «План · заявка …», ТЗ п. 5). */
+  onStorno?: (requestId: number) => void;
+  onError?: (msg: string) => void;
 }
 
 /** Номер текущего шага согласования по статусу заявки (−1 — отклонено). */
@@ -100,8 +104,24 @@ export default function ExpenseDrawer(props: ExpenseDrawerProps) {
           )}
           <div style={{ ...secHead, margin: '0 0 10px' }}>ДОКУМЕНТЫ</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <div className="hv-row" style={docChip}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /></svg>Счёт №214.pdf</div>
-            <div className="hv-row" style={docChip}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" /><path d="M1.5 9l3-3 3 3 2-2 3 3" /></svg>Накладная.jpg</div>
+            {(sel.attachments ?? []).map((a) => (
+              <div
+                key={a.id}
+                onClick={() => {
+                  if (!a.hasFile) { props.onError?.(`«${a.fileName}» — демо-имя, файла нет`); return; }
+                  void api.openAttachment(a.id).catch((e: unknown) => {
+                    props.onError?.(e instanceof ApiError ? e.message : 'Не удалось открыть файл');
+                  });
+                }}
+                className="hv-row" style={docChip}
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /></svg>
+                {a.fileName}
+              </div>
+            ))}
+            {(sel.attachments ?? []).length === 0 && (
+              <div style={{ fontSize: 12, color: '#A6ACA8' }}>Документы не приложены</div>
+            )}
           </div>
         </div>
         {approval ? (
@@ -111,6 +131,16 @@ export default function ExpenseDrawer(props: ExpenseDrawerProps) {
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid #EFEEE9' }}>
+            {sel.requestId != null && !sel.storno && props.onStorno && (
+              <div
+                onClick={() => props.onStorno!(sel.requestId!)}
+                title="Погасить плановую операцию обратной записью (ТЗ, п. 5)"
+                className="hv-red"
+                style={{ border: '1px solid #F0CFC9', color: '#B93227', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginRight: 'auto' }}
+              >
+                Сторнировать
+              </div>
+            )}
             <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Закрыть</div>
           </div>
         )}

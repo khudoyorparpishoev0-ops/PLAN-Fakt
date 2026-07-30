@@ -36,19 +36,25 @@ export const STATUS_RU: Record<ApiRequest['status'], ReqStatus> = {
 };
 
 const attachment = (r: ApiRequest): string | undefined => r.attachments[0]?.fileName;
+/** id вложения — только если файл реально загружен (не имя-заглушка сида). */
+const attachmentId = (r: ApiRequest): number | undefined =>
+  r.attachments[0]?.hasFile ? r.attachments[0].id : undefined;
 
 export const toPay = (r: ApiRequest): PayReq => ({
-  id: r.number, dbId: r.id, date: dotDate(r.date), project: r.project, name: r.name,
+  id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt,
+  date: dotDate(r.date), project: r.project, name: r.name,
   amount: r.amount ?? 0, currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], doc: attachment(r),
 });
 
 export const toTrip = (r: ApiRequest): TripReq => ({
-  id: r.number, dbId: r.id, date: dotDate(r.date), project: r.project, goal: r.name,
+  id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt,
+  date: dotDate(r.date), project: r.project, goal: r.name,
   km: r.km ?? 0, contragent: r.counterparty ?? '—', status: STATUS_RU[r.status], photo: attachment(r) ?? '',
 });
 
 export const toCar = (r: ApiRequest): CarReq => ({
-  id: r.number, dbId: r.id, date: dotDate(r.date), project: r.project,
+  id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt,
+  date: dotDate(r.date), project: r.project,
   category: (r.category ?? r.name) as CarCategory, amount: r.amount ?? 0,
   currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], receipt: attachment(r),
 });
@@ -66,6 +72,9 @@ export const toExpense = (r: ApiPlanFactRow): Expense => ({
   plan: r.plan, fact: r.fact, status: r.status, resp: r.resp,
   ...(r.pending ? { pending: true } : {}),
   ...(r.reason ? { reason: r.reason } : {}),
+  ...(r.requestId != null ? { requestId: r.requestId } : {}),
+  ...(r.storno ? { storno: true } : {}),
+  ...(r.attachments ? { attachments: r.attachments } : {}),
 });
 
 /** Строка журнала операций для экрана «Операции». */

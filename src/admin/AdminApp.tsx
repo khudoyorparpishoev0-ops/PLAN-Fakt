@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars } from '../theme';
-import { PROJECTS, type Expense, type Income, type Project } from '../data/admin';
+import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
-  type ApiDictionaries, type ApiRequest, type AuthUser,
+  type ApiDictionaries, type ApiProject, type ApiRequest, type AuthUser,
 } from '../lib/api';
-import { toExpense, toIncome, toJournalRow, type JournalRow } from '../lib/mapping';
+import { toExpense, toIncome } from '../lib/mapping';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
 import PanelScreen from './PanelScreen';
@@ -74,34 +74,53 @@ const I = {
 export interface AdminAppProps {
   user?: AuthUser;
   onLogout?: () => void;
+  onChangePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
-export default function AdminApp({ user, onLogout }: AdminAppProps) {
+/** Проект API → форма Project экрана «Проекты» (id — строка, суммы 0 без прав). */
+const toProject = (p: ApiProject): Project & { archived: boolean } => ({
+  id: String(p.id),
+  name: p.name,
+  group: p.group,
+  status: p.status,
+  archived: p.archived,
+  s: p.start,
+  e: p.end,
+  inF: p.inF ?? 0,
+  outF: p.outF ?? 0,
+  inP: p.inP ?? 0,
+  outP: p.outP ?? 0,
+  resp: p.resp,
+});
+
+export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppProps) {
   const [screen, setScreen] = useState<Screen>('panel');
   const [setTab, setSetTab] = useState('profile');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [expStatuses, setExpStatuses] = useState<Record<string, string>>({});
   const [selExp, setSelExp] = useState<number | null>(null);
-  const [incDrawer, setIncDrawer] = useState(false);
+  const [opDrawer, setOpDrawer] = useState<'in' | 'out' | null>(null);
   const [selProj, setSelProj] = useState<string | null>(null);
-  const [archOv, setArchOv] = useState<Record<string, boolean>>({});
 
-  /* ── Данные с API (ШАГ 3): план-факт, журнал, заявки, справочники ── */
+  /* ── Данные с API: план-факт, заявки, проекты, справочники.
+   *    Журнал операций сам грузит OperationsScreen (серверные фильтры);
+   *    opsTick — сигнал ему перечитать список после изменений. ── */
   const [incomesRaw, setIncomesRaw] = useState<Income[]>([]);
   const [expensesRaw, setExpensesRaw] = useState<Expense[]>([]);
-  const [journal, setJournal] = useState<JournalRow[]>([]);
   const [requests, setRequests] = useState<ApiRequest[]>([]);
+  const [apiProjects, setApiProjects] = useState<ApiProject[]>([]);
   const [dicts, setDicts] = useState<ApiDictionaries | null>(null);
+  const [opsTick, setOpsTick] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => { applyThemeVars(); }, []);
 
   const loadData = async () => {
-    const [pf, ops, reqs] = await Promise.all([api.planFact(), api.operations(), api.requests()]);
+    const [pf, reqs, projs] = await Promise.all([api.planFact(), api.requests(), api.projects()]);
     setIncomesRaw(pf.incomes.map(toIncome));
     setExpensesRaw(pf.expenses.map(toExpense));
-    setJournal(ops.map(toJournalRow));
     setRequests(reqs);
+    setApiProjects(projs);
   };
 
   useEffect(() => {
@@ -123,10 +142,7 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
     [expensesRaw, expStatuses],
   );
   const totals = useMemo(() => computeTotals(incomesRaw, expenses), [incomesRaw, expenses]);
-  const projects: (Project & { archived: boolean })[] = useMemo(
-    () => PROJECTS.map(p => ({ ...p, archived: archOv[p.id] ?? !!p.archived })),
-    [archOv],
-  );
+  const projects = useMemo(() => apiProjects.map(toProject), [apiProjects]);
 
   /** Заявки, ждущие решения (Отправлено / На рассмотрении) — «Требует внимания». */
   const pendingReqs = useMemo(
@@ -140,16 +156,34 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
     try {
       await api.changeRequestStatus(id, status);
       await loadData();
+      setOpsTick(t => t + 1);
     } catch (e) {
       setLoadError(e instanceof ApiError ? e.message : 'Не удалось изменить статус заявки');
     }
   };
 
+  /** Сторнирование одобренной заявки (шторка строки «План · заявка …»). */
+  const stornoRequest = async (requestId: number) => {
+    try {
+      await api.stornoRequest(requestId);
+      setSelExp(null);
+      await loadData();
+      setOpsTick(t => t + 1);
+    } catch (e) {
+      setLoadError(e instanceof ApiError ? e.message : 'Не удалось сторнировать заявку');
+    }
+  };
+
   const approve = (n: string) => setExpStatuses(st => ({ ...st, [n]: 'Согласовано' }));
   const decline = (n: string) => setExpStatuses(st => ({ ...st, [n]: 'Отклонено' }));
+
+  /** Архив проекта — PATCH /api/projects/:id. */
   const toggleArchive = (id: string) => {
-    const cur = projects.find(p => p.id === id);
-    if (cur) setArchOv(st => ({ ...st, [id]: !cur.archived }));
+    const cur = apiProjects.find(p => String(p.id) === id);
+    if (!cur) return;
+    api.archiveProject(cur.id, !cur.archived)
+      .then(() => loadData())
+      .catch((e: unknown) => setLoadError(e instanceof ApiError ? e.message : 'Не удалось изменить архив'));
   };
 
   const goSettings = () => { setScreen('settings'); setSetTab('profile'); };
@@ -219,12 +253,12 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
               {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
-              {screen === 'incomes' && <OperationsScreen ops={journal} openIncome={() => setIncDrawer(true)} />}
-              {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} />}
+              {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onError={setLoadError} />}
+              {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
               {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} />}
               {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} />}
               {screen === 'sprav' && <SpravScreen dicts={dicts} />}
-              {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} />}
+              {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} user={user} onChangePassword={onChangePassword} />}
               {screen === 'deals' && <DealsScreen />}
             </div>
           </div>
@@ -238,13 +272,23 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
           {loadError}
         </div>
       )}
-      {incDrawer && <IncomeDrawer onClose={() => setIncDrawer(false)} />}
+      {opDrawer && (
+        <IncomeDrawer
+          kind={opDrawer}
+          dicts={dicts}
+          projects={apiProjects}
+          onClose={() => setOpDrawer(null)}
+          onCreated={() => { setOpDrawer(null); setOpsTick(t => t + 1); void loadData(); }}
+        />
+      )}
       {sel && (
         <ExpenseDrawer
           sel={sel}
           onClose={() => setSelExp(null)}
           approve={approve}
           decline={decline}
+          onStorno={stornoRequest}
+          onError={setLoadError}
         />
       )}
       {sp && (

@@ -27,6 +27,7 @@ const REQUEST_INCLUDE = {
   project: true,
   author: true,
   decisionBy: true,
+  stornoBy: true,
   attachments: { where: { deletedAt: null } },
 } satisfies Prisma.RequestInclude;
 
@@ -50,7 +51,9 @@ export interface RequestDto {
   decidedBy: string | null;
   decidedAt: string | null;
   decisionComment: string | null;
-  attachments: { kind: string; fileName: string }[];
+  stornoBy: string | null;
+  stornoAt: string | null;
+  attachments: { id: number; kind: string; fileName: string; hasFile: boolean }[];
 }
 
 /** Сегодняшняя дата как UTC-полночь (для полей @db.Date). */
@@ -89,7 +92,11 @@ export class RequestsService {
       decidedBy: r.decisionBy?.name ?? null,
       decidedAt: r.decisionAt ? r.decisionAt.toISOString() : null,
       decisionComment: r.decisionComment,
-      attachments: r.attachments.map((a) => ({ kind: a.kind, fileName: a.fileName })),
+      stornoBy: r.stornoBy?.name ?? null,
+      stornoAt: r.stornoAt ? r.stornoAt.toISOString() : null,
+      attachments: r.attachments.map((a) => ({
+        id: a.id, kind: a.kind, fileName: a.fileName, hasFile: !!a.storageKey,
+      })),
     };
   }
 
@@ -176,7 +183,15 @@ export class RequestsService {
             counterpartyName: dto.counterpartyName?.trim() || null,
             requestDate: todayUtc(),
             attachments: dto.attachment
-              ? { create: [{ kind: ATTACH_KIND[kind], fileName: dto.attachment }] }
+              ? {
+                  create: [{
+                    kind: ATTACH_KIND[kind],
+                    fileName: dto.attachment.fileName,
+                    storageKey: dto.attachment.key,
+                    mime: dto.attachment.mime ?? null,
+                    size: dto.attachment.size ?? null,
+                  }],
+                }
               : undefined,
           },
           include: REQUEST_INCLUDE,
@@ -311,6 +326,56 @@ export class RequestsService {
     });
     if (existing) return existing;
     return this.prisma.article.create({ data: { name, type: 'expense', parentId: null } });
+  }
+
+  /** Сторнирование одобренной заявки директором (ТЗ, п. 5: «Одобрено …
+   *  неизменяемо (только сторнирование директором)»). Плановая операция
+   *  гасится обратной записью — история в журнале сохраняется. */
+  async storno(user: { sub: number }, id: number, comment?: string): Promise<RequestDto> {
+    const req = await this.prisma.request.findFirst({ where: { id, deletedAt: null }, include: REQUEST_INCLUDE });
+    if (!req) err(HttpStatus.NOT_FOUND, 'not_found', 'Заявка не найдена');
+    if (req.status !== 'approved')
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'not_approved', 'Сторнировать можно только одобренную заявку');
+    if (req.stornoAt)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'already_storno', 'Заявка уже сторнирована');
+
+    const original = await this.prisma.operation.findUnique({ where: { externalRef: `req:${req.number}` } });
+    if (!original) err(HttpStatus.UNPROCESSABLE_ENTITY, 'no_operation', 'Плановая операция по заявке не найдена');
+
+    const date = todayUtc();
+    const stornoComment = `Сторно · заявка ${req.number} · ${req.name}` + (comment?.trim() ? ` · ${comment.trim()}` : '');
+    const [row] = await this.prisma.$transaction([
+      this.prisma.request.update({
+        where: { id },
+        data: { stornoById: user.sub, stornoAt: new Date() },
+        include: REQUEST_INCLUDE,
+      }),
+      // Обратная запись: те же атрибуты, суммы с минусом
+      this.prisma.operation.upsert({
+        where: { externalRef: `req:${req.number}:storno` },
+        update: {},
+        create: {
+          externalRef: `req:${req.number}:storno`,
+          date,
+          type: original.type,
+          isPlan: true,
+          amountDirams: -original.amountDirams,
+          currencyCode: original.currencyCode,
+          rate: original.rate,
+          rateDate: date,
+          amountTjsDirams: -original.amountTjsDirams,
+          status: 'unconfirmed',
+          comment: stornoComment,
+          articleId: original.articleId,
+          projectId: original.projectId,
+        },
+      }),
+    ]);
+    await this.audit(user.sub, id, 'storno', { operation: `req:${req.number}` }, {
+      stornoOperation: `req:${req.number}:storno`,
+      comment: comment ?? null,
+    });
+    return this.toDto(row);
   }
 
   /** Удаление — только автором и только «Черновик» (ТЗ, п. 5). Мягкое. */

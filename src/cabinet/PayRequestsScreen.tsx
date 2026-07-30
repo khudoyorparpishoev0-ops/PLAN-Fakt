@@ -1,13 +1,14 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
-import type { ApiProject, CreateRequestPayload } from '../lib/api';
+import { api, ApiError, type ApiProject, type CreateRequestPayload, type UploadedRef } from '../lib/api';
 import { dirB, ownB, type PayReq } from '../data/cabinet';
 
 export interface PayRequestsScreenProps {
   pays: PayReq[];
   projects: ApiProject[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
+  toast: (msg: string) => void;
 }
 
 /** Селект проекта: значение — id проекта из БД, '' — не выбран, 'none' — «Без проекта». */
@@ -41,23 +42,54 @@ export function Select44({ value, onChange, children, style }: {
   );
 }
 
-/** Дашед-зона загрузки файла (высота настраивается; hover — акцентная рамка). */
-export function DropZone({ height, label, icon, attached, attachedName, onToggle }: {
-  height: number; label: string; icon: ReactNode; attached: boolean; attachedName: string; onToggle: () => void;
+/** Дашед-зона загрузки файла: клик открывает выбор файла, файл сразу
+ *  уходит в хранилище (POST /api/uploads, JPG/PNG/PDF до 10 МБ);
+ *  повторный клик по загруженному — открепляет. */
+export function DropZone({ height, label, icon, value, onChange, toast }: {
+  height: number; label: string; icon: ReactNode;
+  value: UploadedRef | null;
+  onChange: (v: UploadedRef | null) => void;
+  toast: (msg: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const attached = value != null;
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast('Файл больше 10 МБ'); return; }
+    setBusy(true);
+    try {
+      onChange(await api.upload(file));
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Не удалось загрузить файл');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div
-      onClick={onToggle}
+      onClick={busy ? undefined : () => (attached ? onChange(null) : inputRef.current?.click())}
       className={attached ? undefined : 'hv-drop'}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, height,
         border: attached ? `1px solid ${'#DFDCD6'}` : '1px dashed #C7C4BC', borderRadius: 10,
-        background: '#FBFBF9', fontSize: 13, color: attached ? '#1B1F1E' : '#5A625E', cursor: 'pointer', fontWeight: attached ? 500 : 400,
+        background: '#FBFBF9', fontSize: 13, color: attached ? '#1B1F1E' : '#5A625E', cursor: busy ? 'default' : 'pointer', fontWeight: attached ? 500 : 400,
+        overflow: 'hidden', padding: '0 10px', whiteSpace: 'nowrap',
       }}
     >
-      {icon} {attached ? attachedName : label}
-      {attached && (
-        <span style={{ width: 18, height: 18, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6B7370' }}>
+      <input
+        ref={inputRef} type="file" style={{ display: 'none' }}
+        accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+        onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }}
+      />
+      {icon}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {busy ? 'Загрузка…' : attached ? value.fileName : label}
+      </span>
+      {attached && !busy && (
+        <span style={{ width: 18, height: 18, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6B7370', flex: 'none' }}>
           <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
         </span>
       )}
@@ -107,12 +139,12 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 
 const CURRENCIES = ['TJS', 'USD', 'EUR'];
 
-export default function PayRequestsScreen({ pays, projects, createRequest }: PayRequestsScreenProps) {
+export default function PayRequestsScreen({ pays, projects, createRequest, toast }: PayRequestsScreenProps) {
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState('TJS');
   const [name, setName] = useState('');
-  const [attached, setAttached] = useState(false);
+  const [doc, setDoc] = useState<UploadedRef | null>(null);
   const [busy, setBusy] = useState(false);
 
   const amountOk = /^\d[\d\s]*([.,]\d{1,2})?$/.test(amountStr.trim()) && parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')) > 0;
@@ -125,10 +157,10 @@ export default function PayRequestsScreen({ pays, projects, createRequest }: Pay
     const ok = await createRequest({
       kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
       amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')), currency,
-      attachment: attached ? 'Счёт №221.pdf' : undefined,
+      attachment: doc ?? undefined,
     });
     setBusy(false);
-    if (ok) { setProject(''); setAmountStr(''); setCurrency('TJS'); setName(''); setAttached(false); }
+    if (ok) { setProject(''); setAmountStr(''); setCurrency('TJS'); setName(''); setDoc(null); }
   };
 
   return (
@@ -160,7 +192,7 @@ export default function PayRequestsScreen({ pays, projects, createRequest }: Pay
           </div>
           <div>
             <label style={FORM_LABEL}>4) Документ (опционально)</label>
-            <DropZone height={88} label="Загрузить счёт" icon={<CameraIcon />} attached={attached} attachedName="Счёт №221.pdf" onToggle={() => setAttached(a => !a)} />
+            <DropZone height={88} label="Загрузить счёт" icon={<CameraIcon />} value={doc} onChange={setDoc} toast={toast} />
           </div>
         </div>
         <SubmitBtn label="Отправить на утверждение Директору" disabled={!valid} onClick={submit} />
@@ -187,7 +219,7 @@ export default function PayRequestsScreen({ pays, projects, createRequest }: Pay
                 <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.name}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.amount)} {r.currency}</td>
                 <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>
-                <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status)} /></td>
+                <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status, r.storno)} /></td>
               </tr>
             ))}
           </tbody>

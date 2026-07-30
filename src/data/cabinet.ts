@@ -26,19 +26,23 @@ export function cabProjB(status: 'plan' | 'work' | 'done'): BadgeData {
   return { t: 'Завершён', fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' };
 }
 
-/** dbId — первичный ключ заявки в БД (нужен для вызовов API);
- *  у fixture-строк (используются только сидом БД) отсутствует. */
+/** dbId — первичный ключ заявки в БД (нужен для вызовов API); attId — id
+ *  вложения (открытие файла); storno — заявка сторнирована директором.
+ *  У fixture-строк (используются только сидом БД) эти поля отсутствуют. */
 export interface PayReq {
-  id: string; dbId?: number; date: string; project: string; name: string; amount: number;
+  id: string; dbId?: number; attId?: number; storno?: boolean;
+  date: string; project: string; name: string; amount: number;
   currency: string; status: ReqStatus; doc?: string;
 }
 export interface TripReq {
-  id: string; dbId?: number; date: string; project: string; goal: string; km: number;
+  id: string; dbId?: number; attId?: number; storno?: boolean;
+  date: string; project: string; goal: string; km: number;
   contragent: string; status: ReqStatus; photo: string;
 }
 export type CarCategory = 'Бензин' | 'Ремонт' | 'Мойка' | 'Штраф' | 'Запчасти';
 export interface CarReq {
-  id: string; dbId?: number; date: string; project: string; category: CarCategory; amount: number;
+  id: string; dbId?: number; attId?: number; storno?: boolean;
+  date: string; project: string; category: CarCategory; amount: number;
   currency: string; status: ReqStatus; receipt?: string;
 }
 
@@ -49,8 +53,10 @@ export function ownB(st: ReqStatus): BadgeData {
   if (st === 'На рассмотрении') return CB.pending;
   return CB.sent;
 }
-/** Бейдж решения директора (колонка «Директор»). */
-export function dirB(st: ReqStatus): BadgeData {
+/** Бейдж решения директора (колонка «Директор»).
+ *  storno — одобренная заявка сторнирована (ТЗ, п. 5). */
+export function dirB(st: ReqStatus, storno?: boolean): BadgeData {
+  if (storno) return { ...CB.draft, t: 'Сторнировано' };
   switch (st) {
     case 'Черновик': return { ...CB.draft, t: '—' };
     case 'Отправлено': return { ...CB.draft, t: 'Ожидает' };

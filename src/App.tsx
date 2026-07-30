@@ -80,6 +80,6 @@ export default function App() {
   return session.user.role === 'accountant' ? (
     <CabinetApp user={session.user} onLogout={handleLogout} onChangePassword={changePassword} />
   ) : (
-    <AdminApp user={session.user} onLogout={handleLogout} />
+    <AdminApp user={session.user} onLogout={handleLogout} onChangePassword={changePassword} />
   );
 }

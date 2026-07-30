@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
+import { api, ApiError } from '../lib/api';
 import {
   dirB,
   type CarReq, type PayReq, type ReqKind, type ReqStatus, type TripReq,
@@ -17,6 +18,7 @@ export interface HistoryScreenProps {
   /** Названия проектов для фильтра. */
   projectNames: string[];
   deleteReq: (kind: ReqKind, id: string) => void;
+  toast?: (msg: string) => void;
 }
 
 const SUM_LAB: CSSProperties = { fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 };
@@ -200,9 +202,10 @@ function StatusTimeline({ status }: { status: ReqStatus }) {
 
 /** Нормализованный вид заявки (любого вида) для шторки. */
 interface DrawerView {
-  kind: ReqKind; id: string; project: string; status: ReqStatus; title: string; date: string;
+  kind: ReqKind; id: string; project: string; status: ReqStatus; storno?: boolean; title: string; date: string;
   metricLabel: string; metricValue: string; currencyValue: string;
   nameLabel: string; nameValue: string; contragent?: string; attachLabel: string; attachValue: string;
+  attId?: number;
 }
 
 function findRow(pays: PayReq[], trips: TripReq[], cars: CarReq[], sel: { kind: ReqKind; id: string }): PayReq | TripReq | CarReq | undefined {
@@ -215,31 +218,34 @@ function buildDrawerView(kind: ReqKind, row: PayReq | TripReq | CarReq): DrawerV
   if (kind === 'payment') {
     const r = row as PayReq;
     return {
-      kind, id: r.id, project: r.project, status: r.status, title: r.name, date: r.date,
+      kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.name, date: r.date,
       metricLabel: 'СУММА', metricValue: fmt(r.amount), currencyValue: r.currency,
       nameLabel: 'Наименование', nameValue: r.name, attachLabel: 'Документ', attachValue: r.doc || '—',
+      attId: r.attId,
     };
   }
   if (kind === 'trip') {
     const r = row as TripReq;
     return {
-      kind, id: r.id, project: r.project, status: r.status, title: r.goal, date: r.date,
+      kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.goal, date: r.date,
       metricLabel: 'КМ', metricValue: `${fmt(r.km)} км`, currencyValue: 'TJS',
       nameLabel: 'Цель', nameValue: r.goal, contragent: r.contragent, attachLabel: 'Фото', attachValue: r.photo || '—',
+      attId: r.attId,
     };
   }
   const r = row as CarReq;
   return {
-    kind, id: r.id, project: r.project, status: r.status, title: r.category, date: r.date,
+    kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.category, date: r.date,
     metricLabel: 'СУММА', metricValue: fmt(r.amount), currencyValue: r.currency,
     nameLabel: 'Категория', nameValue: r.category, attachLabel: 'Чек', attachValue: r.receipt || '—',
+    attId: r.attId,
   };
 }
 
 /** Унифицированная строка реестра (прототип: одни колонки для всех вкладок). */
 interface HistRow {
   kind: ReqKind; id: string; date: string; project: string; name: string; amount: string;
-  status: ReqStatus; cam?: string; doc?: string;
+  status: ReqStatus; storno?: boolean; cam?: string; doc?: string; attId?: number;
 }
 
 export default function HistoryScreen(props: HistoryScreenProps) {
@@ -278,10 +284,18 @@ export default function HistoryScreen(props: HistoryScreenProps) {
 
   const rows: HistRow[] =
     kind === 'payment'
-      ? filteredPays.map((r) => ({ kind: 'payment' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.name, amount: `${fmt(r.amount)} ${r.currency}`, status: r.status, doc: r.doc }))
+      ? filteredPays.map((r) => ({ kind: 'payment' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.name, amount: `${fmt(r.amount)} ${r.currency}`, status: r.status, storno: r.storno, doc: r.doc, attId: r.attId }))
       : kind === 'trip'
-        ? filteredTrips.map((r) => ({ kind: 'trip' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.goal, amount: `${fmt(r.km)} км`, status: r.status, cam: r.photo }))
-        : filteredCars.map((r) => ({ kind: 'auto' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.category, amount: `${fmt(r.amount)} ${r.currency}`, status: r.status, doc: r.receipt }));
+        ? filteredTrips.map((r) => ({ kind: 'trip' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.goal, amount: `${fmt(r.km)} км`, status: r.status, storno: r.storno, cam: r.photo, attId: r.attId }))
+        : filteredCars.map((r) => ({ kind: 'auto' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.category, amount: `${fmt(r.amount)} ${r.currency}`, status: r.status, storno: r.storno, doc: r.receipt, attId: r.attId }));
+
+  /** Открыть вложение: файл — из хранилища; имена-заглушки сида — подсказка. */
+  const openFile = (attId: number | undefined, name: string) => {
+    if (attId == null) { props.toast?.(`«${name}» — демо-имя из первоначальных данных, файла нет`); return; }
+    void api.openAttachment(attId).catch((e: unknown) => {
+      props.toast?.(e instanceof ApiError ? e.message : 'Не удалось открыть файл');
+    });
+  };
 
   const selRow = selReq ? findRow(pays, trips, cars, selReq) : undefined;
   const dv = selReq && selRow ? buildDrawerView(selReq.kind, selRow) : null;
@@ -334,11 +348,11 @@ export default function HistoryScreen(props: HistoryScreenProps) {
                 <td style={{ ...TD_CAB, fontSize: 12.5, color: '#5A625E' }}>{r.project}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.name}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{r.amount}</td>
-                <td style={TD_CAB}><CabBadge b={dirB(r.status)} /></td>
+                <td style={TD_CAB}><CabBadge b={dirB(r.status, r.storno)} /></td>
                 <td style={{ ...TD_CAB, padding: '11px 20px 11px 14px' }}>
                   <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
-                    {r.cam && <ActionBtn title={`Фото Км · ${r.cam}`}><CamIcon /></ActionBtn>}
-                    {r.doc && <ActionBtn title={`Документ / чек · ${r.doc}`}><DocIcon /></ActionBtn>}
+                    {r.cam && <ActionBtn title={`Фото Км · ${r.cam}`} onClick={(e) => { e.stopPropagation(); openFile(r.attId, r.cam!); }}><CamIcon /></ActionBtn>}
+                    {r.doc && <ActionBtn title={`Документ / чек · ${r.doc}`} onClick={(e) => { e.stopPropagation(); openFile(r.attId, r.doc!); }}><DocIcon /></ActionBtn>}
                     <ActionBtn title="Просмотр" onClick={() => setSelReq({ kind: r.kind, id: r.id })}><EyeIcon /></ActionBtn>
                     {r.status === 'Черновик' && (
                       <ActionBtn danger title="Удалить" onClick={(e) => { e.stopPropagation(); deleteReq(r.kind, r.id); }}><TrashIcon /></ActionBtn>
@@ -363,7 +377,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
                 <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>Заявка {dv.id} · {dv.project}</div>
               </div>
               <div style={{ flex: 1 }} />
-              <span style={{ marginTop: 2 }}><CabBadge b={dirB(dv.status)} /></span>
+              <span style={{ marginTop: 2 }}><CabBadge b={dirB(dv.status, dv.storno)} /></span>
               <span onClick={() => setSelReq(null)} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370' }}>
                 <CloseIcon />
               </span>
@@ -391,7 +405,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
 
               {dv.attachValue !== '—' && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <div className="hv-row" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
+                  <div onClick={() => openFile(dv.attId, dv.attachValue)} className="hv-row" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
                     {dv.kind === 'trip' ? <ImageChipIcon /> : <FileChipIcon />}
                     {dv.attachValue}
                   </div>

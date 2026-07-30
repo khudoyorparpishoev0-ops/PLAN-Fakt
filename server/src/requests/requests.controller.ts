@@ -34,6 +34,13 @@ export class RequestsController {
     return this.requests.changeStatus(req.user!, id, dto);
   }
 
+  /** Сторнирование одобренной заявки (ТЗ, п. 5) — только директор/админ. */
+  @Patch(':id/storno')
+  @Roles('director', 'admin')
+  storno(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() body: { comment?: string }) {
+    return this.requests.storno(req.user!, id, typeof body?.comment === 'string' ? body.comment : undefined);
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @Roles('accountant')

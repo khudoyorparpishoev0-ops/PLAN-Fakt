@@ -12,6 +12,8 @@ export interface ExpensesScreenProps {
   pendingCount: number;
   goIncomes: () => void;
   openExpense: (i: number) => void;
+  /** Открыть форму «Новый расход» (журнал операций). */
+  openCreate: () => void;
 }
 
 const card: CSSProperties = { background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '15px 18px', display: 'flex', flexDirection: 'column', minHeight: 116 };
@@ -59,7 +61,7 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
         )}
         <div style={{ flex: 1 }} />
         <div style={{ fontSize: 12, color: '#8A918D' }}>Нажмите строку — карточка заявки</div>
-        <AccentBtn style={{ padding: '8px 15px' }}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Расход</AccentBtn>
+        <AccentBtn style={{ padding: '8px 15px' }} onClick={props.openCreate}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Расход</AccentBtn>
       </div>
       <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

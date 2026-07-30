@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
+import { api } from '../lib/api';
 import { ROW_PAD, SOFT, num } from '../theme';
 import { fmt, sgn, pct1 } from '../lib/format';
 import { badge, incDevB, expDevB, profDevB, devInfo, type BadgeData } from '../lib/badges';
@@ -96,7 +97,7 @@ export default function ReportScreen(props: ReportScreenProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>Октябрь 2026</b> · все проекты · в сомони</div>
         <div style={{ flex: 1 }} />
-        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
+        <div onClick={() => void api.downloadExport('report')} title="Скачать план-факт.xlsx" className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
         <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>
         <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="1.5" width="8" height="4" rx="1" /><rect x="1.5" y="5.5" width="11" height="5" rx="1.5" /><rect x="4" y="9" width="6" height="3.5" rx="1" /></svg>Печать</div>
       </div>

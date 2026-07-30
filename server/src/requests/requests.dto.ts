@@ -1,4 +1,28 @@
-import { IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Min, ValidateNested,
+} from 'class-validator';
+
+/** Ссылка на загруженный файл (POST /api/uploads → key). */
+export class AttachmentRefDto {
+  @IsString()
+  @Length(1, 300)
+  key!: string;
+
+  @IsString()
+  @Length(1, 200)
+  fileName!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  mime?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  size?: number;
+}
 
 /** Создание заявки (кабинет бухгалтера). Вид определяет обязательные поля. */
 export class CreateRequestDto {
@@ -39,11 +63,11 @@ export class CreateRequestDto {
   @Length(0, 200)
   counterpartyName?: string;
 
-  /** Имя приложенного файла-заглушки (реальная загрузка в MinIO — следующий этап). */
+  /** Загруженный файл (счёт / фото одометра / чек). */
   @IsOptional()
-  @IsString()
-  @Length(1, 200)
-  attachment?: string;
+  @ValidateNested()
+  @Type(() => AttachmentRefDto)
+  attachment?: AttachmentRefDto;
 }
 
 /** Решение директора / перевод статуса. */

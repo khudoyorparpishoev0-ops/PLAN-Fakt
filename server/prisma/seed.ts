@@ -323,6 +323,62 @@ async function seedPlanFact() {
   }
 }
 
+/** Входящие остатки проектов: суммы карточек проектов из фикстур больше
+ *  сумм октябрьских операций (это накопления за всё время проекта).
+ *  Разница заводится «входящим остатком» — операциями/планами с ключами
+ *  base:<проект>:*, чтобы суммы проектов считались из БД и совпадали
+ *  с примером (решение зафиксировано в docs/CABINET_DIFF.md). */
+async function seedProjectBaselines() {
+  const canon = (raw: string) => (raw in PROJECT_ALIASES ? PROJECT_ALIASES[raw] : raw);
+  const otherIncome = await articleId('Прочие доходы', 'income');
+  const otherExpense = await articleId('Прочие расходы', 'expense');
+
+  for (const p of PROJECTS) {
+    const incRows = INCOMES.filter((r) => canon(r.proj) === p.name);
+    const expRows = EXPENSES.filter((r) => canon(r.proj) === p.name);
+    const seeded = {
+      inF: incRows.reduce((s, r) => s + r.fact, 0),
+      inP: incRows.reduce((s, r) => s + r.plan, 0),
+      outF: expRows.reduce((s, r) => s + r.fact, 0),
+      outP: expRows.reduce((s, r) => s + r.plan, 0),
+    };
+    const projId = await projectId(p.name);
+    if (!projId) continue;
+    const baseDate = p.s ? new Date(p.s + 'T00:00:00Z') : utcDate(2026, 9, 30);
+    const comment = 'Входящий остаток на 01.10.2026 (данные примера)';
+
+    const baseOp = async (suffix: string, type: OperationType, artId: number, amount: number) => {
+      if (amount <= 0) return;
+      const data = {
+        date: baseDate, type, isPlan: false,
+        amountDirams: dirams(amount), currencyCode: 'TJS',
+        rate: new Prisma.Decimal(1), rateDate: baseDate, amountTjsDirams: dirams(amount),
+        status: 'confirmed' as const, comment,
+        articleId: artId, projectId: projId,
+      };
+      await prisma.operation.upsert({
+        where: { externalRef: `base:${p.id}:${suffix}` },
+        update: data,
+        create: { externalRef: `base:${p.id}:${suffix}`, ...data },
+      });
+    };
+    const basePlan = async (suffix: string, artId: number, amount: number) => {
+      if (amount <= 0) return;
+      const data = { articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(amount) };
+      await prisma.plan.upsert({
+        where: { externalRef: `base:${p.id}:${suffix}` },
+        update: data,
+        create: { externalRef: `base:${p.id}:${suffix}`, ...data },
+      });
+    };
+
+    await baseOp('inF', 'in', otherIncome, p.inF - seeded.inF);
+    await baseOp('outF', 'out', otherExpense, p.outF - seeded.outF);
+    await basePlan('inP', otherIncome, p.inP - seeded.inP);
+    await basePlan('outP', otherExpense, p.outP - seeded.outP);
+  }
+}
+
 /** Журнал операций (экран «Операции»). */
 async function seedOperationsJournal() {
   for (let i = 0; i < OPS.length; i++) {
@@ -425,6 +481,8 @@ async function main() {
   await seedProjects();
   console.log('[seed] План-факт (планы и фактические операции)…');
   await seedPlanFact();
+  console.log('[seed] Входящие остатки проектов…');
+  await seedProjectBaselines();
   console.log('[seed] Журнал операций…');
   await seedOperationsJournal();
   console.log('[seed] Заявки кабинета…');

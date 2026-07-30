@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
-import type { ApiProject, CreateRequestPayload } from '../lib/api';
+import type { ApiProject, CreateRequestPayload, UploadedRef } from '../lib/api';
 import { dirB, ownB, type CarCategory, type CarReq, type TripReq } from '../data/cabinet';
 import {
   CabBadge, CameraIcon, DropZone, FORM_LABEL, INPUT44, projectIdOf, projectOptions,
@@ -13,6 +13,7 @@ export interface CarRequestsScreenProps {
   cars: CarReq[];
   projects: ApiProject[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
+  toast: (msg: string) => void;
 }
 
 const CAR_CATEGORIES: CarCategory[] = ['Бензин', 'Ремонт', 'Мойка', 'Штраф', 'Запчасти'];
@@ -28,7 +29,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export default function CarRequestsScreen({ trips, cars, projects, createRequest }: CarRequestsScreenProps) {
+export default function CarRequestsScreen({ trips, cars, projects, createRequest, toast }: CarRequestsScreenProps) {
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
   /* ── Форма поездки ── */
@@ -36,22 +37,22 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
   const [goal, setGoal] = useState('');
   const [kmStr, setKmStr] = useState('');
   const [contragent, setContragent] = useState('');
-  const [photoAttached, setPhotoAttached] = useState(false);
+  const [photo, setPhoto] = useState<UploadedRef | null>(null);
   const [tripBusy, setTripBusy] = useState(false);
 
   const kmOk = /^\d+$/.test(kmStr.trim()) && parseInt(kmStr.trim(), 10) > 0;
   const goalOk = goal.trim().length >= 3 && goal.trim().length <= 120;
-  const tripValid = tProject !== '' && goalOk && kmOk && photoAttached && !tripBusy;
+  const tripValid = tProject !== '' && goalOk && kmOk && photo != null && !tripBusy;
 
   const submitTrip = async () => {
     if (!tripValid) return;
     setTripBusy(true);
     const ok = await createRequest({
       kind: 'trip', projectId: projectIdOf(tProject), name: goal.trim(), km: parseInt(kmStr.trim(), 10),
-      counterpartyName: contragent.trim() || undefined, attachment: 'одометр_2910.jpg',
+      counterpartyName: contragent.trim() || undefined, attachment: photo ?? undefined,
     });
     setTripBusy(false);
-    if (ok) { setTProject(''); setGoal(''); setKmStr(''); setContragent(''); setPhotoAttached(false); }
+    if (ok) { setTProject(''); setGoal(''); setKmStr(''); setContragent(''); setPhoto(null); }
   };
 
   /* ── Форма расхода на авто ── */
@@ -59,23 +60,23 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
   const [category, setCategory] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState('TJS');
-  const [receiptAttached, setReceiptAttached] = useState(false);
+  const [receipt, setReceipt] = useState<UploadedRef | null>(null);
   const [autoBusy, setAutoBusy] = useState(false);
 
   const amount = parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.'));
   const amountOk = /^\d[\d\s]*([.,]\d{1,2})?$/.test(amountStr.trim()) && amount > 0;
   const receiptNeeded = amountOk && amount >= 100;
-  const autoValid = aProject !== '' && category !== '' && amountOk && (!receiptNeeded || receiptAttached) && !autoBusy;
+  const autoValid = aProject !== '' && category !== '' && amountOk && (!receiptNeeded || receipt != null) && !autoBusy;
 
   const submitAuto = async () => {
     if (!autoValid) return;
     setAutoBusy(true);
     const ok = await createRequest({
       kind: 'auto', projectId: projectIdOf(aProject), name: category, category: category as CarCategory,
-      amount, currency, attachment: receiptAttached ? 'чек_2910.jpg' : undefined,
+      amount, currency, attachment: receipt ?? undefined,
     });
     setAutoBusy(false);
-    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setCurrency('TJS'); setReceiptAttached(false); }
+    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setCurrency('TJS'); setReceipt(null); }
   };
 
   return (
@@ -107,7 +108,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
                   <input value={kmStr} onChange={(e) => setKmStr(e.target.value)} placeholder="0"
                     style={{ ...INPUT44, width: 96, flex: 'none', ...num }} />
                   <div style={{ flex: 1 }}>
-                    <DropZone height={44} label="Загрузить фото Км" icon={<CameraIcon s={17} />} attached={photoAttached} attachedName="одометр_2910.jpg" onToggle={() => setPhotoAttached(a => !a)} />
+                    <DropZone height={44} label="Загрузить фото Км" icon={<CameraIcon s={17} />} value={photo} onChange={setPhoto} toast={toast} />
                   </div>
                 </div>
               </div>
@@ -136,7 +137,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
                     <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.goal}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.km)} км</td>
                     <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>
-                    <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status)} /></td>
+                    <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status, r.storno)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -176,8 +177,8 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
               </div>
               <div>
                 <label style={FORM_LABEL}>4) Чек / документ</label>
-                <DropZone height={44} label="Загрузить чек" icon={<ReceiptIcon />} attached={receiptAttached} attachedName="чек_2910.jpg" onToggle={() => setReceiptAttached(a => !a)} />
-                {receiptNeeded && !receiptAttached && (
+                <DropZone height={44} label="Загрузить чек" icon={<ReceiptIcon />} value={receipt} onChange={setReceipt} toast={toast} />
+                {receiptNeeded && receipt == null && (
                   <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 6 }}>Для суммы от 100 TJS чек обязателен</div>
                 )}
               </div>
@@ -202,7 +203,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
                     <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.category}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.amount)} {r.currency}</td>
                     <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>
-                    <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status)} /></td>
+                    <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status, r.storno)} /></td>
                   </tr>
                 ))}
               </tbody>
