@@ -7,6 +7,40 @@
 
 ---
 
+## Быстрый путь — одна команда (`deploy.sh`)
+
+Скрипт `deploy.sh` в корне репозитория делает всё сам: ставит git/nginx при
+отсутствии, клонирует или обновляет `/opt/app/app`, собирает образ, перезапускает
+контейнер на `127.0.0.1:8080`, настраивает системный nginx и проверяет результат.
+Идемпотентен — можно запускать повторно при каждом обновлении.
+
+Если репозиторий доступен серверу напрямую (публичный или с настроенным доступом):
+
+```bash
+sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/khudoyorparpishoev0-ops/PLAN-Fakt/refs/heads/claude/design-handoff-implementation-3okq4o/deploy.sh)"
+```
+
+Либо скопируйте один файл `deploy.sh` на сервер любым способом (scp и т.п.) и:
+
+```bash
+sudo sh deploy.sh
+```
+
+Параметры (по умолчанию — текущий репозиторий и ветка
+`claude/design-handoff-implementation-3okq4o`); для приватного репозитория
+передайте URL с токеном:
+
+```bash
+sudo sh deploy.sh https://<TOKEN>@github.com/khudoyorparpishoev0-ops/PLAN-Fakt.git claude/design-handoff-implementation-3okq4o
+```
+
+Успешное завершение печатает: `ГОТОВО, откройте http://<IP>/`.
+При ошибке скрипт называет шаг, на котором остановился, и команды диагностики.
+
+---
+
+## Подробные шаги (запасной вариант, вручную)
+
 ## 1. Клонирование репозитория
 
 ```bash
