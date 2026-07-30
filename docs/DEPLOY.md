@@ -151,3 +151,93 @@ Certbot сам добавит 443-блок и редирект с http. Авто
 ```bash
 sudo certbot renew --dry-run
 ```
+
+---
+
+# Бэкенд (ШАГ 1): API + PostgreSQL
+
+Бэкенд — NestJS + Prisma, каталог `server/`. Слушает `127.0.0.1:3000`, наружу
+не публикуется: системный nginx из раздела 3 уже проксирует `/api/` на
+`127.0.0.1:3000`. Использует существующие PostgreSQL и MinIO из
+`/opt/app/docker-compose.yml`.
+
+## 1. Переменные окружения
+
+Дополнить `/opt/app/.env` (имена — как в `server/.env.example`; уже существующие
+значения не менять):
+
+```bash
+# хост postgres = имя сервиса в /opt/app/docker-compose.yml
+DATABASE_URL=postgresql://<PG_USER>:<PG_PASSWORD>@postgres:5432/<PG_DB>?schema=public
+JWT_SECRET=<случайная строка, понадобится на шаге 2>
+TZ=Asia/Dushanbe
+# пароли тестовых пользователей для seed (иначе будут сгенерированы и напечатаны)
+SEED_PASSWORD_ADMIN=<пароль администратора>
+SEED_PASSWORD_DIRECTOR=<пароль директора>
+SEED_PASSWORD_ACCOUNTANT=<пароль бухгалтера>
+```
+
+## 2. Сервисы в /opt/app/docker-compose.yml
+
+В существующий `/opt/app/docker-compose.yml` (рядом с postgres и minio; там есть
+заготовка в комментариях) добавить:
+
+```yaml
+  backend:
+    build:
+      context: /opt/app/app
+      dockerfile: server/Dockerfile
+    env_file: /opt/app/.env
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: /opt/app/app
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+```
+
+Имя `postgres` в `depends_on` и в `DATABASE_URL` — фактическое имя сервиса
+PostgreSQL из вашего compose-файла (подставить, если отличается).
+
+Если фронтенд ранее был запущен скриптом `deploy.sh` (одиночный контейнер
+`it-hona-frontend`), перед `docker compose up` удалить его, чтобы не конфликтовал
+порт: `docker rm -f it-hona-frontend`.
+
+## 3. Сборка, запуск, миграции, seed
+
+```bash
+cd /opt/app/app && git pull
+cd /opt/app
+docker compose up -d --build backend frontend
+docker compose exec backend npx prisma migrate deploy
+docker compose exec backend npm run seed
+```
+
+Seed идемпотентен — можно запускать повторно. Если `SEED_PASSWORD_*` не заданы,
+случайные пароли печатаются в вывод один раз — сохраните их.
+
+## 4. Проверка
+
+```bash
+curl http://127.0.0.1:3000/api/health
+# → {"status":"ok","db":"ok","time":"..."}
+curl http://localhost/api/health   # через системный nginx
+```
+
+В базе после seed: проекты, учётные статьи, контрагенты, счета, операции и
+заявки — те же, что сейчас отображает интерфейс на фикстурах. Быстрая сверка:
+
+```bash
+docker compose exec postgres psql -U <PG_USER> -d <PG_DB> -c \
+  "SELECT count(*) AS projects FROM projects; SELECT count(*) AS requests FROM requests;"
+```
+
+Примечание: фронтенд к API пока не подключён (шаг 3) — интерфейс продолжает
+работать на фикстурах; бэкенд отдаёт только `/api/health`.

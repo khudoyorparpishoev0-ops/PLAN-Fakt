@@ -1,0 +1,326 @@
+// Схема данных модуля «Финансы: План-Факт» (ТЗ, раздел 7 + фикстуры фронтенда).
+// Деньги хранятся В ДИРАМАХ (1 сомони = 100 дирам) целыми числами (BigInt) —
+// поля *_dirams. Курсы валют — точная десятичная арифметика (Decimal), не float.
+// Мягкое удаление: deleted_at везде; записи не удаляются физически.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Роли и пользователи ─────────────────────────────────────────────────────
+
+model Role {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique // admin | director | accountant
+  name      String
+  users     User[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("roles")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String?   @map("password_hash")
+  roleId       Int       @map("role_id")
+  role         Role      @relation(fields: [roleId], references: [id])
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  requests         Request[]  @relation("RequestAuthor")
+  decisions        Request[]  @relation("RequestDecider")
+  auditLogs        AuditLog[]
+  responsibleFor   Project[]  @relation("ProjectResponsible")
+
+  @@map("users")
+}
+
+// ── Проекты ─────────────────────────────────────────────────────────────────
+
+enum ProjectStatus {
+  plan // Плановый
+  work // В работе
+  done // Завершён
+}
+
+model Project {
+  id              Int           @id @default(autoincrement())
+  name            String        @unique
+  groupName       String?       @map("group_name") // группа проектов («Монтажные проекты» и т.п.)
+  responsibleName String?       @map("responsible_name") // ответственный как в фикстурах («А. Хакимов»)
+  responsibleId   Int?          @map("responsible_id") // FK на users — на будущее
+  responsible     User?         @relation("ProjectResponsible", fields: [responsibleId], references: [id])
+  status          ProjectStatus @default(plan)
+  archived        Boolean       @default(false)
+  startDate       DateTime?     @map("start_date") @db.Date
+  endDate         DateTime?     @map("end_date") @db.Date
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  operations Operation[]
+  plans      Plan[]
+  requests   Request[]
+
+  @@map("projects")
+}
+
+// ── Учётные статьи (дерево) ─────────────────────────────────────────────────
+
+enum ArticleType {
+  income // Доходы
+  expense // Расходы
+  asset // Активы
+  liability // Обязательства
+  equity // Капитал
+}
+
+model Article {
+  id        Int         @id @default(autoincrement())
+  name      String
+  type      ArticleType
+  parentId  Int?        @map("parent_id")
+  parent    Article?    @relation("ArticleTree", fields: [parentId], references: [id])
+  children  Article[]   @relation("ArticleTree")
+  isSystem  Boolean     @default(false) @map("is_system") // системные нельзя удалять/переименовывать
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  deletedAt DateTime?   @map("deleted_at")
+
+  operations Operation[]
+  plans      Plan[]
+
+  @@unique([name, type, parentId])
+  @@map("articles")
+}
+
+// ── Справочники ─────────────────────────────────────────────────────────────
+
+model Counterparty {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  note      String? // «Заказчик · ИНН 010203045» и т.п.
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  operations Operation[]
+
+  @@map("counterparties")
+}
+
+model Account {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  note      String? // «Расчётный счёт · остаток …» и т.п.
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  operations Operation[]
+
+  @@map("accounts")
+}
+
+model LegalEntity {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  note      String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("legal_entities")
+}
+
+// ── Валюты и курсы ──────────────────────────────────────────────────────────
+
+model Currency {
+  code      String    @id // TJS, USD, EUR, RUB, CNY
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  rates      ExchangeRate[]
+  operations Operation[]
+  requests   Request[]
+
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id           Int       @id @default(autoincrement())
+  currencyCode String    @map("currency_code")
+  currency     Currency  @relation(fields: [currencyCode], references: [code])
+  rateDate     DateTime  @map("rate_date") @db.Date
+  rate         Decimal   @db.Decimal(18, 6) // курс к TJS, точная десятичная арифметика
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  @@unique([currencyCode, rateDate])
+  @@map("exchange_rates")
+}
+
+// ── Операции ────────────────────────────────────────────────────────────────
+
+enum OperationType {
+  in // Поступление
+  out // Выплата
+  move // Перемещение
+  accrual // Начисление
+}
+
+enum OperationStatus {
+  confirmed // Оплата подтверждена
+  unconfirmed // Не подтверждена
+}
+
+model Operation {
+  id             Int             @id @default(autoincrement())
+  externalRef    String?         @unique @map("external_ref") // ключ идемпотентности seed («Д-1041», «ops:3»)
+  date           DateTime        @db.Date // дата операции
+  type           OperationType
+  isPlan         Boolean         @default(false) @map("is_plan") // план/факт
+  amountDirams   BigInt          @map("amount_dirams") // сумма в валюте операции, в дирамах
+  currencyCode   String          @default("TJS") @map("currency_code")
+  currency       Currency        @relation(fields: [currencyCode], references: [code])
+  rate           Decimal         @default(1) @db.Decimal(18, 6) // курс к TJS на дату курса
+  rateDate       DateTime?       @map("rate_date") @db.Date
+  amountTjsDirams BigInt         @map("amount_tjs_dirams") // сумма в TJS, в дирамах
+  status         OperationStatus @default(confirmed)
+  comment        String?
+  accountId      Int?            @map("account_id")
+  account        Account?        @relation(fields: [accountId], references: [id])
+  counterpartyId Int?            @map("counterparty_id")
+  counterparty   Counterparty?   @relation(fields: [counterpartyId], references: [id])
+  articleId      Int?            @map("article_id")
+  article        Article?        @relation(fields: [articleId], references: [id])
+  projectId      Int?            @map("project_id")
+  project        Project?        @relation(fields: [projectId], references: [id])
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+
+  @@index([date])
+  @@index([projectId])
+  @@index([articleId])
+  @@map("operations")
+}
+
+// ── Планы (база сравнения «план–факт») ──────────────────────────────────────
+
+model Plan {
+  id           Int       @id @default(autoincrement())
+  externalRef  String?   @unique @map("external_ref") // ключ идемпотентности seed
+  articleId    Int       @map("article_id")
+  article      Article   @relation(fields: [articleId], references: [id])
+  projectId    Int?      @map("project_id")
+  project      Project?  @relation(fields: [projectId], references: [id])
+  period       DateTime  @db.Date // первый день месяца
+  amountDirams BigInt    @map("amount_dirams")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  @@index([articleId, period])
+  @@map("plans")
+}
+
+// ── Заявки кабинета бухгалтера ──────────────────────────────────────────────
+
+enum RequestKind {
+  payment // Заявка на оплату
+  trip // Заявка на поездку
+  auto // Расход на авто
+}
+
+enum RequestStatus {
+  draft // Черновик
+  sent // Отправлено
+  review // На рассмотрении
+  approved // Одобрено
+  rejected // Отклонено
+}
+
+model Request {
+  id               Int           @id @default(autoincrement())
+  number           String        @unique // «З-118», «П-054», «А-031»
+  kind             RequestKind
+  status           RequestStatus @default(draft)
+  authorId         Int           @map("author_id")
+  author           User          @relation("RequestAuthor", fields: [authorId], references: [id])
+  projectId        Int?          @map("project_id")
+  project          Project?      @relation(fields: [projectId], references: [id])
+  name             String // наименование (оплата) / цель (поездка) / категория (авто)
+  amountDirams     BigInt?       @map("amount_dirams") // оплата и авто-расход
+  currencyCode     String?       @map("currency_code")
+  currency         Currency?     @relation(fields: [currencyCode], references: [code])
+  km               Int? // поездка
+  category         String? // авто: Бензин / Ремонт / Мойка / Штраф / Запчасти
+  counterpartyName String?       @map("counterparty_name") // контрагент поездки (текстом, как в форме)
+  requestDate      DateTime      @map("request_date") @db.Date
+  decisionById     Int?          @map("decision_by_id")
+  decisionBy       User?         @relation("RequestDecider", fields: [decisionById], references: [id])
+  decisionAt       DateTime?     @map("decision_at")
+  decisionComment  String?       @map("decision_comment")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
+
+  attachments Attachment[]
+
+  @@index([status])
+  @@map("requests")
+}
+
+model Attachment {
+  id         Int       @id @default(autoincrement())
+  requestId  Int       @map("request_id")
+  request    Request   @relation(fields: [requestId], references: [id])
+  kind       String // doc | photo | receipt
+  fileName   String    @map("file_name")
+  storageKey String?   @map("storage_key") // ключ в MinIO (S3)
+  mime       String?
+  size       Int?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@unique([requestId, fileName])
+  @@map("attachments")
+}
+
+// ── Аудит-лог ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        Int       @id @default(autoincrement())
+  userId    Int?      @map("user_id")
+  user      User?     @relation(fields: [userId], references: [id])
+  entity    String // имя сущности («operation», «request», …)
+  entityId  String    @map("entity_id")
+  action    String // create | update | delete | status_change | …
+  oldValue  Json?     @map("old_value")
+  newValue  Json?     @map("new_value")
+  ip        String?
+  device    String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
