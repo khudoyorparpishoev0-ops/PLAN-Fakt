@@ -1,19 +1,25 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import type { Expense } from '../data/admin';
+import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
+import type { ApiRequest } from '../lib/api';
 import { ACC, SOFT, ROW_PAD, CARD_PAD, GOLOS, num } from '../theme';
 import { fmt } from '../lib/format';
 import { devInfo, incDevB, expDevB } from '../lib/badges';
 import { Badge, Th } from '../components/ui';
 
 export interface PanelScreenProps {
+  incomes: Income[];
   expenses: Expense[];
   totals: Totals;
-  approve: (n: string) => void;
-  decline: (n: string) => void;
+  /** Заявки кабинета, ждущие решения (Отправлено / На рассмотрении). */
+  pendingReqs: ApiRequest[];
+  /** Решение по заявке — PATCH /api/requests/:id/status. */
+  decideRequest: (id: number, status: 'approved' | 'rejected') => void;
   goReport: () => void;
   goExpenses: () => void;
 }
+
+const KIND_LABEL: Record<ApiRequest['kind'], string> = { payment: 'Оплата', trip: 'Поездка', auto: 'Авто' };
 
 const PERIODS = ['День', 'Неделя', 'Месяц', 'Квартал', 'Год', 'Период'];
 const FILTERS: [string, string][] = [
@@ -92,7 +98,7 @@ function dR(type: 'inc' | 'exp', cat: string, plan: number, fact: number, pendin
 
 interface AttnItem {
   ic: string; chipBg: string; chipFg: string; t: string; m: string;
-  sum: string; sumFg: string; tag: string; actions?: boolean;
+  sum: string; sumFg: string; tag: string; reqId?: number;
 }
 
 const btnS: CSSProperties = { borderRadius: 8, padding: '6px 13px', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
@@ -100,25 +106,40 @@ const thTop: CSSProperties = { borderTop: '1px solid #F0EFEA' };
 const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' };
 
 export default function PanelScreen(props: PanelScreenProps) {
-  const { expenses, totals: t, approve, decline, goReport, goExpenses } = props;
+  const { expenses, totals: t, pendingReqs, decideRequest, goReport, goExpenses } = props;
   const [period, setPeriod] = useState('Месяц');
 
+  /* ── «План–факт по категориям» — выжимка из реальных данных:
+   *    крупнейшая доходная категория + топ-5 расходных по плану ── */
+  const aggregate = (rows: { cat: string; plan: number; fact: number; pending?: boolean }[]) => {
+    const byCat = new Map<string, { plan: number; fact: number; pending: boolean }>();
+    for (const r of rows) {
+      const acc = byCat.get(r.cat) ?? { plan: 0, fact: 0, pending: false };
+      acc.plan += r.plan; acc.fact += r.fact; acc.pending = acc.pending || !!r.pending;
+      byCat.set(r.cat, acc);
+    }
+    return [...byCat.entries()].sort((a, b) => b[1].plan - a[1].plan);
+  };
   const dashRows = [
-    dR('inc', 'Оплата заказчиков', 500000, 450000),
-    dR('exp', 'Закупка оборудования', 200000, 225000),
-    dR('exp', 'Подрядчики', 140000, 95000),
-    dR('exp', 'Транспорт', 30000, 27000),
-    dR('exp', 'Зарплата', 100000, 100000),
-    dR('exp', 'Налоги', 85000, 0, true),
+    ...aggregate(props.incomes).slice(0, 1).map(([cat, v]) => dR('inc', cat, v.plan, v.fact, v.pending && !v.fact)),
+    ...aggregate(expenses).slice(0, 5).map(([cat, v]) => dR('exp', cat, v.plan, v.fact, v.pending && !v.fact)),
   ];
 
   const attnItems: AttnItem[] = [
     { ic: 'clock', chipBg: '#FAE7E4', chipFg: '#B93227', t: 'Просроченный платёж', m: '«Сомон Сервис» · 10 дней просрочки', sum: '60 000', sumFg: '#B93227', tag: 'дебиторка' },
     { ic: 'cart', chipBg: '#FAE7E4', chipFg: '#B93227', t: 'Перерасход: закупка оборудования', m: '«ТаджТехСнаб» · причина: рост цены', sum: '+25 000', sumFg: '#B93227', tag: '+12,5% к плану' },
     { ic: 'percent', chipBg: '#FBECDE', chipFg: '#B25313', t: 'Обязательный платёж: налоги', m: 'Оплатить до 25.10', sum: '85 000', sumFg: '#1B1F1E', tag: '4 дня' },
+    // Реальные заявки кабинета, ждущие решения (ШАГ 3)
+    ...pendingReqs.map((r): AttnItem => ({
+      ic: 'bell', chipBg: '#FAF2D8', chipFg: '#8A6A00',
+      t: 'Ждёт вашего согласования',
+      m: `${KIND_LABEL[r.kind]} · ${r.name} · заявка ${r.number}`,
+      sum: r.kind === 'trip' ? `${fmt(r.km ?? 0)} км` : fmt(r.amount ?? 0),
+      sumFg: '#1B1F1E',
+      tag: `от ${r.author}`,
+      reqId: r.id,
+    })),
   ];
-  if (expenses.find(e => e.n === 'Р-2116')?.status === 'На согласовании')
-    attnItems.push({ ic: 'bell', chipBg: '#FAF2D8', chipFg: '#8A6A00', t: 'Ждёт вашего согласования', m: 'ПО · «Soft Line Asia» · заявка Р-2116', sum: '12 000', sumFg: '#1B1F1E', tag: 'от А. Хакимова', actions: true });
 
   return (
     <div data-screen-label="Финансовая панель">
@@ -268,11 +289,11 @@ export default function PanelScreen(props: PanelScreenProps) {
                   <div style={{ fontSize: 11, color: '#A6ACA8' }}>{a.tag}</div>
                 </div>
               </div>
-              {a.actions && (
+              {a.reqId != null && (
                 <div style={{ display: 'flex', gap: 8, margin: '9px 0 2px 18px' }}>
-                  <div onClick={() => approve('Р-2116')} className="hv-dim" style={{ background: ACC, color: '#fff', ...btnS }}>Согласовать</div>
-                  <div onClick={() => decline('Р-2116')} className="hv-red" style={{ border: '1px solid #F0CFC9', color: '#B93227', ...btnS }}>Отклонить</div>
-                  <div onClick={goExpenses} className="hv-soft" style={{ border: '1px solid #E0DED8', color: '#3E4643', ...btnS }}>Открыть</div>
+                  <div onClick={() => decideRequest(a.reqId!, 'approved')} className="hv-dim" style={{ background: ACC, color: '#fff', ...btnS }}>Согласовать</div>
+                  <div onClick={() => decideRequest(a.reqId!, 'rejected')} className="hv-red" style={{ border: '1px solid #F0CFC9', color: '#B93227', ...btnS }}>Отклонить</div>
+                  <div onClick={goReport} className="hv-soft" style={{ border: '1px solid #E0DED8', color: '#3E4643', ...btnS }}>Открыть</div>
                 </div>
               )}
             </div>

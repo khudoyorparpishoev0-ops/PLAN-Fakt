@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
 import { fmt } from '../lib/format';
 import { initials } from '../lib/compute';
-import { ApiError, ROLE_LABELS, type AuthUser } from '../lib/api';
-import { Logo } from '../components/ui';
 import {
-  PAY, TRIPS, CARS, CB,
-  type PayReq, type TripReq, type CarReq, type ReqKind, type ReqStatus,
-} from '../data/cabinet';
-import { tripAmount } from '../data/settings';
+  api, ApiError, ROLE_LABELS,
+  type ApiProject, type ApiRequest, type AuthUser, type CreateRequestPayload,
+} from '../lib/api';
+import { monthlyStats, toCar, toPay, toTrip } from '../lib/mapping';
+import { Logo } from '../components/ui';
+import { CB, type ReqKind, type ReqStatus } from '../data/cabinet';
+import { setKmRate, tripAmount } from '../data/settings';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import HistoryScreen from './HistoryScreen';
@@ -165,9 +166,8 @@ export interface CabinetAppProps {
 export default function CabinetApp({ user, onLogout, onChangePassword }: CabinetAppProps) {
   const [screen, setScreen] = useState<CabScreen>('pay');
   const [period, setPeriod] = useState('Месяц');
-  const [pays, setPays] = useState<PayReq[]>(PAY);
-  const [trips, setTrips] = useState<TripReq[]>(TRIPS);
-  const [cars, setCars] = useState<CarReq[]>(CARS);
+  const [reqs, setReqs] = useState<ApiRequest[]>([]);
+  const [projects, setProjects] = useState<ApiProject[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [pwdModal, setPwdModal] = useState(false);
 
@@ -179,13 +179,57 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   }, [toastMsg]);
 
   const toast = (msg: string) => setToastMsg(msg);
-  const addPay = (r: PayReq) => setPays(p => [r, ...p]);
-  const addTrip = (r: TripReq) => setTrips(p => [r, ...p]);
-  const addCar = (r: CarReq) => setCars(p => [r, ...p]);
-  const deleteReq = (kind: ReqKind, id: string) => {
-    if (kind === 'payment') setPays(p => p.filter(r => r.id !== id));
-    if (kind === 'trip') setTrips(p => p.filter(r => r.id !== id));
-    if (kind === 'auto') setCars(p => p.filter(r => r.id !== id));
+
+  /* ── Данные с API: мои заявки, проекты, настройки (ставка км) ── */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [requests, projectList, settings] = await Promise.all([
+          api.requests(), api.projects(), api.settings(),
+        ]);
+        if (!alive) return;
+        setKmRate(settings.kmRate);
+        setProjects(projectList);
+        setReqs(requests);
+      } catch (e) {
+        if (alive) toast(e instanceof ApiError ? e.message : 'Не удалось загрузить данные');
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const pays = reqs.filter(r => r.kind === 'payment').map(toPay);
+  const trips = reqs.filter(r => r.kind === 'trip').map(toTrip);
+  const cars = reqs.filter(r => r.kind === 'auto').map(toCar);
+  const monthly = monthlyStats(reqs);
+  // Проекты для селектов форм — активные («В работе», не в архиве)
+  const formProjects = projects.filter(p => p.status === 'work' && !p.archived);
+
+  /** Создание заявки: POST /api/requests, новая строка — в начало списка. */
+  const createRequest = async (payload: CreateRequestPayload): Promise<boolean> => {
+    try {
+      const r = await api.createRequest(payload);
+      setReqs(list => [r, ...list]);
+      toast(`Заявка ${r.number} отправлена Директору`);
+      return true;
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Не удалось отправить заявку');
+      return false;
+    }
+  };
+
+  /** Удаление черновика (ТЗ: только «Черновик»). */
+  const deleteReq = async (_kind: ReqKind, number: string) => {
+    const r = reqs.find(x => x.number === number);
+    if (!r) return;
+    try {
+      await api.deleteRequest(r.id);
+      setReqs(list => list.filter(x => x.id !== r.id));
+      toast(`Черновик ${number} удалён`);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Не удалось удалить заявку');
+    }
   };
 
   /* ── KPI поверх всех трёх видов заявок (значения считаются из данных).
@@ -280,10 +324,10 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
             <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
             <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="#FAE7E4" iconFg="#B93227" b={CB.rejected} />
           </div>
-          {screen === 'pay' && <PayRequestsScreen pays={pays} trips={trips} cars={cars} addPay={addPay} toast={toast} />}
-          {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} addTrip={addTrip} addCar={addCar} toast={toast} />}
-          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} deleteReq={deleteReq} />}
-          {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} />}
+          {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} />}
+          {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} />}
+          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} deleteReq={deleteReq} />}
+          {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
         </div>
       </div>
       {pwdModal && (

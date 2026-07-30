@@ -26,17 +26,19 @@ export function cabProjB(status: 'plan' | 'work' | 'done'): BadgeData {
   return { t: 'Завершён', fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' };
 }
 
+/** dbId — первичный ключ заявки в БД (нужен для вызовов API);
+ *  у fixture-строк (используются только сидом БД) отсутствует. */
 export interface PayReq {
-  id: string; date: string; project: string; name: string; amount: number;
+  id: string; dbId?: number; date: string; project: string; name: string; amount: number;
   currency: string; status: ReqStatus; doc?: string;
 }
 export interface TripReq {
-  id: string; date: string; project: string; goal: string; km: number;
+  id: string; dbId?: number; date: string; project: string; goal: string; km: number;
   contragent: string; status: ReqStatus; photo: string;
 }
 export type CarCategory = 'Бензин' | 'Ремонт' | 'Мойка' | 'Штраф' | 'Запчасти';
 export interface CarReq {
-  id: string; date: string; project: string; category: CarCategory; amount: number;
+  id: string; dbId?: number; date: string; project: string; category: CarCategory; amount: number;
   currency: string; status: ReqStatus; receipt?: string;
 }
 
@@ -89,17 +91,7 @@ export const CARS: CarReq[] = [
   { id: 'А-026', date: '13.10.2026', project: 'Насосная станция Вахдат', category: 'Запчасти', amount: 740, currency: 'TJS', status: 'Одобрено', receipt: 'чек_1310.jpg' },
 ];
 
-/* Ставка компенсации поездок перенесена в настройки: src/data/settings.ts (kmRate, по умолчанию 0). */
-
-/** Статистика по месяцам (мои заявки, суммы в TJS): для линейного мини-графика. */
-export const MONTHLY: { m: string; sum: number }[] = [
-  { m: 'Май', sum: 14200 },
-  { m: 'Июн', sum: 18600 },
-  { m: 'Июл', sum: 11400 },
-  { m: 'Авг', sum: 21800 },
-  { m: 'Сен', sum: 16900 },
-  { m: 'Окт', sum: 25260 },
-];
-
-/** Активные проекты для селектов форм. */
-export const CABINET_PROJECTS = ['Насосная станция Вахдат', 'ГЭС Помир-1', 'Сервис Душанбе', 'Без проекта'];
+/* Ставка компенсации поездок — в настройках БД (settings.km_rate, GET /api/settings).
+ * С ШАГА 3 экраны кабинета работают на данных API: массивы PAY/TRIPS/CARS выше
+ * используются только сидом БД (server/prisma/seed.ts); «Статистика по месяцам»
+ * и списки проектов считаются из ответов API (src/lib/mapping.ts). */

@@ -1,15 +1,28 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
-import { CABINET_PROJECTS, dirB, ownB, type CarReq, type PayReq, type TripReq } from '../data/cabinet';
+import type { ApiProject, CreateRequestPayload } from '../lib/api';
+import { dirB, ownB, type PayReq } from '../data/cabinet';
 
 export interface PayRequestsScreenProps {
   pays: PayReq[];
-  trips: TripReq[];
-  cars: CarReq[];
-  addPay: (r: PayReq) => void;
-  toast: (msg: string) => void;
+  projects: ApiProject[];
+  createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
 }
+
+/** Селект проекта: значение — id проекта из БД, '' — не выбран, 'none' — «Без проекта». */
+export function projectOptions(projects: ApiProject[]) {
+  return (
+    <>
+      <option value="">Выберите проект</option>
+      {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+      <option value="none">Без проекта</option>
+    </>
+  );
+}
+
+/** Выбранное значение селекта → projectId для API. */
+export const projectIdOf = (v: string): number | undefined => (v === 'none' || v === '' ? undefined : Number(v));
 
 /* ── Стили полей формы — 1:1 из прототипа кабинета (строки 100–116) ── */
 export const FORM_LABEL: CSSProperties = { fontSize: 12.5, color: '#5A625E', fontWeight: 500, marginBottom: 7, display: 'block' };
@@ -94,28 +107,28 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 
 const CURRENCIES = ['TJS', 'USD', 'EUR'];
 
-export default function PayRequestsScreen({ pays, addPay, toast }: PayRequestsScreenProps) {
+export default function PayRequestsScreen({ pays, projects, createRequest }: PayRequestsScreenProps) {
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState('TJS');
   const [name, setName] = useState('');
   const [attached, setAttached] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const amountOk = /^\d[\d\s]*([.,]\d{1,2})?$/.test(amountStr.trim()) && parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')) > 0;
   const nameOk = name.trim().length >= 3 && name.trim().length <= 200;
-  const valid = project !== '' && amountOk && nameOk;
+  const valid = project !== '' && amountOk && nameOk && !busy;
 
-  const submit = () => {
+  const submit = async () => {
     if (!valid) return;
-    const maxN = pays.reduce((m, p) => Math.max(m, parseInt(p.id.replace(/\D+/g, ''), 10) || 0), 0);
-    const id = 'З-' + (maxN + 1);
-    addPay({
-      id, date: '29.10.2026', project, name: name.trim(),
+    setBusy(true);
+    const ok = await createRequest({
+      kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
       amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')), currency,
-      status: 'Отправлено', doc: attached ? 'Счёт №221.pdf' : undefined,
+      attachment: attached ? 'Счёт №221.pdf' : undefined,
     });
-    toast('Заявка ' + id + ' отправлена Директору');
-    setProject(''); setAmountStr(''); setCurrency('TJS'); setName(''); setAttached(false);
+    setBusy(false);
+    if (ok) { setProject(''); setAmountStr(''); setCurrency('TJS'); setName(''); setAttached(false); }
   };
 
   return (
@@ -127,8 +140,7 @@ export default function PayRequestsScreen({ pays, addPay, toast }: PayRequestsSc
           <div>
             <label style={FORM_LABEL}>1) Проект</label>
             <Select44 value={project} onChange={setProject}>
-              <option value="">Выберите проект</option>
-              {CABINET_PROJECTS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {projectOptions(projects)}
             </Select44>
           </div>
           <div>

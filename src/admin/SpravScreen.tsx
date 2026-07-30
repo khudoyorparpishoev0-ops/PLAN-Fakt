@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import { ACC, SOFT, PLEX } from '../theme';
-import { ART, GEN } from '../data/admin';
-import type { GenList } from '../data/admin';
+import type { GenList, ArtRow } from '../data/admin';
+import type { ApiDictionaries } from '../lib/api';
 import { initials } from '../lib/compute';
 import { AccentBtn } from '../components/ui';
 
 const ART_TABS = ['Доходы', 'Расходы', 'Активы', 'Обязательства', 'Капитал'];
+
+/** Тип статьи в БД → вкладка экрана. */
+const TAB_TYPE: Record<string, keyof ApiDictionaries['articles']> = {
+  'Доходы': 'income', 'Расходы': 'expense', 'Активы': 'asset',
+  'Обязательства': 'liability', 'Капитал': 'equity',
+};
+
+export interface SpravScreenProps {
+  /** Справочники из API; null — ещё грузятся. */
+  dicts: ApiDictionaries | null;
+}
 
 interface ArtRowVM {
   key: string; padL: string; bg: string; fw: number; nameFg: string; name: string;
@@ -18,10 +29,23 @@ const DOTS = (
   </div>
 );
 
-export default function SpravScreen() {
+export default function SpravScreen({ dicts }: SpravScreenProps) {
   const [spravTab, setSpravTab] = useState('art');
   const [artTab, setArtTab] = useState('Расходы');
   const [artExp, setArtExp] = useState<Record<string, boolean>>({});
+
+  /* Формы данных прототипа (ART / GEN) собираются из ответа API */
+  const ART: Record<string, ArtRow[]> = {};
+  for (const tab of ART_TABS) {
+    ART[tab] = (dicts?.articles[TAB_TYPE[tab]] ?? []).map((a) => [a.name, a.children, a.isSystem]);
+  }
+  const GEN: Record<string, GenList> = {
+    contragents: { title: 'Контрагенты', add: 'Контрагент', rows: (dicts?.counterparties ?? []).map((r) => [r.name, r.note]) },
+    accounts: { title: 'Мои счета', add: 'Счёт', rows: (dicts?.accounts ?? []).map((r) => [r.name, r.note]) },
+    entities: { title: 'Мои юрлица', add: 'Юрлицо', rows: (dicts?.entities ?? []).map((r) => [r.name, r.note]) },
+    goods: { title: 'Товары', add: 'Товар', rows: (dicts?.goods ?? []).map((r) => [r.name, r.note]) },
+    services: { title: 'Услуги', add: 'Услугу', rows: (dicts?.services ?? []).map((r) => [r.name, r.note]) },
+  };
 
   const artCount = Object.values(ART).reduce((a, arr) => a + arr.length, 0);
 
@@ -40,12 +64,15 @@ export default function SpravScreen() {
   });
 
   const spravNav: [string, string, string][] = [
-    ['contragents', 'Контрагенты', '46'],
+    ['contragents', 'Контрагенты', String(GEN.contragents.rows.length)],
     ['art', 'Учётные статьи', String(artCount)],
-    ['accounts', 'Мои счета', '3'],
-    ['entities', 'Мои юрлица', '2'],
+    ['accounts', 'Мои счета', String(GEN.accounts.rows.length)],
+    ['entities', 'Мои юрлица', String(GEN.entities.rows.length)],
   ];
-  const spravNav2: [string, string, string][] = [['goods', 'Товары', '18'], ['services', 'Услуги', '9']];
+  const spravNav2: [string, string, string][] = [
+    ['goods', 'Товары', String(GEN.goods.rows.length)],
+    ['services', 'Услуги', String(GEN.services.rows.length)],
+  ];
 
   const navItem = ([id, t, n]: [string, string, string]) => {
     const on = spravTab === id;

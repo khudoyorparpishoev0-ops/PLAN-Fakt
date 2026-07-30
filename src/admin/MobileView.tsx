@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { INCOMES, type Expense } from '../data/admin';
+import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
 import { expRow, incRow, type ExpRow, type IncRow } from '../lib/rows';
 import { ACC, C, num } from '../theme';
@@ -8,6 +8,7 @@ import { Badge } from '../components/ui';
 export interface MobileViewProps {
   goDesktop: () => void;
   totals: Totals;
+  incomes: Income[];
   expenses: Expense[];
 }
 
@@ -45,7 +46,7 @@ export default function MobileView(props: MobileViewProps) {
   const [mtab, setMtab] = useState<MTab>('overview');
   const t = props.totals;
   const mFg = (id: MTab) => (mtab === id ? ACC : '#8A918D');
-  const incRows = INCOMES.map(incRow);
+  const incRows = props.incomes.map(incRow);
   const expRows = props.expenses.map(expRow);
 
   return (

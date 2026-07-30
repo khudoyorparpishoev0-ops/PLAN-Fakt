@@ -1,12 +1,19 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Response } from 'express';
 
 /** Единый формат ошибок API (ТЗ, раздел 9):
  *  { "error": { "code", "message", "field?" } } с HTTP 400/403/404/422/… */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger('Exceptions');
+
   catch(exception: unknown, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
+
+    // Непредвиденные ошибки (не HttpException) — в лог сервера, клиенту детали не отдаются
+    if (!(exception instanceof HttpException)) {
+      this.logger.error(exception instanceof Error ? exception.stack ?? exception.message : String(exception));
+    }
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let code = 'internal_error';

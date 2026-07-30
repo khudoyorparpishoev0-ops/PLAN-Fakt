@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars } from '../theme';
-import { EXPENSES, PROJECTS, type Expense, type Project } from '../data/admin';
+import { PROJECTS, type Expense, type Income, type Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
-import { ROLE_LABELS, type AuthUser } from '../lib/api';
+import {
+  api, ApiError, ROLE_LABELS,
+  type ApiDictionaries, type ApiRequest, type AuthUser,
+} from '../lib/api';
+import { toExpense, toIncome, toJournalRow, type JournalRow } from '../lib/mapping';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
 import PanelScreen from './PanelScreen';
@@ -82,17 +86,64 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
   const [selProj, setSelProj] = useState<string | null>(null);
   const [archOv, setArchOv] = useState<Record<string, boolean>>({});
 
+  /* ── Данные с API (ШАГ 3): план-факт, журнал, заявки, справочники ── */
+  const [incomesRaw, setIncomesRaw] = useState<Income[]>([]);
+  const [expensesRaw, setExpensesRaw] = useState<Expense[]>([]);
+  const [journal, setJournal] = useState<JournalRow[]>([]);
+  const [requests, setRequests] = useState<ApiRequest[]>([]);
+  const [dicts, setDicts] = useState<ApiDictionaries | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => { applyThemeVars(); }, []);
 
+  const loadData = async () => {
+    const [pf, ops, reqs] = await Promise.all([api.planFact(), api.operations(), api.requests()]);
+    setIncomesRaw(pf.incomes.map(toIncome));
+    setExpensesRaw(pf.expenses.map(toExpense));
+    setJournal(ops.map(toJournalRow));
+    setRequests(reqs);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await loadData();
+        const d = await api.dictionaries();
+        if (alive) setDicts(d);
+      } catch (e) {
+        if (alive) setLoadError(e instanceof ApiError ? e.message : 'Не удалось загрузить данные');
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const expenses: Expense[] = useMemo(
-    () => EXPENSES.map(e => ({ ...e, status: expStatuses[e.n] ?? e.status })),
-    [expStatuses],
+    () => expensesRaw.map(e => ({ ...e, status: expStatuses[e.n] ?? e.status })),
+    [expensesRaw, expStatuses],
   );
-  const totals = useMemo(() => computeTotals(expenses), [expenses]);
+  const totals = useMemo(() => computeTotals(incomesRaw, expenses), [incomesRaw, expenses]);
   const projects: (Project & { archived: boolean })[] = useMemo(
     () => PROJECTS.map(p => ({ ...p, archived: archOv[p.id] ?? !!p.archived })),
     [archOv],
   );
+
+  /** Заявки, ждущие решения (Отправлено / На рассмотрении) — «Требует внимания». */
+  const pendingReqs = useMemo(
+    () => requests.filter(r => r.status === 'sent' || r.status === 'review'),
+    [requests],
+  );
+
+  /** Решение по заявке: PATCH статуса + перезагрузка данных (одобрение
+   *  создаёт плановую операцию — обновляются журнал и план-факт). */
+  const decideRequest = async (id: number, status: 'approved' | 'rejected') => {
+    try {
+      await api.changeRequestStatus(id, status);
+      await loadData();
+    } catch (e) {
+      setLoadError(e instanceof ApiError ? e.message : 'Не удалось изменить статус заявки');
+    }
+  };
 
   const approve = (n: string) => setExpStatuses(st => ({ ...st, [n]: 'Согласовано' }));
   const decline = (n: string) => setExpStatuses(st => ({ ...st, [n]: 'Отклонено' }));
@@ -167,19 +218,25 @@ export default function AdminApp({ user, onLogout }: AdminAppProps) {
               )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
-              {screen === 'panel' && <PanelScreen expenses={expenses} totals={totals} approve={approve} decline={decline} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
-              {screen === 'incomes' && <OperationsScreen openIncome={() => setIncDrawer(true)} />}
-              {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} />}
-              {screen === 'report' && <ReportScreen expenses={expenses} totals={totals} />}
+              {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
+              {screen === 'incomes' && <OperationsScreen ops={journal} openIncome={() => setIncDrawer(true)} />}
+              {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} />}
+              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} />}
               {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} />}
-              {screen === 'sprav' && <SpravScreen />}
+              {screen === 'sprav' && <SpravScreen dicts={dicts} />}
               {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} />}
               {screen === 'deals' && <DealsScreen />}
             </div>
           </div>
         </>
       ) : (
-        <MobileView goDesktop={() => setDevice('desktop')} totals={totals} expenses={expenses} />
+        <MobileView goDesktop={() => setDevice('desktop')} totals={totals} incomes={incomesRaw} expenses={expenses} />
+      )}
+      {loadError && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#B93227', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
+          onClick={() => setLoadError(null)} title="Скрыть">
+          {loadError}
+        </div>
       )}
       {incDrawer && <IncomeDrawer onClose={() => setIncDrawer(false)} />}
       {sel && (

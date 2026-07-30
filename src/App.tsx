@@ -3,13 +3,13 @@ import AdminApp from './admin/AdminApp';
 import CabinetApp from './cabinet/CabinetApp';
 import LoginScreen from './auth/LoginScreen';
 import ChangePasswordGate from './auth/ChangePasswordGate';
-import { api, clearSession, loadSession, saveSession, type Session } from './lib/api';
+import { api, bindApiSession, clearSession, loadSession, saveSession, type Session } from './lib/api';
 
 type Phase = 'restoring' | 'login' | 'app';
 
 /** Точка входа: настоящий вход по логину/паролю. Интерфейс определяется ролью
  *  из JWT: admin и director — админ-панель, accountant — кабинет бухгалтера.
- *  Данные экранов пока фикстурные — подключение к API это шаг 3. */
+ *  Данные экранов загружаются с API (ШАГ 3). */
 export default function App() {
   const [phase, setPhase] = useState<Phase>('restoring');
   const [session, setSession] = useState<Session | null>(null);
@@ -35,14 +35,19 @@ export default function App() {
     })();
   }, []);
 
-  const handleLogin = (s: Session, password: string) => {
-    loginPassword.current = password;
-    saveSession(s); setSession(s); setPhase('app');
-  };
-
   const handleLogout = () => {
     loginPassword.current = undefined;
     clearSession(); setSession(null); setPhase('login');
+  };
+
+  // Запросы данных используют активную сессию; при невосстановимом 401 — на вход
+  useEffect(() => {
+    bindApiSession(session, handleLogout);
+  }, [session]);
+
+  const handleLogin = (s: Session, password: string) => {
+    loginPassword.current = password;
+    saveSession(s); setSession(s); setPhase('app');
   };
 
   const handleSessionUpdate = (s: Session) => {

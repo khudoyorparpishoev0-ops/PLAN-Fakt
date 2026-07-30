@@ -216,6 +216,18 @@ async function seedDictionaries() {
   for (const [name, note] of GEN.entities.rows) {
     await prisma.legalEntity.upsert({ where: { name }, update: { note }, create: { name, note } });
   }
+  for (const [name, note] of GEN.goods.rows) {
+    await prisma.good.upsert({ where: { name }, update: { note }, create: { name, note } });
+  }
+  for (const [name, note] of GEN.services.rows) {
+    await prisma.service.upsert({ where: { name }, update: { note }, create: { name, note } });
+  }
+}
+
+/** Настройки: ставка компенсации км (дирам/км). Существующее значение не трогаем. */
+async function seedSettings() {
+  const existing = await prisma.setting.findUnique({ where: { key: 'km_rate' } });
+  if (!existing) await prisma.setting.create({ data: { key: 'km_rate', value: '0' } });
 }
 
 async function seedArticles() {
@@ -260,10 +272,15 @@ async function seedPlanFact() {
   for (const r of INCOMES) {
     const artId = await articleId(r.cat, 'income');
     const projId = await projectId(r.proj);
+    const planData = {
+      articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan),
+      planDate: parseDotDate(r.pdate), factDate: parseDotDate(r.fdate),
+      statusLabel: r.status, responsibleName: r.resp,
+    };
     await prisma.plan.upsert({
       where: { externalRef: `plan:${r.n}` },
-      update: { articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan) },
-      create: { externalRef: `plan:${r.n}`, articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan) },
+      update: planData,
+      create: { externalRef: `plan:${r.n}`, ...planData },
     });
     if (r.fact > 0) {
       const date = parseDotDate(r.fdate) ?? parseDotDate(r.pdate) ?? PERIOD;
@@ -281,10 +298,15 @@ async function seedPlanFact() {
   for (const r of EXPENSES) {
     const artId = await articleId(r.cat, 'expense');
     const projId = await projectId(r.proj);
+    const planData = {
+      articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan),
+      planDate: parseDotDate(r.pdate), factDate: parseDotDate(r.fdate),
+      statusLabel: r.status, responsibleName: r.resp, reason: r.reason ?? null,
+    };
     await prisma.plan.upsert({
       where: { externalRef: `plan:${r.n}` },
-      update: { articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan) },
-      create: { externalRef: `plan:${r.n}`, articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(r.plan) },
+      update: planData,
+      create: { externalRef: `plan:${r.n}`, ...planData },
     });
     if (r.fact > 0) {
       const date = parseDotDate(r.fdate) ?? parseDotDate(r.pdate) ?? PERIOD;
@@ -393,6 +415,8 @@ async function main() {
   await seedRolesAndUsers();
   console.log('[seed] Валюты и курсы…');
   await seedCurrencies();
+  console.log('[seed] Настройки…');
+  await seedSettings();
   console.log('[seed] Справочники…');
   await seedDictionaries();
   console.log('[seed] Учётные статьи…');

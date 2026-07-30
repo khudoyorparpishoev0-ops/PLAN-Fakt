@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
-import { CABINET_PROJECTS, dirB, ownB, type CarCategory, type CarReq, type TripReq } from '../data/cabinet';
-import { CabBadge, CameraIcon, DropZone, FORM_LABEL, INPUT44, ReceiptIcon, Select44, SubmitBtn, TD_CAB, TH_CAB } from './PayRequestsScreen';
+import type { ApiProject, CreateRequestPayload } from '../lib/api';
+import { dirB, ownB, type CarCategory, type CarReq, type TripReq } from '../data/cabinet';
+import {
+  CabBadge, CameraIcon, DropZone, FORM_LABEL, INPUT44, projectIdOf, projectOptions,
+  ReceiptIcon, Select44, SubmitBtn, TD_CAB, TH_CAB,
+} from './PayRequestsScreen';
 
 export interface CarRequestsScreenProps {
   trips: TripReq[];
   cars: CarReq[];
-  addTrip: (r: TripReq) => void;
-  addCar: (r: CarReq) => void;
-  toast: (msg: string) => void;
+  projects: ApiProject[];
+  createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
 }
 
 const CAR_CATEGORIES: CarCategory[] = ['Бензин', 'Ремонт', 'Мойка', 'Штраф', 'Запчасти'];
@@ -25,7 +28,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export default function CarRequestsScreen({ trips, cars, addTrip, addCar, toast }: CarRequestsScreenProps) {
+export default function CarRequestsScreen({ trips, cars, projects, createRequest }: CarRequestsScreenProps) {
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
   /* ── Форма поездки ── */
@@ -34,21 +37,21 @@ export default function CarRequestsScreen({ trips, cars, addTrip, addCar, toast 
   const [kmStr, setKmStr] = useState('');
   const [contragent, setContragent] = useState('');
   const [photoAttached, setPhotoAttached] = useState(false);
+  const [tripBusy, setTripBusy] = useState(false);
 
   const kmOk = /^\d+$/.test(kmStr.trim()) && parseInt(kmStr.trim(), 10) > 0;
   const goalOk = goal.trim().length >= 3 && goal.trim().length <= 120;
-  const tripValid = tProject !== '' && goalOk && kmOk && photoAttached;
+  const tripValid = tProject !== '' && goalOk && kmOk && photoAttached && !tripBusy;
 
-  const submitTrip = () => {
+  const submitTrip = async () => {
     if (!tripValid) return;
-    const maxN = trips.reduce((m, p) => Math.max(m, parseInt(p.id.replace(/\D+/g, ''), 10) || 0), 0);
-    const id = 'П-' + (maxN + 1);
-    addTrip({
-      id, date: '29.10.2026', project: tProject, goal: goal.trim(), km: parseInt(kmStr.trim(), 10),
-      contragent: contragent.trim() || '—', status: 'Отправлено', photo: 'одометр_2910.jpg',
+    setTripBusy(true);
+    const ok = await createRequest({
+      kind: 'trip', projectId: projectIdOf(tProject), name: goal.trim(), km: parseInt(kmStr.trim(), 10),
+      counterpartyName: contragent.trim() || undefined, attachment: 'одометр_2910.jpg',
     });
-    toast('Заявка ' + id + ' отправлена Директору');
-    setTProject(''); setGoal(''); setKmStr(''); setContragent(''); setPhotoAttached(false);
+    setTripBusy(false);
+    if (ok) { setTProject(''); setGoal(''); setKmStr(''); setContragent(''); setPhotoAttached(false); }
   };
 
   /* ── Форма расхода на авто ── */
@@ -57,22 +60,22 @@ export default function CarRequestsScreen({ trips, cars, addTrip, addCar, toast 
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState('TJS');
   const [receiptAttached, setReceiptAttached] = useState(false);
+  const [autoBusy, setAutoBusy] = useState(false);
 
   const amount = parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.'));
   const amountOk = /^\d[\d\s]*([.,]\d{1,2})?$/.test(amountStr.trim()) && amount > 0;
   const receiptNeeded = amountOk && amount >= 100;
-  const autoValid = aProject !== '' && category !== '' && amountOk && (!receiptNeeded || receiptAttached);
+  const autoValid = aProject !== '' && category !== '' && amountOk && (!receiptNeeded || receiptAttached) && !autoBusy;
 
-  const submitAuto = () => {
+  const submitAuto = async () => {
     if (!autoValid) return;
-    const maxN = cars.reduce((m, p) => Math.max(m, parseInt(p.id.replace(/\D+/g, ''), 10) || 0), 0);
-    const id = 'А-' + (maxN + 1);
-    addCar({
-      id, date: '29.10.2026', project: aProject, category: category as CarCategory, amount, currency,
-      status: 'Отправлено', receipt: receiptAttached ? 'чек_2910.jpg' : undefined,
+    setAutoBusy(true);
+    const ok = await createRequest({
+      kind: 'auto', projectId: projectIdOf(aProject), name: category, category: category as CarCategory,
+      amount, currency, attachment: receiptAttached ? 'чек_2910.jpg' : undefined,
     });
-    toast('Заявка ' + id + ' отправлена Директору');
-    setAProject(''); setCategory(''); setAmountStr(''); setCurrency('TJS'); setReceiptAttached(false);
+    setAutoBusy(false);
+    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setCurrency('TJS'); setReceiptAttached(false); }
   };
 
   return (
@@ -91,8 +94,7 @@ export default function CarRequestsScreen({ trips, cars, addTrip, addCar, toast 
               <div>
                 <label style={FORM_LABEL}>1) Проект</label>
                 <Select44 value={tProject} onChange={setTProject}>
-                  <option value="">Выберите проект</option>
-                  {CABINET_PROJECTS.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {projectOptions(projects)}
                 </Select44>
               </div>
               <div>
@@ -152,8 +154,7 @@ export default function CarRequestsScreen({ trips, cars, addTrip, addCar, toast 
               <div>
                 <label style={FORM_LABEL}>1) Проект</label>
                 <Select44 value={aProject} onChange={setAProject}>
-                  <option value="">Выберите проект</option>
-                  {CABINET_PROJECTS.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {projectOptions(projects)}
                 </Select44>
               </div>
               <div>

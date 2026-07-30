@@ -9,4 +9,10 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
     },
   },
+  preview: {
+    // vite preview (проверка прод-сборки локально) — тот же прокси
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
 });

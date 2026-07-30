@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import type { Expense } from '../data/admin';
+import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
 import { ROW_PAD, SOFT, num } from '../theme';
 import { fmt, sgn, pct1 } from '../lib/format';
@@ -7,6 +7,7 @@ import { badge, incDevB, expDevB, profDevB, devInfo, type BadgeData } from '../l
 import { Badge, Th } from '../components/ui';
 
 export interface ReportScreenProps {
+  incomes: Income[];
   expenses: Expense[];
   totals: Totals;
 }
@@ -20,41 +21,75 @@ interface RepRow {
 
 const expBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' };
 
+/** Категория отчёта: агрегат строк план-факта по учётной статье. */
+interface CatAgg {
+  name: string;
+  plan: number;
+  fact: number;
+  pending: boolean; // факт ещё не получен/не оплачен
+  resp: string;
+  children: { name: string; plan: number; fact: number; pending: boolean }[];
+}
+
+/** Группировка строк план-факта по категории (статье). Подстроки — по проектам. */
+function aggregate(rows: { cat: string; proj: string; plan: number; fact: number; resp: string; pending?: boolean }[]): CatAgg[] {
+  const byCat = new Map<string, CatAgg & { maxPlan: number }>();
+  for (const r of rows) {
+    let agg = byCat.get(r.cat);
+    if (!agg) {
+      agg = { name: r.cat, plan: 0, fact: 0, pending: false, resp: r.resp, children: [], maxPlan: -1 };
+      byCat.set(r.cat, agg);
+    }
+    agg.plan += r.plan;
+    agg.fact += r.fact;
+    agg.pending = agg.pending || (!!r.pending && !r.fact);
+    if (r.plan > agg.maxPlan) { agg.maxPlan = r.plan; agg.resp = r.resp; }
+    agg.children.push({ name: r.proj, plan: r.plan, fact: r.fact, pending: !!r.pending && !r.fact });
+  }
+  return [...byCat.values()];
+}
+
 export default function ReportScreen(props: ReportScreenProps) {
   const { incPlan, incFact, expPlan, expFact, profPlan, profFact } = props.totals;
-  const [expandAvans, setExpandAvans] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const rows: RepRow[] = [];
   const push = (o: Partial<RepRow> & Pick<RepRow, 'name' | 'planF' | 'factF' | 'devF' | 'devPctF' | 'devFg' | 'b'>) =>
     rows.push({ chev: '', cur: 'default', rowBg: 'transparent', fw: 500, fwF: 600, nameFg: '#1B1F1E', padL: '16px', resp: '', toggle: undefined, ...o });
-  const grp = (name: string, plan: number, fact: number, b: BadgeData) => push({ name, planF: fmt(plan), factF: fmt(fact), devF: sgn(fact - plan), devPctF: (fact - plan > 0 ? '+' : '−') + pct1(Math.abs((fact - plan) / plan * 100)) + '%', devFg: '#1B1F1E', b, rowBg: '#F3F2EE', fw: 700, fwF: 700 });
+  const grp = (name: string, plan: number, fact: number, b: BadgeData) => push({ name, planF: fmt(plan), factF: fmt(fact), devF: sgn(fact - plan), devPctF: plan > 0 ? (fact - plan > 0 ? '+' : '−') + pct1(Math.abs((fact - plan) / plan * 100)) + '%' : '—', devFg: '#1B1F1E', b, rowBg: '#F3F2EE', fw: 700, fwF: 700 });
+
+  /** Категория с раскрытием по проектам (если строк больше одной). */
+  const pushCat = (type: 'inc' | 'exp', c: CatAgg) => {
+    const key = type + '|' + c.name;
+    const open = !!expanded[key];
+    const many = c.children.length > 1;
+    push({
+      name: c.name, planF: fmt(c.plan), factF: c.pending && !c.fact ? '—' : fmt(c.fact),
+      ...devInfo(type, c.plan, c.fact, c.pending),
+      b: type === 'inc' ? incDevB(c.plan, c.fact, c.pending) : expDevB(c.plan, c.fact, c.pending),
+      resp: c.resp,
+      ...(many ? { chev: open ? '▾' : '▸', cur: 'pointer' as const, toggle: () => setExpanded(st => ({ ...st, [key]: !st[key] })) } : {}),
+    });
+    if (many && open) {
+      for (const ch of c.children) {
+        push({
+          name: ch.name,
+          planF: fmt(ch.plan),
+          factF: ch.pending && !ch.fact ? '—' : fmt(ch.fact),
+          ...(ch.pending && !ch.fact
+            ? { devF: '—', devPctF: '—', devFg: '#9AA29E', b: badge('Ожидается', 'gray') }
+            : { ...devInfo(type, ch.plan, ch.fact), b: type === 'inc' ? incDevB(ch.plan, ch.fact) : expDevB(ch.plan, ch.fact) }),
+          padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8',
+        });
+      }
+    }
+  };
+
   grp('Доходы — всего', incPlan, incFact, incDevB(incPlan, incFact));
-  push({ name: 'Аванс от заказчика', planF: fmt(750000), factF: fmt(450000), ...devInfo('inc', 750000, 450000), b: incDevB(750000, 450000), resp: 'М. Саидова', chev: expandAvans ? '▾' : '▸', cur: 'pointer', toggle: () => setExpandAvans(v => !v) });
-  if (expandAvans) {
-    push({ name: 'Насосная станция Вахдат', planF: fmt(500000), factF: fmt(450000), ...devInfo('inc', 500000, 450000), b: incDevB(500000, 450000), padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8' });
-    push({ name: 'ГЭС Помир-1 · 2-я очередь', planF: fmt(250000), factF: '—', devF: '—', devPctF: '—', devFg: '#9AA29E', b: badge('Ожидается', 'gray'), padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8' });
-  }
-  const iCat = (name: string, plan: number, fact: number, resp: string, pending?: boolean) => push({ name, planF: fmt(plan), factF: pending && !fact ? '—' : fmt(fact), ...devInfo('inc', plan, fact, pending), b: incDevB(plan, fact, pending), resp });
-  iCat('Промежуточный платёж', 320000, 320000, 'М. Саидова');
-  iCat('Монтажные работы', 145000, 145000, 'Ф. Назаров');
-  iCat('Окончательный платёж', 180000, 120000, 'М. Саидова');
-  iCat('Сервисное обслуживание', 60000, 60000, 'Ф. Назаров');
-  iCat('Продажа оборудования', 95000, 110000, 'Ф. Назаров');
-  iCat('Техническая поддержка', 40000, 40000, 'М. Саидова');
+  for (const c of aggregate(props.incomes)) pushCat('inc', c);
   grp('Расходы — всего', expPlan, expFact, expDevB(expPlan, expFact));
-  const eCat = (name: string, plan: number, fact: number, resp: string, pending?: boolean) => push({ name, planF: fmt(plan), factF: pending && !fact ? '—' : fmt(fact), ...devInfo('exp', plan, fact, pending), b: expDevB(plan, fact, pending), resp });
-  eCat('Закупка оборудования', 200000, 225000, 'А. Хакимов');
-  eCat('Закупка материалов', 120000, 118500, 'А. Хакимов');
-  eCat('Заработная плата', 100000, 100000, 'М. Саидова');
-  eCat('Подрядчики', 140000, 95000, 'А. Хакимов');
-  eCat('Транспорт', 30000, 27000, 'Ф. Назаров');
-  eCat('Доставка', 35000, 36200, 'Ф. Назаров');
-  eCat('Командировочные', 18000, 19300, 'Ф. Назаров');
-  eCat('Аренда', 25000, 25000, 'М. Саидова');
-  eCat('Налоги', 85000, 0, 'М. Саидова', true);
-  eCat('Программное обеспечение', 12000, 0, 'А. Хакимов', true);
-  eCat('Связь и интернет', 4500, 4500, 'М. Саидова');
-  push({ name: 'ПРИБЫЛЬ', planF: fmt(profPlan), factF: fmt(profFact), devF: sgn(profFact - profPlan), devPctF: '−' + pct1(Math.abs((profFact - profPlan) / profPlan * 100)) + '%', devFg: '#B93227', b: profDevB(profPlan, profFact), rowBg: SOFT, fw: 700, fwF: 700 });
+  for (const c of aggregate(props.expenses)) pushCat('exp', c);
+  push({ name: 'ПРИБЫЛЬ', planF: fmt(profPlan), factF: fmt(profFact), devF: sgn(profFact - profPlan), devPctF: profPlan > 0 ? (profFact - profPlan >= 0 ? '+' : '−') + pct1(Math.abs((profFact - profPlan) / profPlan * 100)) + '%' : '—', devFg: profFact - profPlan >= 0 ? '#1A7A4B' : '#B93227', b: profDevB(profPlan, profFact), rowBg: SOFT, fw: 700, fwF: 700 });
 
   return (
     <div data-screen-label="Сводный План-Факт">

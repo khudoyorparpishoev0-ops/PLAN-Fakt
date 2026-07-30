@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ACC, PLEX, num } from '../theme';
 import { fmt } from '../lib/format';
-import { OPS } from '../data/admin';
+import type { JournalRow } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
 
 const PARAM_DROPS = ['Загрузка', 'Юрлица и счета', 'Контрагенты', 'Статьи учёта', 'Проекты'];
 
 export interface OperationsScreenProps {
+  /** Журнал операций из API (GET /api/operations). */
+  ops: JournalRow[];
   openIncome: () => void;
 }
 
@@ -29,15 +31,18 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     ['Не подтверждена', payConf.unconf, () => togglePay('unconf')],
   ];
 
-  const rows = OPS.filter(o => (o[2] === 'in' ? opType.in : opType.out)).map(o => {
-    const [date, account, dir, party, article, sub, project, amt, cm] = o;
-    const dirIn = dir === 'in';
+  const rows = props.ops.filter(o => (o.dirIn ? opType.in : opType.out)).map(o => {
+    const whole = Math.floor(o.amount);
+    const dirams = Math.round((o.amount - whole) * 100);
     return {
-      date, account, dirIn, party, article, sub, project,
-      tag: dirIn ? 'Доходы' : 'Расходы',
-      hasComment: cm,
-      sumMain: (dirIn ? '+' : '−') + fmt(amt),
-      sumFg: dirIn ? '#1A7A4B' : '#B93227',
+      key: o.id,
+      date: o.date, account: o.account, dirIn: o.dirIn,
+      party: o.party, article: o.article, sub: o.sub, project: o.project,
+      // Плановые операции (из одобренных заявок) помечаются в журнале тегом «План»
+      tag: o.isPlan ? 'План' : o.dirIn ? 'Доходы' : 'Расходы',
+      sumMain: (o.dirIn ? '+' : '−') + fmt(whole),
+      sumFrac: ',' + String(dirams).padStart(2, '0') + ' TJS',
+      sumFg: o.dirIn ? '#1A7A4B' : '#B93227',
     };
   });
 
@@ -97,8 +102,8 @@ export default function OperationsScreen(props: OperationsScreenProps) {
               <tbody>
                 <tr><td colSpan={8} style={{ padding: '8px 16px', fontSize: 12, color: '#A6ACA8', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED' }}>Сегодня нет операций</td></tr>
                 <tr><td colSpan={8} style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#5A625E', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED' }}>Вчера и ранее</td></tr>
-                {rows.map((r, i) => (
-                  <tr key={i} className="hv-row">
+                {rows.map((r) => (
+                  <tr key={r.key} className="hv-row">
                     <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid #F3F2ED' }}><span style={{ width: 16, height: 16, borderRadius: 4, border: '1.5px solid #CFCCC4', display: 'inline-block', verticalAlign: 'middle', cursor: 'pointer' }} /></td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#3E4643', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#3E4643', whiteSpace: 'nowrap' }}>{r.account}</td>
@@ -112,8 +117,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E', whiteSpace: 'nowrap' }}>{r.project}</td>
                     <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid #F3F2ED', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                        {r.hasComment && <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#B0B5B1" strokeWidth="1.4"><path d="M2 3.5h12v7.5H6l-3 2.3V11H2z" /></svg>}
-                        <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: '#A6ACA8' }}>,00 TJS</span></span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: '#A6ACA8' }}>{r.sumFrac}</span></span>
                       </span>
                     </td>
                   </tr>

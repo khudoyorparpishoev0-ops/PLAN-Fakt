@@ -2,7 +2,7 @@ import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'r
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
 import {
-  CABINET_PROJECTS, MONTHLY, dirB,
+  dirB,
   type CarReq, type PayReq, type ReqKind, type ReqStatus, type TripReq,
 } from '../data/cabinet';
 import { kmRateSet, tripAmount } from '../data/settings';
@@ -12,6 +12,10 @@ export interface HistoryScreenProps {
   pays: PayReq[];
   trips: TripReq[];
   cars: CarReq[];
+  /** «Статистика по месяцам» — суммы моих заявок (из API). */
+  monthly: { m: string; sum: number }[];
+  /** Названия проектов для фильтра. */
+  projectNames: string[];
   deleteReq: (kind: ReqKind, id: string) => void;
 }
 
@@ -92,17 +96,21 @@ function MiniDonut({ items }: { items: { label: string; ringValue: number; legen
 /** Компактный спарклайн «Статистика по месяцам» 150×46 (прототип, строки 331–334). */
 function MiniSparkline({ data }: { data: { m: string; sum: number }[] }) {
   const W = 150, H = 46, PAD = 4;
-  const maxV = Math.max(...data.map((d) => d.sum)) * 1.1;
   const n = data.length;
-  const pts = data.map((d, i) => `${3 + (i * (W - 6)) / (n - 1)},${H - PAD - (d.sum / maxV) * (H - 2 * PAD - 4)}`);
-  const last = pts[n - 1].split(',').map(Number);
+  const maxV = Math.max(1, ...data.map((d) => d.sum)) * 1.1;
+  const pts = n > 1
+    ? data.map((d, i) => `${3 + (i * (W - 6)) / (n - 1)},${H - PAD - (d.sum / maxV) * (H - 2 * PAD - 4)}`)
+    : [];
+  const last = pts.length ? pts[pts.length - 1].split(',').map(Number) : null;
   return (
     <div style={{ border: '1px solid #EDEBE6', borderRadius: 12, padding: '10px 14px', background: '#FBFBF9' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#5A625E', marginBottom: 8 }}>Статистика по месяцам</div>
       <svg width="150" height="46" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         <polyline fill="none" stroke="#EFEEE9" strokeWidth="1" points={`2,${H - 4} ${W - 2},${H - 4}`} />
-        <polyline fill="none" stroke="var(--fin-accent,#1B7A3C)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts.join(' ')} />
-        <circle cx={last[0]} cy={last[1]} r="2.6" fill="var(--fin-accent,#1B7A3C)" />
+        {pts.length > 1 && (
+          <polyline fill="none" stroke="var(--fin-accent,#1B7A3C)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts.join(' ')} />
+        )}
+        {last && <circle cx={last[0]} cy={last[1]} r="2.6" fill="var(--fin-accent,#1B7A3C)" />}
       </svg>
     </div>
   );
@@ -235,7 +243,7 @@ interface HistRow {
 }
 
 export default function HistoryScreen(props: HistoryScreenProps) {
-  const { pays, trips, cars, deleteReq } = props;
+  const { pays, trips, cars, monthly, projectNames, deleteReq } = props;
 
   const [fProject, setFProject] = useState('Все');
   const [kind, setKind] = useState<ReqKind>('payment');
@@ -283,7 +291,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
       {/* ── 4 карточки-фильтра (прототип, строки 304–313) ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
         <FilterCard label="ФИЛЬТР ПО ПРОЕКТУ" value={fProject} onChange={setFProject}
-          options={[{ v: 'Все', t: 'Все проекты' }, ...CABINET_PROJECTS.map((p) => ({ v: p, t: p }))]} />
+          options={[{ v: 'Все', t: 'Все проекты' }, ...projectNames.map((p) => ({ v: p, t: p })), { v: 'Без проекта', t: 'Без проекта' }]} />
         <FilterCard label="ТИП (Оплата/Авто)" value={kind} onChange={(v) => setKind(v as ReqKind)}
           options={[{ v: 'payment', t: 'Заявки на оплату' }, { v: 'trip', t: 'Заявки на машину' }, { v: 'auto', t: 'Расходы на авто' }]} />
         <FilterCard label="ПЕРИОД (Дата)" value={fPeriod} onChange={setFPeriod}
@@ -298,7 +306,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
           <div style={{ fontSize: 15, fontWeight: 700, paddingTop: 6 }}>ГЛАВНЫЙ РЕЕСТР ЗАЯВОК</div>
           <div style={{ display: 'flex', gap: 12 }}>
             <MiniDonut items={donutItems} />
-            <MiniSparkline data={MONTHLY} />
+            <MiniSparkline data={monthly} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 26, padding: '0 20px', borderBottom: '1px solid #E7E5E0' }}>

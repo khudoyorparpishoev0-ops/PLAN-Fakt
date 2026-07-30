@@ -1,6 +1,6 @@
 import { num } from '../theme';
 import { fmt } from '../lib/format';
-import { PROJECTS } from '../data/admin';
+import type { ApiProject } from '../lib/api';
 import { cabProjB, type CarReq, type PayReq, type ReqStatus, type TripReq } from '../data/cabinet';
 import { tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
@@ -9,9 +9,11 @@ export interface CabinetProjectsScreenProps {
   pays: PayReq[];
   trips: TripReq[];
   cars: CarReq[];
+  /** Проекты из API (метаданные; суммы — по моим заявкам ниже). */
+  projects: ApiProject[];
 }
 
-export default function CabinetProjectsScreen({ pays, trips, cars }: CabinetProjectsScreenProps) {
+export default function CabinetProjectsScreen({ pays, trips, cars, projects }: CabinetProjectsScreenProps) {
   /* Все мои заявки, нормализованные к { project, status, amount, km }.
    * Поездки в деньгах учитываются только при заданной ставке (settings.kmRate);
    * пока ставка не задана — их километры показываются второй строкой. */
@@ -21,7 +23,7 @@ export default function CabinetProjectsScreen({ pays, trips, cars }: CabinetProj
     ...cars.map((r) => ({ project: r.project, status: r.status, amount: r.amount, km: 0 })),
   ];
 
-  const rows = PROJECTS.filter((p) => !p.archived).map((p) => {
+  const rows = projects.filter((p) => !p.archived).map((p) => {
     const mine = all.filter((r) => r.project === p.name);
     const bucket = (pred: (r: (typeof all)[number]) => boolean) => {
       const rs = mine.filter(pred);

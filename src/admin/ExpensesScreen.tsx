@@ -8,6 +8,8 @@ import { AccentBtn, Badge, Th } from '../components/ui';
 export interface ExpensesScreenProps {
   expenses: Expense[];
   totals: Totals;
+  /** Число заявок кабинета, ждущих решения (чип «На согласовании»). */
+  pendingCount: number;
   goIncomes: () => void;
   openExpense: (i: number) => void;
 }
@@ -52,7 +54,9 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
         <input placeholder="Поиск: категория, получатель, №…" style={{ width: 260, height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer' }}>Статус: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, color: '#8A6A00', background: '#FAF2D8', cursor: 'pointer' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A227' }} />На согласовании: 1</span>
+        {props.pendingCount > 0 && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, color: '#8A6A00', background: '#FAF2D8', cursor: 'pointer' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A227' }} />На согласовании: {props.pendingCount}</span>
+        )}
         <div style={{ flex: 1 }} />
         <div style={{ fontSize: 12, color: '#8A918D' }}>Нажмите строку — карточка заявки</div>
         <AccentBtn style={{ padding: '8px 15px' }}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Расход</AccentBtn>

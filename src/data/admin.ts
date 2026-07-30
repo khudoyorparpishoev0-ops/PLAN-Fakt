@@ -1,4 +1,10 @@
-/** Fixture-данные админ-панели — 1:1 из прототипа «Финансы План-Факт.dc.html». */
+/** Fixture-данные админ-панели — 1:1 из прототипа «Финансы План-Факт.dc.html».
+ *
+ *  С ШАГА 3 экраны читают данные из API; массивы INCOMES / EXPENSES / OPS /
+ *  ART / GEN используются только сидом БД (server/prisma/seed.ts).
+ *  На фикстурах остаются: PROJECTS/PRJ_GROUPS (суммы проектов админ-панели —
+ *  см. открытый вопрос в docs/CABINET_DIFF.md), USERS и SETTINGS_NAV
+ *  (экран «Настройки»), POSITIONS/ATTACH (демо-экран «Закупки»). */
 
 export interface Income {
   n: string; cat: string; proj: string; party: string; pdate: string; fdate: string;

@@ -1,4 +1,4 @@
-import { INCOMES, type Expense } from '../data/admin';
+import type { Expense, Income } from '../data/admin';
 import { fmt, pct1, sgn } from './format';
 import { badge, profDevB, type BadgeData } from './badges';
 
@@ -18,10 +18,12 @@ export interface Totals {
   debR: string; debROver: string; credit: string; creditOver: string;
 }
 
-export function computeTotals(expenses: Expense[]): Totals {
-  const incPlan = INCOMES.reduce((a, r) => a + r.plan, 0), incFact = INCOMES.reduce((a, r) => a + r.fact, 0);
+export function computeTotals(incomes: Income[], expenses: Expense[]): Totals {
+  const incPlan = incomes.reduce((a, r) => a + r.plan, 0), incFact = incomes.reduce((a, r) => a + r.fact, 0);
   const expPlan = expenses.reduce((a, r) => a + r.plan, 0), expFact = expenses.reduce((a, r) => a + r.fact, 0);
-  const incPct = (incFact / incPlan) * 100, expPct = (expFact / expPlan) * 100;
+  // Защита от деления на ноль (до загрузки данных списки пустые)
+  const pctOf = (fact: number, plan: number) => (plan > 0 ? (fact / plan) * 100 : 0);
+  const incPct = pctOf(incFact, incPlan), expPct = pctOf(expFact, expPlan);
   const profPlan = incPlan - expPlan, profFact = incFact - expFact;
   return {
     incPlan, incFact, expPlan, expFact, incPct, expPct, profPlan, profFact,
@@ -33,8 +35,8 @@ export function computeTotals(expenses: Expense[]): Totals {
     expPlanF: fmt(expPlan), expFactF: fmt(expFact), expPctT: pct1(expPct) + '%', expPctW: expPct.toFixed(1) + '%',
     expOverF: '+27 500', expSaveF: '−4 500',
     profPlanF: fmt(profPlan), profFactF: fmt(profFact), profDevF: sgn(profFact - profPlan),
-    rentT: pct1((profFact / incFact) * 100) + '%', prevT: '−8,4%',
-    profPctT: pct1((profFact / profPlan) * 100) + '%', profPctW: ((profFact / profPlan) * 100).toFixed(1) + '%',
+    rentT: pct1(pctOf(profFact, incFact)) + '%', prevT: '−8,4%',
+    profPctT: pct1(pctOf(profFact, profPlan)) + '%', profPctW: pctOf(profFact, profPlan).toFixed(1) + '%',
     cashBox: '84 200', cashBank: '512 600', cashTotal: '596 800', cashIn: '+310 000', cashOut: '−142 000',
     cashOutAbs: '142 000', cashFree: '764 800',
     debR: '110 000', debROver: '60 000', credit: '148 500', creditOver: '18 500',

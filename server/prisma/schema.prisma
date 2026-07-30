@@ -152,6 +152,40 @@ model LegalEntity {
   @@map("legal_entities")
 }
 
+model Good {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  note      String? // «арт. NS-200 · шт» и т.п.
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("goods")
+}
+
+model Service {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  note      String? // «услуга · час / смена» и т.п.
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("services")
+}
+
+// Настройки системы (ключ–значение). km_rate — ставка компенсации поездок,
+// дирам за км (решение заказчика 30.07.2026: по умолчанию 0 = не задана,
+// пока не задана — поездки показываются в километрах, а не в деньгах).
+model Setting {
+  key       String    @id
+  value     String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
 // ── Валюты и курсы ──────────────────────────────────────────────────────────
 
 model Currency {
@@ -239,6 +273,14 @@ model Plan {
   project      Project?  @relation(fields: [projectId], references: [id])
   period       DateTime  @db.Date // первый день месяца
   amountDirams BigInt    @map("amount_dirams")
+  // Отображаемые атрибуты строки отчёта «План-Факт» (экраны «Показатели»/«Расходы»):
+  // плановая/фактическая даты, статус («Получен», «Частично оплачено»…),
+  // ответственный и причина отклонения — как в колонках прототипа.
+  planDate        DateTime? @map("plan_date") @db.Date
+  factDate        DateTime? @map("fact_date") @db.Date
+  statusLabel     String?   @map("status_label")
+  responsibleName String?   @map("responsible_name")
+  reason          String?
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
