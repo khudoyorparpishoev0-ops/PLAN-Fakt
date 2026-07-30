@@ -13,6 +13,7 @@ input, select, textarea { font-family: inherit; color: #1B1F1E; }
 
 @keyframes finFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes finSlide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes cabFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* Hover utilities — replacements for the prototype's style-hover attributes.
    !important lets a hover win over an inline background (e.g. striped rows). */
@@ -25,3 +26,5 @@ input, select, textarea { font-family: inherit; color: #1B1F1E; }
 .hv-acc:hover { background: #E6F2EA !important; }
 .hv-dim:hover { filter: brightness(0.94); }
 .hv-side:hover { background: rgba(255, 255, 255, 0.07); }
+.hv-drop:hover { border-color: var(--fin-accent, #1B7A3C) !important; color: var(--fin-accent, #1B7A3C) !important; }
+.hv-tabbar:hover { background: #FAFAF8 !important; }

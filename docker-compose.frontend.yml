@@ -1,0 +1,14 @@
+# Compose-файл фронтенда (ШАГ 0). На сервере запускается из каталога репозитория:
+#   docker compose -f docker-compose.frontend.yml up -d --build
+# На шаге 1 сервис frontend переносится в общий /opt/app/docker-compose.yml.
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: it-hona-frontend:latest
+    container_name: it-hona-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"

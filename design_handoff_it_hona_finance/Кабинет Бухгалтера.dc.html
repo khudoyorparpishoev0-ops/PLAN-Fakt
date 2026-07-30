@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box} body{margin:0;background:#EEF1EE;font-family:'Golos Text',system-ui,sans-serif;color:#1B1F1E;-webkit-font-smoothing:antialiased}
+a{color:#1B7A3C} a:hover{color:#156430}
+input,select,textarea{font-family:inherit;color:#1B1F1E} ::placeholder{color:#A9AFAB}
+select::-ms-expand{display:none}
+@keyframes cabFade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;overflow:hidden;font-size:14px">
+  <div style="width:238px;flex:none;background:#123A26;display:flex;flex-direction:column;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:11px;padding:18px 16px 2px">
+      <svg width="32" height="28" viewBox="0 0 40 34" style="flex:none"><path d="M20 1L39 33H1Z" fill="#37B15A"></path><path d="M20 12.5L30.5 31h-21z" fill="#0E3A24"></path></svg>
+      <div style="min-width:0">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.03em;color:#fff">IT-HONA</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);line-height:1.35;margin-top:2px">Интегрируем технологии.<br>Создаём надёжную инфраструктуру.</div>
+      </div>
+    </div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:rgba(255,255,255,.4);padding:16px 22px 6px">ЗАЯВКИ</div>
+    <div onClick="{{goPay}}" style="display:flex;align-items:center;gap:11px;height:38px;margin:1px 10px;padding:0 12px;border-radius:9px;cursor:pointer;background:{{nav.pay.bg}};color:{{nav.pay.fg}}" style-hover="background:rgba(255,255,255,.07)">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="2"></rect><path d="M1.5 6.5h13"></path><path d="M4 10h3"></path></svg><span style="font-size:13.5px;font-weight:{{nav.pay.fw}}">Заявки на оплату</span>
+    </div>
+    <div onClick="{{goCar}}" style="display:flex;align-items:center;gap:11px;height:38px;margin:1px 10px;padding:0 12px;border-radius:9px;cursor:pointer;background:{{nav.car.bg}};color:{{nav.car.fg}}" style-hover="background:rgba(255,255,255,.07)">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10l1-3.4A2 2 0 015 5.2h6a2 2 0 011.9 1.4L14 10"></path><rect x="1.5" y="9.7" width="13" height="3.3" rx="1.2"></rect><circle cx="4.5" cy="13.4" r=".8" fill="currentColor" stroke="none"></circle><circle cx="11.5" cy="13.4" r=".8" fill="currentColor" stroke="none"></circle></svg><span style="font-size:13.5px;font-weight:{{nav.car.fw}}">Заявки на машину</span>
+    </div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:rgba(255,255,255,.4);padding:14px 22px 6px">ОТЧЁТЫ</div>
+    <div onClick="{{goHist}}" style="display:flex;align-items:center;gap:11px;height:38px;margin:1px 10px;padding:0 12px;border-radius:9px;cursor:pointer;background:{{nav.hist.bg}};color:{{nav.hist.fg}}" style-hover="background:rgba(255,255,255,.07)">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14V2"></path><path d="M2 13h12"></path><rect x="4" y="8.5" width="2.4" height="4" rx=".5" fill="currentColor" stroke="none"></rect><rect x="7.6" y="5.5" width="2.4" height="7" rx=".5" fill="currentColor" stroke="none"></rect><rect x="11.2" y="3" width="2.4" height="9.5" rx=".5" fill="currentColor" stroke="none"></rect></svg><span style="font-size:13.5px;font-weight:{{nav.hist.fw}}">Список всего / История</span>
+    </div>
+    <div onClick="{{goProj}}" style="display:flex;align-items:center;gap:11px;height:38px;margin:1px 10px;padding:0 12px;border-radius:9px;cursor:pointer;background:{{nav.proj.bg}};color:{{nav.proj.fg}}" style-hover="background:rgba(255,255,255,.07)">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="12" height="8.5" rx="1.8"></rect><path d="M6 5V3.8A1.3 1.3 0 017.3 2.5h1.4A1.3 1.3 0 0110 3.8V5"></path><path d="M2 8.7h12"></path></svg><span style="font-size:13.5px;font-weight:{{nav.proj.fw}}">Проекты</span>
+    </div>
+    <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none">{{userInit}}</div>
+      <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:#fff">{{userName}}</div><div style="font-size:11px;color:rgba(255,255,255,.55)">{{userRole}}</div></div>
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"><path d="M4 9l3-3 3 3"></path></svg>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <div style="height:60px;flex:none;display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid #E7E5E0">
+      <div style="font-size:16px;font-weight:700;letter-spacing:-.01em">{{screenTitle}}</div>
+      <div style="font-size:12px;color:#8A918D">Июль 2026 · суммы в сомони (TJS)</div>
+      <div style="flex:1"></div>
+      <div style="display:inline-flex;background:#EEF1EE;padding:3px;border-radius:9px;gap:2px">
+        <div style="padding:4px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.08)">Компьютер</div>
+        <div style="padding:4px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:500;color:#6B7370">Телефон</div>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #E0DED8;background:#fff;border-radius:9px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:#F6F5F1"><span style="width:7px;height:7px;border-radius:50%;background:var(--acc,#1B7A3C)"></span>IT-HONA LLC <span style="color:#A6ACA8">▾</span></div>
+      <div style="position:relative;width:38px;height:38px;border-radius:9px;border:1px solid #E7E5E0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#5A625E;flex:none" style-hover="background:#F6F5F1">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z"></path><path d="M6.5 13a1.5 1.5 0 003 0"></path></svg>
+        <span style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:99px;background:#D24A3D;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px">3</span>
+      </div>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:22px 28px 32px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+        <div style="display:inline-flex;background:#EBEAE4;padding:3px;border-radius:9px;gap:2px">
+          <sc-for list="{{periods}}" as="p" hint-placeholder-count="5">
+            <div onClick="{{p.onClick}}" style="padding:5px 13px;border-radius:7px;font-size:12.5px;cursor:pointer;font-weight:{{p.fw}};color:{{p.fg}};background:{{p.bg}};box-shadow:{{p.sh}}">{{p.t}}</div>
+          </sc-for>
+        </div>
+        <div style="width:1px;height:22px;background:#E0DED8"></div>
+        <div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #E0DED8;background:#fff;border-radius:8px;padding:6px 11px;font-size:12.5px;color:#5A625E;cursor:pointer" style-hover="background:#F6F5F1">Проект: <b style="color:#1B1F1E;font-weight:600">Все</b> <span style="color:#A6ACA8">▾</span></div>
+        <div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #E0DED8;background:#fff;border-radius:8px;padding:6px 11px;font-size:12.5px;color:#5A625E;cursor:pointer" style-hover="background:#F6F5F1">Статус: <b style="color:#1B1F1E;font-weight:600">Все</b> <span style="color:#A6ACA8">▾</span></div>
+        <div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #E0DED8;background:#fff;border-radius:8px;padding:6px 11px;font-size:12.5px;color:#5A625E;cursor:pointer" style-hover="background:#F6F5F1">Валюта: <b style="color:#1B1F1E;font-weight:600">TJS</b> <span style="color:#A6ACA8">▾</span></div>
+        <div style="flex:1"></div>
+        <div style="position:relative"><input placeholder="Поиск по заявкам" style="width:230px;height:34px;border:1px solid #E0DED8;border-radius:8px;background:#fff;padding:0 12px 0 34px;font-size:12.5px;outline:none"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" stroke-width="1.6" style="position:absolute;left:11px;top:9px"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+          <div style="background:#fff;border:1px solid #E7E5E0;border-radius:12px;padding:15px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:{{k.iconBg}};color:{{k.iconFg}};display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:14px;font-weight:700">{{k.icon}}</span><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#8A918D">{{k.label}}</span></span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;color:{{k.b.fg}};background:{{k.b.bg}}"><span style="width:6px;height:6px;border-radius:50%;background:{{k.b.dot}}"></span>{{k.b.t}}</span>
+            </div>
+            <div style="font-size:25px;font-weight:700;letter-spacing:-.02em;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">{{k.value}} <span style="font-size:11.5px;font-weight:500;color:#8A918D;font-family:'Golos Text',sans-serif">{{k.unit}}</span></div>
+            <div style="font-size:11.5px;color:#8A918D;margin-top:6px">{{k.note}}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{scPay}}" hint-placeholder-val="{{true}}">
+      <div data-screen-label="Заявки на оплату" style="max-width:1120px;animation:cabFade .2s ease">
+        <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;padding:22px 24px;margin-bottom:18px">
+          <div style="font-size:15px;font-weight:700;letter-spacing:.01em;margin-bottom:18px">СОЗДАТЬ ЗАЯВКУ НА ОПЛАТУ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 22px">
+            <div>
+              <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">1) Проект</label>
+              <div style="position:relative"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 34px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>IT-Khona Web</option><option>Офис</option><option>Альфа</option><option>Насосная станция Вахдат</option></select><span style="position:absolute;right:14px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+            </div>
+            <div>
+              <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">2) Сумма</label>
+              <div style="display:flex;gap:8px">
+                <input value="1 200" style="flex:1;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 13px;font-size:13.5px;background:#fff;outline:none;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">
+                <div style="position:relative;width:92px;flex:none"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 30px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>TJS</option><option>USD</option><option>EUR</option></select><span style="position:absolute;right:12px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">3) Наименование</label>
+              <textarea style="width:100%;height:88px;border:1px solid #DFDCD6;border-radius:10px;padding:11px 13px;font-size:13.5px;background:#fff;outline:none;resize:none;line-height:1.5">Оплата хостинга за июль 2026</textarea>
+            </div>
+            <div>
+              <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">4) Документ (опционально)</label>
+              <div style="display:flex;align-items:center;justify-content:center;gap:9px;height:88px;border:1px dashed #C7C4BC;border-radius:10px;background:#FBFBF9;font-size:13px;color:#5A625E;cursor:pointer" style-hover="border-color:var(--acc,#1B7A3C);color:var(--acc,#1B7A3C)"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="4" width="13" height="9.5" rx="1.8"></rect><circle cx="8" cy="8.7" r="2.4"></circle><path d="M5.5 4l1-1.6h3L10.5 4"></path></svg> Загрузить счёт</div>
+            </div>
+          </div>
+          <div onClick="{{submit}}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border-radius:11px;background:var(--acc,#1B7A3C);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;margin-top:20px" style-hover="filter:brightness(.94)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2L7 9"></path><path d="M14 2l-4.5 12-2.5-5-5-2.5z"></path></svg> Отправить на утверждение Директору</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden">
+          <div style="padding:16px 20px;font-size:14px;font-weight:700;border-bottom:1px solid #F0EFEA">МОИ ПОСЛЕДНИЕ ЗАЯВКИ</div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:11px 20px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Дата</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Проект</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Наименование</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Сумма</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Статус</th>
+              <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><th style="padding:11px 20px 11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Директор</th></sc-if>
+            </tr></thead>
+            <tbody>
+            <sc-for list="{{payRows}}" as="r" hint-placeholder-count="4">
+              <tr style-hover="background:#F8F7F4">
+                <td style="padding:13px 20px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#3E4643;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">{{r.date}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#5A625E">{{r.project}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;font-weight:500">{{r.name}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">{{r.amount}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.own.fg}};background:{{r.own.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.own.dot}}"></span>{{r.own.t}}</span></td>
+                <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><td style="padding:13px 20px 13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.dir.fg}};background:{{r.dir.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.dir.dot}}"></span>{{r.dir.t}}</span></td></sc-if>
+              </tr>
+            </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{scCar}}" hint-placeholder-val="{{false}}">
+      <div data-screen-label="Заявки на машину" style="max-width:1120px;animation:cabFade .2s ease">
+        <div style="display:flex;background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden;margin-bottom:18px">
+          <div onClick="{{goTrip}}" style="flex:1;text-align:center;padding:16px;font-size:13.5px;font-weight:{{tab.trip.fw}};color:{{tab.trip.fg}};cursor:pointer;box-shadow:{{tab.trip.bar}}" style-hover="background:#FAFAF8">ЗАЯВКА НА ПОЕЗДКУ</div>
+          <div onClick="{{goExpense}}" style="flex:1;text-align:center;padding:16px;font-size:13.5px;font-weight:{{tab.exp.fw}};color:{{tab.exp.fg}};cursor:pointer;box-shadow:{{tab.exp.bar}}" style-hover="background:#FAFAF8">РАСХОДЫ НА АВТО</div>
+        </div>
+
+        <sc-if value="{{carTrip}}" hint-placeholder-val="{{true}}">
+        <div>
+          <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;padding:22px 24px;margin-bottom:18px">
+            <div style="font-size:15px;font-weight:700;letter-spacing:.01em;margin-bottom:18px">СОЗДАТЬ ЗАЯВКУ НА ПОЕЗДКУ</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 22px">
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">1) Проект</label>
+                <div style="position:relative"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 34px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>IT-Khona Web</option><option>Офис</option><option>Альфа</option></select><span style="position:absolute;right:14px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">2) Цель поездки</label>
+                <input value="Встреча с клиентом" style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 13px;font-size:13.5px;background:#fff;outline:none">
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">3) Км (закрепить фото)</label>
+                <div style="display:flex;gap:8px">
+                  <input value="120" style="width:96px;flex:none;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 13px;font-size:13.5px;background:#fff;outline:none;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border:1px dashed #C7C4BC;border-radius:10px;background:#FBFBF9;font-size:13px;color:#5A625E;cursor:pointer" style-hover="border-color:var(--acc,#1B7A3C);color:var(--acc,#1B7A3C)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="4" width="13" height="9.5" rx="1.8"></rect><circle cx="8" cy="8.7" r="2.4"></circle><path d="M5.5 4l1-1.6h3L10.5 4"></path></svg> Загрузить фото Км</div>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">4) Контрагент</label>
+                <input value="ООО «Вектор»" style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 13px;font-size:13.5px;background:#fff;outline:none">
+              </div>
+            </div>
+            <div onClick="{{submit}}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border-radius:11px;background:var(--acc,#1B7A3C);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;margin-top:20px" style-hover="filter:brightness(.94)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2L7 9"></path><path d="M14 2l-4.5 12-2.5-5-5-2.5z"></path></svg> Отправить Директору</div>
+          </div>
+          <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden">
+            <div style="padding:16px 20px;font-size:14px;font-weight:700;border-bottom:1px solid #F0EFEA">МОИ ЗАЯВКИ НА МАШИНУ</div>
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr>
+                <th style="padding:11px 20px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Дата</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Цель</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Км</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Статус</th>
+                <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><th style="padding:11px 20px 11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Директор</th></sc-if>
+              </tr></thead>
+              <tbody>
+              <sc-for list="{{carRows}}" as="r" hint-placeholder-count="3">
+                <tr style-hover="background:#F8F7F4">
+                  <td style="padding:13px 20px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#3E4643;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">{{r.date}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;font-weight:500">{{r.name}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">{{r.amount}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.own.fg}};background:{{r.own.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.own.dot}}"></span>{{r.own.t}}</span></td>
+                  <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><td style="padding:13px 20px 13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.dir.fg}};background:{{r.dir.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.dir.dot}}"></span>{{r.dir.t}}</span></td></sc-if>
+                </tr>
+              </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{carExp}}" hint-placeholder-val="{{false}}">
+        <div>
+          <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;padding:22px 24px;margin-bottom:18px">
+            <div style="font-size:15px;font-weight:700;letter-spacing:.01em;margin-bottom:18px">ДОБАВИТЬ РАСХОД НА АВТО</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 22px">
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">1) Проект</label>
+                <div style="position:relative"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 34px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>Офис</option><option>IT-Khona Web</option><option>Альфа</option></select><span style="position:absolute;right:14px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">2) Категория</label>
+                <div style="position:relative"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 34px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>Бензин</option><option>Ремонт</option><option>Мойка</option><option>Штраф</option><option>Запчасти</option></select><span style="position:absolute;right:14px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">3) Сумма</label>
+                <div style="display:flex;gap:8px">
+                  <input value="300" style="flex:1;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 13px;font-size:13.5px;background:#fff;outline:none;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">
+                  <div style="position:relative;width:92px;flex:none"><select style="width:100%;height:44px;border:1px solid #DFDCD6;border-radius:10px;padding:0 30px 0 13px;font-size:13.5px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer"><option>TJS</option><option>USD</option></select><span style="position:absolute;right:12px;top:15px;pointer-events:none;color:#A6ACA8">▾</span></div>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:12.5px;color:#5A625E;font-weight:500;margin-bottom:7px;display:block">4) Чек / документ</label>
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px;height:44px;border:1px dashed #C7C4BC;border-radius:10px;background:#FBFBF9;font-size:13px;color:#5A625E;cursor:pointer" style-hover="border-color:var(--acc,#1B7A3C);color:var(--acc,#1B7A3C)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h5.5L13 5v9.5H4z"></path><path d="M9 1.5V5h4"></path><path d="M6 8.5h4M6 11h3"></path></svg> Загрузить чек</div>
+              </div>
+            </div>
+            <div onClick="{{submit}}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border-radius:11px;background:var(--acc,#1B7A3C);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;margin-top:20px" style-hover="filter:brightness(.94)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2L7 9"></path><path d="M14 2l-4.5 12-2.5-5-5-2.5z"></path></svg> Отправить Директору</div>
+          </div>
+          <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden">
+            <div style="padding:16px 20px;font-size:14px;font-weight:700;border-bottom:1px solid #F0EFEA">МОИ РАСХОДЫ НА АВТО</div>
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr>
+                <th style="padding:11px 20px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Дата</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Категория</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Сумма</th>
+                <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Статус</th>
+                <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><th style="padding:11px 20px 11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Директор</th></sc-if>
+              </tr></thead>
+              <tbody>
+              <sc-for list="{{autoRows}}" as="r" hint-placeholder-count="3">
+                <tr style-hover="background:#F8F7F4">
+                  <td style="padding:13px 20px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#3E4643;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">{{r.date}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;font-weight:500">{{r.name}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">{{r.amount}}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.own.fg}};background:{{r.own.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.own.dot}}"></span>{{r.own.t}}</span></td>
+                  <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><td style="padding:13px 20px 13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.dir.fg}};background:{{r.dir.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.dir.dot}}"></span>{{r.dir.t}}</span></td></sc-if>
+                </tr>
+              </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{scProj}}" hint-placeholder-val="{{false}}">
+      <div data-screen-label="Проекты" style="animation:cabFade .2s ease">
+        <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #F0EFEA">
+            <div style="font-size:14px;font-weight:700">МОИ ПРОЕКТЫ</div>
+            <span style="font-size:11px;font-weight:600;color:#66706C;background:#EFEEEA;border-radius:99px;padding:2px 9px;font-family:'IBM Plex Sans',sans-serif">{{projCount}}</span>
+            <div style="flex:1"></div>
+            <div style="font-size:12px;color:#8A918D">Бухгалтер видит только суммы своих заявок по проекту</div>
+          </div>
+          <div style="overflow-x:auto">
+          <table style="width:100%;min-width:860px;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:11px 20px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Проект</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Ответственный</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Мои заявки</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Одобрено</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Ждёт решения</th>
+              <th style="padding:11px 20px 11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Статус</th>
+            </tr></thead>
+            <tbody>
+            <sc-for list="{{projRows}}" as="r" hint-placeholder-count="4">
+              <tr style="cursor:pointer" style-hover="background:#F8F7F4">
+                <td style="padding:13px 20px;border-bottom:1px solid #F3F2ED"><div style="font-size:13px;font-weight:600">{{r.name}}</div><div style="font-size:11.5px;color:#8A918D;margin-top:1px">{{r.group}}</div></td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#5A625E">{{r.resp}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums">{{r.cnt}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;color:#1A7A4B;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">{{r.ok}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;color:#9A6B00;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">{{r.wait}}</td>
+                <td style="padding:13px 20px 13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.b.fg}};background:{{r.b.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.b.dot}}"></span>{{r.b.t}}</span></td>
+              </tr>
+            </sc-for>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{scHist}}" hint-placeholder-val="{{false}}">
+      <div data-screen-label="Список всего / История" style="animation:cabFade .2s ease">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px">
+          <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #E7E5E0;border-radius:12px;padding:13px 15px">
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8A918D;margin-bottom:9px">{{f.label}}</div>
+              <div style="position:relative"><select style="width:100%;height:40px;border:1px solid #DFDCD6;border-radius:9px;padding:0 30px 0 12px;font-size:13px;background:#fff;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer">
+                <sc-for list="{{f.opts}}" as="o" hint-placeholder-count="3"><option>{{o}}</option></sc-for>
+              </select><span style="position:absolute;right:12px;top:13px;pointer-events:none;color:#A6ACA8">▾</span></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E7E5E0;border-radius:14px;overflow:hidden">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;flex-wrap:wrap">
+            <div style="font-size:15px;font-weight:700;padding-top:6px">ГЛАВНЫЙ РЕЕСТР ЗАЯВОК</div>
+            <sc-if value="{{showCharts}}" hint-placeholder-val="{{true}}">
+            <div style="display:flex;gap:12px">
+              <div style="display:flex;align-items:center;gap:12px;border:1px solid #EDEBE6;border-radius:12px;padding:10px 14px;background:#FBFBF9">
+                <svg width="60" height="60" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.915" fill="none" stroke="#EFEEE9" stroke-width="7"></circle><circle cx="21" cy="21" r="15.915" fill="none" stroke="#22935B" stroke-width="7" pathLength="100" stroke-dasharray="46 54" stroke-dashoffset="25"></circle><circle cx="21" cy="21" r="15.915" fill="none" stroke="#E5A400" stroke-width="7" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="-21"></circle><circle cx="21" cy="21" r="15.915" fill="none" stroke="#D24A3D" stroke-width="7" pathLength="100" stroke-dasharray="24 76" stroke-dashoffset="-51"></circle></svg>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#5A625E;margin-bottom:6px">Расходы по категориям</div>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6B7370"><span style="width:8px;height:8px;border-radius:2px;background:#22935B"></span>Оплаты · 46%</div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6B7370"><span style="width:8px;height:8px;border-radius:2px;background:#E5A400"></span>Поездки · 30%</div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6B7370"><span style="width:8px;height:8px;border-radius:2px;background:#D24A3D"></span>Авто · 24%</div>
+                  </div>
+                </div>
+              </div>
+              <div style="border:1px solid #EDEBE6;border-radius:12px;padding:10px 14px;background:#FBFBF9">
+                <div style="font-size:11px;font-weight:700;color:#5A625E;margin-bottom:8px">Статистика по месяцам</div>
+                <svg width="150" height="46" viewBox="0 0 150 46" preserveAspectRatio="none"><polyline fill="none" stroke="#EFEEE9" stroke-width="1" points="2,42 148,42"></polyline><polyline fill="none" stroke="var(--acc,#1B7A3C)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="3,36 24,30 45,33 66,20 87,24 108,12 129,16 147,6"></polyline><circle cx="147" cy="6" r="2.6" fill="var(--acc,#1B7A3C)"></circle></svg>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+          <div style="display:flex;gap:26px;padding:0 20px;border-bottom:1px solid #E7E5E0">
+            <div onClick="{{goHPay}}" style="padding:0 2px 12px;font-size:13px;font-weight:{{ht.pay.fw}};color:{{ht.pay.fg}};cursor:pointer;box-shadow:{{ht.pay.bar}}">Все Заявки на Оплату</div>
+            <div onClick="{{goHTrip}}" style="padding:0 2px 12px;font-size:13px;font-weight:{{ht.trip.fw}};color:{{ht.trip.fg}};cursor:pointer;box-shadow:{{ht.trip.bar}}">Все Заявки на Поездки</div>
+            <div onClick="{{goHAuto}}" style="padding:0 2px 12px;font-size:13px;font-weight:{{ht.auto.fw}};color:{{ht.auto.fg}};cursor:pointer;box-shadow:{{ht.auto.bar}}">Все Расходы на Авто</div>
+          </div>
+          <div style="overflow-x:auto">
+          <table style="width:100%;min-width:820px;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:11px 20px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">ID</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Дата</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Проект</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Наименование</th>
+              <th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Сумма</th>
+              <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><th style="padding:11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:left;border-bottom:1px solid #E7E5E0">Директор (Статус)</th></sc-if>
+              <th style="padding:11px 20px 11px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;color:#8A918D;text-align:right;border-bottom:1px solid #E7E5E0">Действия</th>
+            </tr></thead>
+            <tbody>
+            <sc-for list="{{histRows}}" as="r" hint-placeholder-count="5">
+              <tr style-hover="background:#F8F7F4">
+                <td style="padding:13px 20px;border-bottom:1px solid #F3F2ED;font-size:12.5px;font-weight:600;color:var(--acc,#1B7A3C);font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">{{r.id}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#3E4643;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">{{r.date}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:12.5px;color:#5A625E">{{r.project}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;font-weight:500">{{r.name}}</td>
+                <td style="padding:13px 14px;border-bottom:1px solid #F3F2ED;font-size:13px;text-align:right;font-weight:600;font-family:'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">{{r.amount}}</td>
+                <sc-if value="{{showDir}}" hint-placeholder-val="{{true}}"><td style="padding:13px 14px;border-bottom:1px solid #F3F2ED"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;color:{{r.dir.fg}};background:{{r.dir.bg}};white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{r.dir.dot}}"></span>{{r.dir.t}}</span></td></sc-if>
+                <td style="padding:11px 20px 11px 14px;border-bottom:1px solid #F3F2ED"><div style="display:flex;gap:7px;justify-content:flex-end">
+                  <sc-if value="{{r.aCam}}" hint-placeholder-val="{{false}}"><div title="Фото Км" style="width:32px;height:32px;border-radius:8px;border:1px solid #E7E5E0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7370" style-hover="background:#F6F5F1"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="4" width="13" height="9.5" rx="1.8"></rect><circle cx="8" cy="8.7" r="2.4"></circle><path d="M5.5 4l1-1.6h3L10.5 4"></path></svg></div></sc-if>
+                  <sc-if value="{{r.aDoc}}" hint-placeholder-val="{{false}}"><div title="Документ / чек" style="width:32px;height:32px;border-radius:8px;border:1px solid #E7E5E0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7370" style-hover="background:#F6F5F1"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h5.5L13 5v9.5H4z"></path><path d="M9 1.5V5h4"></path><path d="M6 8.5h4M6 11h3"></path></svg></div></sc-if>
+                  <div title="Просмотр" style="width:32px;height:32px;border-radius:8px;border:1px solid #E7E5E0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7370" style-hover="background:#F6F5F1"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z"></path><circle cx="8" cy="8" r="1.8"></circle></svg></div>
+                  <sc-if value="{{r.aTrash}}" hint-placeholder-val="{{false}}"><div title="Удалить" style="width:32px;height:32px;border-radius:8px;border:1px solid #F0CFC9;background:#FCEBE8;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#D24A3D" style-hover="background:#F8DED9"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M6.5 4V2.8h3V4M4.5 4l.6 9h5.8l.6-9"></path></svg></div></sc-if>
+                </div></td>
+              </tr>
+            </sc-for>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:860},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#1B7A3C&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#1B7A3C&quot;,&quot;#0F5E56&quot;,&quot;#1F6FB2&quot;,&quot;#8A5A2B&quot;],&quot;section&quot;:&quot;Оформление&quot;},&quot;showCharts&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Оформление&quot;},&quot;showDirectorStatus&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Оформление&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'pay', carTab: 'trip', histTab: 'pay', period: 'Месяц' };
+
+  componentDidMount() {
+    const a = this.props.accent;
+    if (a) document.documentElement.style.setProperty('--acc', a);
+  }
+  componentDidUpdate(prev) {
+    if (this.props.accent && this.props.accent !== (prev && prev.accent)) document.documentElement.style.setProperty('--acc', this.props.accent);
+  }
+
+  B = {
+    draft:    { t: 'Черновик',        fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' },
+    sent:     { t: 'Отправлено',      fg: '#3E6B8A', bg: '#E7F0F6', dot: '#4E86AE' },
+    pending:  { t: 'На рассмотрении', fg: '#9A6B00', bg: '#FCF1D6', dot: '#E5A400' },
+    approved: { t: 'Одобрено',        fg: '#1A7A4B', bg: '#E4F3E9', dot: '#22935B' },
+    rejected: { t: 'Отклонено',       fg: '#B93227', bg: '#FAE7E4', dot: '#D24A3D' },
+  };
+
+  PAY = [
+    ['22.07.2026', 'IT-Khona Web', 'Оплата хостинга за июль 2026', '1 200 TJS', 'sent', 'approved'],
+    ['22.07.2026', 'Офис', 'Закупка бумаги', '450 TJS', 'pending', 'pending'],
+    ['21.07.2026', 'Офис', 'Канцтовары и картриджи', '280 TJS', 'sent', 'approved'],
+    ['19.07.2026', 'Офис', 'Бензин / АЗС Газпром', '300 TJS', 'sent', 'rejected'],
+  ];
+  CAR = [
+    ['22.07.2026', 'Встреча с клиентом', '120 км', 'pending', 'approved'],
+    ['21.07.2026', 'Доставка оборудования', '85 км', 'sent', 'approved'],
+    ['20.07.2026', 'Поездка на объект (Регар)', '200 км', 'sent', 'rejected'],
+  ];
+  AUTO = [
+    ['19.07.2026', 'Бензин · АЗС Газпром', '300 TJS', 'sent', 'rejected'],
+    ['18.07.2026', 'Мойка авто', '50 TJS', 'sent', 'approved'],
+    ['15.07.2026', 'Ремонт · замена масла', '420 TJS', 'sent', 'approved'],
+  ];
+  HPAY = [
+    ['#101', '22.07.2026', 'IT-Khona Web', 'Оплата хостинга', '1 200 TJS', 'approved', { trash: true }],
+    ['#102', '21.07.2026', 'Офис', 'Закупка бумаги', '450 TJS', 'pending', {}],
+    ['#103', '19.07.2026', 'Офис', 'Бензин / АЗС Газпром', '300 TJS', 'rejected', {}],
+  ];
+  HTRIP = [
+    ['#A-05', '20.07.2026', 'Альфа', 'ООО «Вектор» / Поездка', '120 км', 'approved', { cam: true }],
+    ['#A-06', '18.07.2026', 'IT-Khona Web', 'Встреча с клиентом', '85 км', 'approved', { cam: true }],
+  ];
+  HAUTO = [
+    ['#R-12', '19.07.2026', 'Офис', 'Бензин / АЗС Газпром', '300 TJS', 'rejected', { doc: true }],
+    ['#R-13', '18.07.2026', 'Офис', 'Мойка авто', '50 TJS', 'approved', { doc: true }],
+  ];
+
+  renderVals() {
+    const s = this.state;
+    const ACT = this.props.accent ?? '#1B7A3C';
+    const navItem = k => ({ bg: s.screen === k ? ACT : 'transparent', fg: s.screen === k ? '#fff' : 'rgba(255,255,255,.82)', fw: s.screen === k ? 600 : 500 });
+    const periods = ['День', 'Неделя', 'Месяц', 'Квартал', 'Год'].map(t => ({ t, fw: s.period === t ? 600 : 500, fg: s.period === t ? '#1B1F1E' : '#6B7370', bg: s.period === t ? '#FFFFFF' : 'transparent', sh: s.period === t ? '0 1px 2px rgba(0,0,0,.08)' : 'none', onClick: () => this.setState({ period: t }) }));
+    const tab = (cur, k) => ({ fg: cur === k ? 'var(--acc,#1B7A3C)' : '#8A918D', fw: cur === k ? 700 : 500, bar: cur === k ? 'inset 0 -3px 0 var(--acc,#1B7A3C)' : 'none' });
+    const B = this.B;
+    const payRow = r => ({ date: r[0], project: r[1], name: r[2], amount: r[3], own: B[r[4]], dir: B[r[5]] });
+    const carRow = r => ({ date: r[0], name: r[1], amount: r[2], own: B[r[3]], dir: B[r[4]] });
+    const histSet = s.histTab === 'pay' ? this.HPAY : s.histTab === 'trip' ? this.HTRIP : this.HAUTO;
+    const histRows = histSet.map(r => ({ id: r[0], date: r[1], project: r[2], name: r[3], amount: r[4], dir: B[r[5]], aCam: !!r[6].cam, aDoc: !!r[6].doc, aTrash: !!r[6].trash }));
+    const titles = { pay: 'Заявки на оплату', car: 'Заявки на машину', hist: 'Список всего / История', proj: 'Проекты' };
+    const PROJ = [
+      ['IT-Khona Web', 'Разработка и сервис', 'Р. Рахмонов', 6, '18 400 TJS', '1 200 TJS', 'inwork'],
+      ['Офис', 'Внутренние расходы', 'Фаридун', 9, '9 700 TJS', '450 TJS', 'inwork'],
+      ['Альфа', 'Монтаж и поставки', 'Ф. Назаров', 3, '4 300 TJS', '0 TJS', 'plan'],
+      ['Насосная станция Вахдат', 'Инфраструктура', 'Р. Рахмонов', 2, '0 TJS', '12 000 TJS', 'plan'],
+    ];
+    const PB = { inwork: { t: 'В работе', fg: '#1A7A4B', bg: '#E4F3E9', dot: '#22935B' }, plan: { t: 'Плановый', fg: '#3E6B8A', bg: '#E7F0F6', dot: '#4E86AE' }, done: { t: 'Завершён', fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' } };
+
+    return {
+      screenTitle: titles[s.screen],
+      scPay: s.screen === 'pay', scCar: s.screen === 'car', scHist: s.screen === 'hist', scProj: s.screen === 'proj',
+      goProj: () => this.setState({ screen: 'proj' }),
+      projCount: String(PROJ.length),
+      projRows: PROJ.map(r => ({ name: r[0], group: r[1], resp: r[2], cnt: String(r[3]), ok: r[4], wait: r[5], b: PB[r[6]] })),
+      goPay: () => this.setState({ screen: 'pay' }),
+      goCar: () => this.setState({ screen: 'car' }),
+      goHist: () => this.setState({ screen: 'hist' }),
+      nav: { pay: navItem('pay'), car: navItem('car'), hist: navItem('hist'), proj: navItem('proj') },
+      userName: this.props.userName ?? 'Фаридун',
+      userRole: this.props.userRole ?? 'Операционный бухгалтер',
+      userInit: 'Ф', periods,
+      kpis: [
+        { label: 'ОТПРАВЛЕНО', value: '12', unit: 'заявок', note: 'За месяц · на 3 больше', icon: '↗', iconBg: 'rgba(27,122,60,.1)', iconFg: 'var(--acc,#1B7A3C)', b: B.sent },
+        { label: 'НА РАССМОТРЕНИИ', value: '4', unit: 'заявки', note: 'Ждут решения Директора', icon: '⏱', iconBg: '#FCF1D6', iconFg: '#9A6B00', b: B.pending },
+        { label: 'ОДОБРЕНО', value: '32 400', unit: 'TJS', note: '7 заявок к оплате', icon: '✓', iconBg: '#E4F3E9', iconFg: '#1A7A4B', b: B.approved },
+        { label: 'ОТКЛОНЕНО', value: '2', unit: 'заявки', note: 'Требуют исправления', icon: '!', iconBg: '#FAE7E4', iconFg: '#B93227', b: B.rejected },
+      ],
+      showDir: this.props.showDirectorStatus ?? true,
+      showCharts: this.props.showCharts ?? true,
+      submit: () => {},
+
+      tab: { trip: tab(s.carTab, 'trip'), exp: tab(s.carTab, 'expense') },
+      carTrip: s.carTab === 'trip', carExp: s.carTab === 'expense',
+      goTrip: () => this.setState({ carTab: 'trip' }),
+      goExpense: () => this.setState({ carTab: 'expense' }),
+
+      ht: { pay: tab(s.histTab, 'pay'), trip: tab(s.histTab, 'trip'), auto: tab(s.histTab, 'auto') },
+      goHPay: () => this.setState({ histTab: 'pay' }),
+      goHTrip: () => this.setState({ histTab: 'trip' }),
+      goHAuto: () => this.setState({ histTab: 'auto' }),
+
+      payRows: this.PAY.map(payRow),
+      carRows: this.CAR.map(carRow),
+      autoRows: this.AUTO.map(carRow),
+      histRows,
+      filters: [
+        { label: 'ФИЛЬТР ПО ПРОЕКТУ', opts: ['Все проекты', 'IT-Khona Web', 'Офис', 'Альфа'] },
+        { label: 'ТИП (Оплата/Авто)', opts: ['Все типы', 'Заявки на оплату', 'Заявки на машину', 'Расходы на авто'] },
+        { label: 'ПЕРИОД (Дата)', opts: ['За месяц', 'За квартал', 'За год', 'Всё время'] },
+        { label: 'СТАТУС', opts: ['Все статусы', 'Одобрено', 'На рассмотрении', 'Отклонено'] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

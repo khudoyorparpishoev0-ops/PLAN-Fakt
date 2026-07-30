@@ -1,10 +1,30 @@
-/** Fixture-данные кабинета операционного бухгалтера (файл «Кабинет Бухгалтера.dc.html»
- *  в пакет не вошёл — данные восстановлены по README и ТЗ, раздел 4). */
-import { badge, type BadgeData } from '../lib/badges';
+/** Fixture-данные кабинета операционного бухгалтера.
+ *  Визуальный эталон — «Кабинет Бухгалтера.dc.html»; данные-примеры расширены
+ *  относительно прототипа и согласованы с проектами админ-панели. */
+import type { BadgeData } from '../lib/badges';
 
 /** Сквозной статус заявки: Черновик → Отправлено → На рассмотрении → Одобрено / Отклонено. */
 export type ReqStatus = 'Черновик' | 'Отправлено' | 'На рассмотрении' | 'Одобрено' | 'Отклонено';
 export type ReqKind = 'payment' | 'trip' | 'auto';
+
+/** Палитра статус-бейджей кабинета — 1:1 из прототипа (карта B, строки 393–399).
+ *  Отличается от админ-панели: синий #3E6B8A/#E7F0F6/#4E86AE, жёлтый #9A6B00/#FCF1D6/#E5A400,
+ *  зелёный фон #E4F3E9, серый #6B7370/#EFEEEA/#A6ACA8. */
+export const CB = {
+  draft: { t: 'Черновик', fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' },
+  sent: { t: 'Отправлено', fg: '#3E6B8A', bg: '#E7F0F6', dot: '#4E86AE' },
+  pending: { t: 'На рассмотрении', fg: '#9A6B00', bg: '#FCF1D6', dot: '#E5A400' },
+  approved: { t: 'Одобрено', fg: '#1A7A4B', bg: '#E4F3E9', dot: '#22935B' },
+  rejected: { t: 'Отклонено', fg: '#B93227', bg: '#FAE7E4', dot: '#D24A3D' },
+} as const;
+
+/** Бейдж статуса проекта в кабинете — карта PB прототипа (строка 449):
+ *  «В работе» зелёный, «Плановый» синий, «Завершён» серый. */
+export function cabProjB(status: 'plan' | 'work' | 'done'): BadgeData {
+  if (status === 'work') return { t: 'В работе', fg: '#1A7A4B', bg: '#E4F3E9', dot: '#22935B' };
+  if (status === 'plan') return { t: 'Плановый', fg: '#3E6B8A', bg: '#E7F0F6', dot: '#4E86AE' };
+  return { t: 'Завершён', fg: '#6B7370', bg: '#EFEEEA', dot: '#A6ACA8' };
+}
 
 export interface PayReq {
   id: string; date: string; project: string; name: string; amount: number;
@@ -20,18 +40,21 @@ export interface CarReq {
   currency: string; status: ReqStatus; receipt?: string;
 }
 
-/** Бейдж собственного статуса заявки (колонка «Статус»). */
+/** Бейдж собственного статуса заявки (колонка «Статус»): черновик / на рассмотрении /
+ *  отправлено — как в строках PAY прототипа (own остаётся «Отправлено» и после решения). */
 export function ownB(st: ReqStatus): BadgeData {
-  return st === 'Черновик' ? badge('Черновик', 'gray') : badge('Отправлено', 'blue');
+  if (st === 'Черновик') return CB.draft;
+  if (st === 'На рассмотрении') return CB.pending;
+  return CB.sent;
 }
 /** Бейдж решения директора (колонка «Директор»). */
 export function dirB(st: ReqStatus): BadgeData {
   switch (st) {
-    case 'Черновик': return badge('—', 'gray');
-    case 'Отправлено': return badge('Ожидает', 'gray');
-    case 'На рассмотрении': return badge('На рассмотрении', 'yellow');
-    case 'Одобрено': return badge('Одобрено', 'green');
-    case 'Отклонено': return badge('Отклонено', 'red');
+    case 'Черновик': return { ...CB.draft, t: '—' };
+    case 'Отправлено': return { ...CB.draft, t: 'Ожидает' };
+    case 'На рассмотрении': return CB.pending;
+    case 'Одобрено': return CB.approved;
+    case 'Отклонено': return CB.rejected;
   }
 }
 

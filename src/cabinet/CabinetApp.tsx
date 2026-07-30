@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ACC, applyThemeVars } from '../theme';
+import { ACC, applyThemeVars, num } from '../theme';
+import { fmt } from '../lib/format';
 import { Logo } from '../components/ui';
-import { PAY, TRIPS, CARS, type PayReq, type TripReq, type CarReq, type ReqKind } from '../data/cabinet';
+import {
+  PAY, TRIPS, CARS, CB, KM_RATE,
+  type PayReq, type TripReq, type CarReq, type ReqKind, type ReqStatus,
+} from '../data/cabinet';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import HistoryScreen from './HistoryScreen';
@@ -31,16 +35,49 @@ function NavItem({ label, icon, active, onClick }: { label: string; icon: JSX.El
   );
 }
 
+/* Иконки бокового меню — 1:1 из прототипа кабинета (строки 32–42). */
 const I = {
-  pay: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="1.8" /><path d="M1.5 6.5h13" /></svg>,
-  car: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="4" width="9" height="6.5" rx="1" /><path d="M10 6.5h2.5L15 9v1.5h-5" /><circle cx="4" cy="11.5" r="1.2" /><circle cx="12" cy="11.5" r="1.2" /></svg>,
-  hist: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3.5h12M2 8h12M2 12.5h8" /></svg>,
-  prj: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="12" height="8.5" rx="1.8" /><path d="M6 5V3.8A1.3 1.3 0 017.3 2.5h1.4A1.3 1.3 0 0110 3.8V5" /><path d="M2 8.7h12" /></svg>,
+  pay: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="2" /><path d="M1.5 6.5h13" /><path d="M4 10h3" /></svg>,
+  car: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 10l1-3.4A2 2 0 015 5.2h6a2 2 0 011.9 1.4L14 10" /><rect x="1.5" y="9.7" width="13" height="3.3" rx="1.2" /><circle cx="4.5" cy="13.4" r=".8" fill="currentColor" stroke="none" /><circle cx="11.5" cy="13.4" r=".8" fill="currentColor" stroke="none" /></svg>,
+  hist: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 14V2" /><path d="M2 13h12" /><rect x="4" y="8.5" width="2.4" height="4" rx=".5" fill="currentColor" stroke="none" /><rect x="7.6" y="5.5" width="2.4" height="7" rx=".5" fill="currentColor" stroke="none" /><rect x="11.2" y="3" width="2.4" height="9.5" rx=".5" fill="currentColor" stroke="none" /></svg>,
+  proj: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="12" height="8.5" rx="1.8" /><path d="M6 5V3.8A1.3 1.3 0 017.3 2.5h1.4A1.3 1.3 0 0110 3.8V5" /><path d="M2 8.7h12" /></svg>,
 };
 
 const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) => (
   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'rgba(255,255,255,.4)', padding: `${pt}px 22px 6px` }}>{children}</div>
 );
+
+/** Склонение «заявка / заявки / заявок». */
+function pluralReq(n: number): string {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? 'заявка' : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? 'заявки' : 'заявок';
+}
+
+/** KPI-карточка кабинета — паттерн прототипа (строки 82–91). */
+function KpiCard({ label, value, unit, note, icon, iconBg, iconFg, b }: {
+  label: string; value: string; unit: string; note: string;
+  icon: string; iconBg: string; iconFg: string; b: { t: string; fg: string; bg: string; dot: string };
+}) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '15px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: iconBg, color: iconFg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 14, fontWeight: 700 }}>{icon}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#8A918D' }}>{label}</span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, color: b.fg, background: b.bg }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.dot }} />{b.t}
+        </span>
+      </div>
+      <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-.02em', ...num }}>
+        {value} <span style={{ fontSize: 11.5, fontWeight: 500, color: '#8A918D', fontFamily: "'Golos Text',sans-serif" }}>{unit}</span>
+      </div>
+      <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 6 }}>{note}</div>
+    </div>
+  );
+}
+
+const CHIP: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer' };
 
 export interface CabinetAppProps {
   onSwitchRole?: () => void;
@@ -48,6 +85,7 @@ export interface CabinetAppProps {
 
 export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
   const [screen, setScreen] = useState<CabScreen>('pay');
+  const [period, setPeriod] = useState('Месяц');
   const [pays, setPays] = useState<PayReq[]>(PAY);
   const [trips, setTrips] = useState<TripReq[]>(TRIPS);
   const [cars, setCars] = useState<CarReq[]>(CARS);
@@ -70,6 +108,17 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
     if (kind === 'auto') setCars(p => p.filter(r => r.id !== id));
   };
 
+  /* ── KPI поверх всех трёх видов заявок (значения считаются из данных) ── */
+  const all: { status: ReqStatus; amount: number }[] = [
+    ...pays.map(p => ({ status: p.status, amount: p.amount })),
+    ...trips.map(t => ({ status: t.status, amount: t.km * KM_RATE })),
+    ...cars.map(c => ({ status: c.status, amount: c.amount })),
+  ];
+  const count = (st: ReqStatus) => all.filter(r => r.status === st).length;
+  const nSent = count('Отправлено'), nPend = count('На рассмотрении'), nRej = count('Отклонено');
+  const approvedRows = all.filter(r => r.status === 'Одобрено');
+  const approvedSum = approvedRows.reduce((s, r) => s + r.amount, 0);
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
       <div style={{ width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
@@ -85,27 +134,31 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
         <NavItem label="Заявки на машину" icon={I.car} active={screen === 'car'} onClick={() => setScreen('car')} />
         <SectionLabel>ОТЧЁТЫ</SectionLabel>
         <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => setScreen('history')} />
-        <NavItem label="Проекты" icon={I.prj} active={screen === 'projects'} onClick={() => setScreen('projects')} />
-        <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>МС</div>
+        <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => setScreen('projects')} />
+        <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>Ф</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Мунира Саидова</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Фаридун</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Операционный бухгалтер</div>
           </div>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: '#FFFFFF', borderBottom: '1px solid #E7E5E0' }}>
+        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
           <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.01em' }}>{TITLES[screen]}</div>
           <div style={{ fontSize: 12, color: '#8A918D' }}>Октябрь 2026 · суммы в сомони (TJS)</div>
           <div style={{ flex: 1 }} />
+          <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
+            <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
+            <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#6B7370' }}>Телефон</div>
+          </div>
           <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: '#A6ACA8' }}>▾</span>
           </div>
-          <div className="hv-soft" style={{ position: 'relative', width: 38, height: 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}>
+          <div className="hv-soft" style={{ position: 'relative', width: 38, height: 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', flex: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
-            <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>1</span>
+            <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
           </div>
           {onSwitchRole && (
             <div onClick={onSwitchRole} className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
@@ -114,6 +167,33 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
           )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
+          {/* ── Общая панель периодов и фильтров (прототип, строки 68–80) ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
+              {['День', 'Неделя', 'Месяц', 'Квартал', 'Год'].map(t => {
+                const a = period === t;
+                return (
+                  <div key={t} onClick={() => setPeriod(t)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? '#1B1F1E' : '#6B7370', background: a ? '#FFFFFF' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{t}</div>
+                );
+              })}
+            </div>
+            <div style={{ width: 1, height: 22, background: '#E0DED8' }} />
+            <div className="hv-soft" style={CHIP}>Проект: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
+            <div className="hv-soft" style={CHIP}>Статус: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
+            <div className="hv-soft" style={CHIP}>Валюта: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>TJS</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
+            <div style={{ flex: 1 }} />
+            <div style={{ position: 'relative' }}>
+              <input placeholder="Поиск по заявкам" style={{ width: 230, height: 34, border: '1px solid #E0DED8', borderRadius: 8, background: '#fff', padding: '0 12px 0 34px', fontSize: 12.5, outline: 'none' }} />
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" strokeWidth="1.6" style={{ position: 'absolute', left: 11, top: 9 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
+            </div>
+          </div>
+          {/* ── Общий KPI-ряд (прототип, строки 81–92; значения считаются из данных) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+            <KpiCard label="ОТПРАВЛЕНО" value={String(nSent)} unit={pluralReq(nSent)} note="За месяц" icon="↗" iconBg="rgba(27,122,60,.1)" iconFg={ACC} b={CB.sent} />
+            <KpiCard label="НА РАССМОТРЕНИИ" value={String(nPend)} unit={pluralReq(nPend)} note="Ждут решения Директора" icon="⏱" iconBg="#FCF1D6" iconFg="#9A6B00" b={CB.pending} />
+            <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={`${approvedRows.length} ${pluralReq(approvedRows.length)} к оплате`} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
+            <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="#FAE7E4" iconFg="#B93227" b={CB.rejected} />
+          </div>
           {screen === 'pay' && <PayRequestsScreen pays={pays} trips={trips} cars={cars} addPay={addPay} toast={toast} />}
           {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} addTrip={addTrip} addCar={addCar} toast={toast} />}
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} deleteReq={deleteReq} />}
