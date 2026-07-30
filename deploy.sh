@@ -214,6 +214,44 @@ say "Сборка и запуск backend + frontend"
 docker rm -f it-hona-frontend >/dev/null 2>&1 || true
 $COMPOSE -f "$COMPOSE_FILE" --project-directory /opt/app up -d --build backend frontend
 
+# ── Ожидание готовности backend ─────────────────────────────────────────────
+# Миграции и seed нельзя запускать на падающем/перезапускающемся контейнере:
+# ждём state=running и ответ 200 от /api/health (он же проверяет связь с БД).
+STEP="ожидание готовности backend"
+say "Ожидание backend (running + /api/health)"
+CID=$($COMPOSE -f "$COMPOSE_FILE" --project-directory /opt/app ps -q backend)
+if [ -z "$CID" ]; then
+  echo "Контейнер backend не создан — смотрите вывод compose выше."
+  exit 1
+fi
+state=unknown; hcode=000; ready=""
+i=0
+while [ $i -lt 30 ]; do
+  state=$(docker inspect -f '{{.State.Status}}' "$CID" 2>/dev/null || echo unknown)
+  restarts=$(docker inspect -f '{{.RestartCount}}' "$CID" 2>/dev/null || echo 0)
+  if [ "${restarts:-0}" -ge 3 ]; then
+    echo "backend падает при старте и перезапускается (RestartCount=$restarts, state=$state)."
+    echo "Последние логи backend:"
+    docker logs --tail 40 "$CID" 2>&1 | sed 's/^/  | /'
+    exit 1
+  fi
+  if [ "$state" = "running" ]; then
+    hcode=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health || echo 000)
+    if [ "$hcode" = "200" ]; then ready=1; break; fi
+  fi
+  i=$((i + 1))
+  sleep 2
+done
+if [ -z "$ready" ]; then
+  echo "backend не готов за 60 с (state=$state, /api/health -> HTTP $hcode)."
+  if [ "$hcode" = "503" ]; then
+    echo "Процесс жив, но БД недоступна — проверьте DATABASE_URL в $ENV_FILE (хост = имя сервиса postgres)."
+  fi
+  echo "Последние логи backend:"
+  docker logs --tail 40 "$CID" 2>&1 | sed 's/^/  | /'
+  exit 1
+fi
+
 STEP="миграции БД (prisma migrate deploy)"
 say "Миграции БД"
 $COMPOSE -f "$COMPOSE_FILE" --project-directory /opt/app exec -T backend npx prisma migrate deploy

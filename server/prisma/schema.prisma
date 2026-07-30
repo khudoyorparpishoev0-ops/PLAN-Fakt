@@ -5,6 +5,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // native — для локальной разработки; debian-openssl-3.0.x — рантайм
+  // контейнера (node:20-slim, Debian bookworm, OpenSSL 3).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
