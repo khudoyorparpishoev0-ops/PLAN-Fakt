@@ -161,14 +161,31 @@ async function seedRolesAndUsers() {
       if (!envPassword) {
         console.log(`  [seed] Пароль для ${u.email} (сгенерирован, сохраните): ${password}`);
       }
+      // Пароль из seed — временный: mustChangePassword=true (default схемы)
       await prisma.user.create({
         data: { email: u.email, name: u.name, roleId: role.id, passwordHash: await bcrypt.hash(password, 10) },
       });
-    } else if (envPassword) {
+      continue;
+    }
+    await prisma.user.update({ where: { email: u.email }, data: { name: u.name, roleId: role.id } });
+    if (!envPassword) continue;
+    // Пользователь уже сменил пароль в интерфейсе — seed его не перетирает
+    if (existing.passwordChangedAt) {
+      const same = existing.passwordHash && (await bcrypt.compare(envPassword, existing.passwordHash));
+      if (!same) {
+        console.log(`  [seed] ${u.email}: пароль изменён пользователем — значение ${u.envVar} игнорируется`);
+      }
+      continue;
+    }
+    // SEED_PASSWORD_* изменился — обновляем хэш (bcrypt.compare, чтобы не
+    // перезаписывать одинаковый пароль новым хэшем на каждом запуске)
+    const unchanged = existing.passwordHash && (await bcrypt.compare(envPassword, existing.passwordHash));
+    if (!unchanged) {
       await prisma.user.update({
         where: { email: u.email },
-        data: { name: u.name, roleId: role.id, passwordHash: await bcrypt.hash(envPassword, 10) },
+        data: { passwordHash: await bcrypt.hash(envPassword, 10), mustChangePassword: true },
       });
+      console.log(`  [seed] ${u.email}: пароль обновлён из ${u.envVar} (временный, сменить при входе)`);
     }
   }
 }

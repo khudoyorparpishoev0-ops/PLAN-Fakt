@@ -35,6 +35,10 @@ model User {
   email        String    @unique
   phone        String?
   passwordHash String?   @map("password_hash")
+  // Пароли из seed — временные: при первом входе интерфейс потребует смену
+  // (форсирование — на шаге 2 вместе с авторизацией).
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  passwordChangedAt  DateTime? @map("password_changed_at") // когда пользователь сменил пароль сам
   roleId       Int       @map("role_id")
   role         Role      @relation(fields: [roleId], references: [id])
   active       Boolean   @default(true)

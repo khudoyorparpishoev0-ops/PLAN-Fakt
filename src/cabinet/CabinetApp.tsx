@@ -80,6 +80,59 @@ function KpiCard({ label, value, unit, note, icon, iconBg, iconFg, b }: {
 
 const CHIP: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer' };
 
+const PWD_LAB: React.CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
+const PWD_INP: React.CSSProperties = { width: '100%', height: 38, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 11px', fontSize: 13, outline: 'none', background: '#fff' };
+
+/** Модалка «Сменить пароль» (пароли из первоначальной настройки — временные).
+ *  Демо-поведение до подключения API (шаг 3): валидация + тост. */
+function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [repeat, setRepeat] = useState('');
+  const valid = current.length > 0 && next.length >= 8 && repeat === next;
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 440, maxWidth: '94vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ fontSize: 17, fontWeight: 700 }}>Сменить пароль</div>
+          <div onClick={onClose} className="hv-cream" style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: '#8A918D', lineHeight: 1.5, marginBottom: 16 }}>
+          Пароль из первоначальной настройки — временный: смените его при первом входе.
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={PWD_LAB}>Текущий пароль</div>
+          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="••••••••" style={PWD_INP} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={PWD_LAB}>Новый пароль</div>
+          <input type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="Минимум 8 символов" style={PWD_INP} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={PWD_LAB}>Повторите пароль</div>
+          <input type="password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Ещё раз новый пароль" style={PWD_INP} />
+          {repeat.length > 0 && repeat !== next && (
+            <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>Пароли не совпадают</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отменить</div>
+          <div
+            onClick={valid ? onDone : undefined}
+            className={valid ? 'hv-dim' : undefined}
+            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+          >
+            Сменить пароль
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export interface CabinetAppProps {
   onSwitchRole?: () => void;
 }
@@ -91,6 +144,7 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
   const [trips, setTrips] = useState<TripReq[]>(TRIPS);
   const [cars, setCars] = useState<CarReq[]>(CARS);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [pwdModal, setPwdModal] = useState(false);
 
   useEffect(() => { applyThemeVars(); }, []);
   useEffect(() => {
@@ -141,7 +195,7 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
         <SectionLabel>ОТЧЁТЫ</SectionLabel>
         <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => setScreen('history')} />
         <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => setScreen('projects')} />
-        <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
+        <div onClick={() => setPwdModal(true)} title="Сменить пароль" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>Ф</div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Фаридун</div>
@@ -206,6 +260,12 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} />}
         </div>
       </div>
+      {pwdModal && (
+        <ChangePasswordModal
+          onClose={() => setPwdModal(false)}
+          onDone={() => { setPwdModal(false); toast('Пароль обновлён'); }}
+        />
+      )}
       {toastMsg && (
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#1B1F1E', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', animation: 'finFade .18s ease', display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#22935B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
