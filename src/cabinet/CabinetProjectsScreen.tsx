@@ -1,7 +1,8 @@
 import { num } from '../theme';
 import { fmt } from '../lib/format';
 import { PROJECTS } from '../data/admin';
-import { KM_RATE, cabProjB, type CarReq, type PayReq, type ReqStatus, type TripReq } from '../data/cabinet';
+import { cabProjB, type CarReq, type PayReq, type ReqStatus, type TripReq } from '../data/cabinet';
+import { tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
 
 export interface CabinetProjectsScreenProps {
@@ -11,19 +12,36 @@ export interface CabinetProjectsScreenProps {
 }
 
 export default function CabinetProjectsScreen({ pays, trips, cars }: CabinetProjectsScreenProps) {
-  /* Все мои заявки, нормализованные к { project, status, amount } (поездки — компенсация км). */
-  const all: { project: string; status: ReqStatus; amount: number }[] = [
-    ...pays.map((r) => ({ project: r.project, status: r.status, amount: r.amount })),
-    ...trips.map((r) => ({ project: r.project, status: r.status, amount: r.km * KM_RATE })),
-    ...cars.map((r) => ({ project: r.project, status: r.status, amount: r.amount })),
+  /* Все мои заявки, нормализованные к { project, status, amount, km }.
+   * Поездки в деньгах учитываются только при заданной ставке (settings.kmRate);
+   * пока ставка не задана — их километры показываются второй строкой. */
+  const all: { project: string; status: ReqStatus; amount: number; km: number }[] = [
+    ...pays.map((r) => ({ project: r.project, status: r.status, amount: r.amount, km: 0 })),
+    ...trips.map((r) => ({ project: r.project, status: r.status, amount: tripAmount(r.km), km: r.km })),
+    ...cars.map((r) => ({ project: r.project, status: r.status, amount: r.amount, km: 0 })),
   ];
 
   const rows = PROJECTS.filter((p) => !p.archived).map((p) => {
     const mine = all.filter((r) => r.project === p.name);
-    const ok = mine.filter((r) => r.status === 'Одобрено').reduce((s, r) => s + r.amount, 0);
-    const wait = mine.filter((r) => r.status === 'Отправлено' || r.status === 'На рассмотрении').reduce((s, r) => s + r.amount, 0);
+    const bucket = (pred: (r: (typeof all)[number]) => boolean) => {
+      const rs = mine.filter(pred);
+      return {
+        sum: rs.reduce((s, r) => s + r.amount, 0),
+        km: rs.reduce((s, r) => s + (r.amount === 0 ? r.km : 0), 0),
+      };
+    };
+    const ok = bucket((r) => r.status === 'Одобрено');
+    const wait = bucket((r) => r.status === 'Отправлено' || r.status === 'На рассмотрении');
     return { name: p.name, group: p.group, resp: p.resp, cnt: mine.length, ok, wait, b: cabProjB(p.status) };
   });
+
+  /** Денежная сумма + непересчитанные километры второй строкой. */
+  const SumCell = ({ v }: { v: { sum: number; km: number } }) => (
+    <>
+      <div>{fmt(v.sum)} TJS</div>
+      {v.km > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: '#A6ACA8' }}>+ {fmt(v.km)} км</div>}
+    </>
+  );
 
   return (
     <div data-screen-label="Проекты" style={{ animation: 'cabFade .2s ease' }}>
@@ -53,8 +71,8 @@ export default function CabinetProjectsScreen({ pays, trips, cars }: CabinetProj
                 </td>
                 <td style={{ ...TD_CAB, fontSize: 12.5, color: '#5A625E' }}>{r.resp}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', ...num }}>{r.cnt}</td>
-                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#1A7A4B', ...num, whiteSpace: 'nowrap' }}>{fmt(r.ok)} TJS</td>
-                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#9A6B00', ...num, whiteSpace: 'nowrap' }}>{fmt(r.wait)} TJS</td>
+                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#1A7A4B', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.ok} /></td>
+                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#9A6B00', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.wait} /></td>
                 <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={r.b} /></td>
               </tr>
             ))}

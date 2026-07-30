@@ -3,9 +3,10 @@ import { ACC, applyThemeVars, num } from '../theme';
 import { fmt } from '../lib/format';
 import { Logo } from '../components/ui';
 import {
-  PAY, TRIPS, CARS, CB, KM_RATE,
+  PAY, TRIPS, CARS, CB,
   type PayReq, type TripReq, type CarReq, type ReqKind, type ReqStatus,
 } from '../data/cabinet';
+import { tripAmount } from '../data/settings';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import HistoryScreen from './HistoryScreen';
@@ -108,16 +109,21 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
     if (kind === 'auto') setCars(p => p.filter(r => r.id !== id));
   };
 
-  /* ── KPI поверх всех трёх видов заявок (значения считаются из данных) ── */
-  const all: { status: ReqStatus; amount: number }[] = [
-    ...pays.map(p => ({ status: p.status, amount: p.amount })),
-    ...trips.map(t => ({ status: t.status, amount: t.km * KM_RATE })),
-    ...cars.map(c => ({ status: c.status, amount: c.amount })),
+  /* ── KPI поверх всех трёх видов заявок (значения считаются из данных).
+   *    Поездки в деньгах учитываются только при заданной ставке (settings.kmRate);
+   *    иначе одобренные километры показываются отдельно, в подписи карточки. ── */
+  const all: { status: ReqStatus; amount: number; km: number }[] = [
+    ...pays.map(p => ({ status: p.status, amount: p.amount, km: 0 })),
+    ...trips.map(t => ({ status: t.status, amount: tripAmount(t.km), km: t.km })),
+    ...cars.map(c => ({ status: c.status, amount: c.amount, km: 0 })),
   ];
   const count = (st: ReqStatus) => all.filter(r => r.status === st).length;
   const nSent = count('Отправлено'), nPend = count('На рассмотрении'), nRej = count('Отклонено');
   const approvedRows = all.filter(r => r.status === 'Одобрено');
   const approvedSum = approvedRows.reduce((s, r) => s + r.amount, 0);
+  const approvedKm = approvedRows.reduce((s, r) => s + (r.amount === 0 ? r.km : 0), 0);
+  const approvedNote = `${approvedRows.length} ${pluralReq(approvedRows.length)} к оплате`
+    + (approvedKm > 0 ? ` · ${fmt(approvedKm)} км` : '');
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
@@ -191,7 +197,7 @@ export default function CabinetApp({ onSwitchRole }: CabinetAppProps) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
             <KpiCard label="ОТПРАВЛЕНО" value={String(nSent)} unit={pluralReq(nSent)} note="За месяц" icon="↗" iconBg="rgba(27,122,60,.1)" iconFg={ACC} b={CB.sent} />
             <KpiCard label="НА РАССМОТРЕНИИ" value={String(nPend)} unit={pluralReq(nPend)} note="Ждут решения Директора" icon="⏱" iconBg="#FCF1D6" iconFg="#9A6B00" b={CB.pending} />
-            <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={`${approvedRows.length} ${pluralReq(approvedRows.length)} к оплате`} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
+            <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
             <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="#FAE7E4" iconFg="#B93227" b={CB.rejected} />
           </div>
           {screen === 'pay' && <PayRequestsScreen pays={pays} trips={trips} cars={cars} addPay={addPay} toast={toast} />}

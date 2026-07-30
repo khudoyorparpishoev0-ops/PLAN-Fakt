@@ -89,8 +89,7 @@ export const CARS: CarReq[] = [
   { id: 'А-026', date: '13.10.2026', project: 'Насосная станция Вахдат', category: 'Запчасти', amount: 740, currency: 'TJS', status: 'Одобрено', receipt: 'чек_1310.jpg' },
 ];
 
-/** Норма компенсации поездок для оценки расходов, смн/км (для мини-графиков). */
-export const KM_RATE = 2;
+/* Ставка компенсации поездок перенесена в настройки: src/data/settings.ts (kmRate, по умолчанию 0). */
 
 /** Статистика по месяцам (мои заявки, суммы в TJS): для линейного мини-графика. */
 export const MONTHLY: { m: string; sum: number }[] = [

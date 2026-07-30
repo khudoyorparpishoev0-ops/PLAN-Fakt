@@ -2,9 +2,10 @@ import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'r
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
 import {
-  CABINET_PROJECTS, KM_RATE, MONTHLY, dirB,
+  CABINET_PROJECTS, MONTHLY, dirB,
   type CarReq, type PayReq, type ReqKind, type ReqStatus, type TripReq,
 } from '../data/cabinet';
+import { kmRateSet, tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
 
 export interface HistoryScreenProps {
@@ -53,12 +54,14 @@ function HistTab({ active, label, onClick }: { active: boolean; label: string; o
 }
 
 /** Компактный пончик 60×60 в шапке реестра (прототип, строки 320–330).
- *  Цвета категорий — из прототипа: Оплаты #22935B, Поездки #E5A400, Авто #D24A3D. */
-function MiniDonut({ items }: { items: { label: string; value: number; color: string }[] }) {
-  const total = items.reduce((s, it) => s + it.value, 0);
+ *  Цвета категорий — из прототипа: Оплаты #22935B, Поездки #E5A400, Авто #D24A3D.
+ *  ringValue — денежная доля в кольце; legendText — подпись в легенде
+ *  (для поездок без заданной ставки компенсации — километры, а не сумма). */
+function MiniDonut({ items }: { items: { label: string; ringValue: number; legendText: string; color: string }[] }) {
+  const total = items.reduce((s, it) => s + it.ringValue, 0);
   let acc = 0;
   const segs = items.map((it) => {
-    const pct = total > 0 ? (it.value / total) * 100 : 0;
+    const pct = total > 0 ? (it.ringValue / total) * 100 : 0;
     const seg = { color: it.color, dash: pct, offset: 25 - acc };
     acc += pct;
     return seg;
@@ -67,7 +70,7 @@ function MiniDonut({ items }: { items: { label: string; value: number; color: st
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #EDEBE6', borderRadius: 12, padding: '10px 14px', background: '#FBFBF9' }}>
       <svg width="60" height="60" viewBox="0 0 42 42">
         <circle cx="21" cy="21" r="15.915" fill="none" stroke="#EFEEE9" strokeWidth="7" />
-        {total > 0 && segs.map((s, i) => (
+        {total > 0 && segs.filter((s) => s.dash > 0).map((s, i) => (
           <circle key={i} cx="21" cy="21" r="15.915" fill="none" stroke={s.color} strokeWidth="7"
             pathLength={100} strokeDasharray={`${s.dash} ${100 - s.dash}`} strokeDashoffset={s.offset} />
         ))}
@@ -75,14 +78,11 @@ function MiniDonut({ items }: { items: { label: string; value: number; color: st
       <div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#5A625E', marginBottom: 6 }}>Расходы по категориям</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {items.map((it) => {
-            const pct = total > 0 ? Math.round((it.value / total) * 100) : 0;
-            return (
-              <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7370' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: it.color }} />{it.label} · {pct}%
-              </div>
-            );
-          })}
+          {items.map((it) => (
+            <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7370' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: it.color }} />{it.label} · {it.legendText}
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -251,11 +251,21 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   const filteredTrips = trips.filter((r) => passes(r.project, r.status));
   const filteredCars = cars.filter((r) => passes(r.project, r.status));
 
-  /* ── Донат: категории поверх всех трёх видов; цвета — из прототипа ── */
+  /* ── Донат: категории поверх всех трёх видов; цвета — из прототипа.
+   *    Поездки: при заданной ставке — денежная доля в кольце и % в легенде,
+   *    иначе — километры в легенде и без сегмента (в кольце только деньги). ── */
+  const sumPays = filteredPays.reduce((s, r) => s + r.amount, 0);
+  const sumCars = filteredCars.reduce((s, r) => s + r.amount, 0);
+  const tripsKm = filteredTrips.reduce((s, r) => s + r.km, 0);
+  const tripsMoney = filteredTrips.reduce((s, r) => s + tripAmount(r.km), 0);
+  const ringTotal = sumPays + sumCars + tripsMoney;
+  const pctOf = (v: number) => (ringTotal > 0 ? Math.round((v / ringTotal) * 100) : 0) + '%';
   const donutItems = [
-    { label: 'Оплаты', value: filteredPays.reduce((s, r) => s + r.amount, 0), color: '#22935B' },
-    { label: 'Поездки', value: filteredTrips.reduce((s, r) => s + r.km * KM_RATE, 0), color: '#E5A400' },
-    { label: 'Авто', value: filteredCars.reduce((s, r) => s + r.amount, 0), color: '#D24A3D' },
+    { label: 'Оплаты', ringValue: sumPays, legendText: pctOf(sumPays), color: '#22935B' },
+    kmRateSet()
+      ? { label: 'Поездки', ringValue: tripsMoney, legendText: pctOf(tripsMoney), color: '#E5A400' }
+      : { label: 'Поездки', ringValue: 0, legendText: `${fmt(tripsKm)} км`, color: '#E5A400' },
+    { label: 'Авто', ringValue: sumCars, legendText: pctOf(sumCars), color: '#D24A3D' },
   ];
 
   const rows: HistRow[] =
