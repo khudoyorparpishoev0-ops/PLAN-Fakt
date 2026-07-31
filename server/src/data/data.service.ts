@@ -243,6 +243,95 @@ export class DataService {
     };
   }
 
+  /** Операция из одобренной заявки неизменяема (ТЗ, п. 5): её нельзя
+   *  подтвердить, удалить или перенести в другой проект — только сторно. */
+  private fromRequest(externalRef: string | null): boolean {
+    return !!externalRef?.startsWith('req:');
+  }
+
+  /** Карточка операции: полные поля, валюта и курс, история изменений. */
+  async operation(id: number) {
+    const o = await this.prisma.operation.findFirst({
+      where: { id, deletedAt: null },
+      include: { account: true, counterparty: true, article: true, project: true },
+    });
+    if (!o) err(HttpStatus.NOT_FOUND, 'not_found', 'Операция не найдена');
+    const history = await this.prisma.auditLog.findMany({
+      where: { deletedAt: null, entity: 'operation', entityId: String(id) },
+      include: { user: true },
+      orderBy: { id: 'desc' },
+      take: 20,
+    });
+    return {
+      id: o.id,
+      date: dateStr(o.date)!,
+      account: o.account?.name ?? null,
+      accountId: o.accountId,
+      type: o.type,
+      isPlan: o.isPlan,
+      confirmed: o.status === 'confirmed',
+      party: o.counterparty?.name ?? null,
+      article: o.article?.name ?? null,
+      comment: o.comment,
+      project: o.project?.name ?? null,
+      projectId: o.projectId,
+      amount: somoni(o.amountTjsDirams)!,
+      // Сумма в валюте операции и курс на дату (ТЗ, п. 8: мультивалютность)
+      amountOriginal: somoni(o.amountDirams)!,
+      currency: o.currencyCode,
+      rate: Number(o.rate),
+      rateDate: dateStr(o.rateDate),
+      externalRef: o.externalRef,
+      locked: this.fromRequest(o.externalRef),
+      createdAt: o.createdAt.toISOString(),
+      history: history.map((h) => ({
+        at: h.createdAt.toISOString(),
+        user: h.user?.name ?? '—',
+        action: h.action,
+        value: h.newValue,
+      })),
+    };
+  }
+
+  /** Массовые действия журнала (ТЗ, п. 3.2): подтвердить оплату, удалить,
+   *  сменить проект. Операции из одобренных заявок пропускаются. */
+  async bulkOperations(
+    userId: number,
+    ids: number[],
+    action: 'confirm' | 'delete' | 'project',
+    projectId?: number,
+  ) {
+    if (!ids.length) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Не выбрано ни одной операции', 'ids');
+    if (action === 'project') {
+      if (projectId == null) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Укажите проект', 'projectId');
+      const project = await this.prisma.project.findFirst({ where: { id: projectId, deletedAt: null } });
+      if (!project) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Проект не найден', 'projectId');
+    }
+    const rows = await this.prisma.operation.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: { id: true, externalRef: true, status: true },
+    });
+    const allowed = rows.filter((r) => !this.fromRequest(r.externalRef));
+    const skipped = rows.length - allowed.length;
+    const targets = allowed.map((r) => r.id);
+
+    if (targets.length) {
+      if (action === 'confirm') {
+        // Подтверждение оплаты: плановая строка становится фактом
+        await this.prisma.operation.updateMany({
+          where: { id: { in: targets } },
+          data: { status: 'confirmed', isPlan: false },
+        });
+      } else if (action === 'delete') {
+        await this.prisma.operation.updateMany({ where: { id: { in: targets } }, data: { deletedAt: new Date() } });
+      } else {
+        await this.prisma.operation.updateMany({ where: { id: { in: targets } }, data: { projectId } });
+      }
+      await this.auditRef(userId, 'operation', targets[0], `bulk_${action}`, { ids: targets, projectId });
+    }
+    return { updated: targets.length, skipped };
+  }
+
   /* ── План-факт ────────────────────────────────────────────────────────── */
 
   /** План-факт за период (по умолчанию — все данные) вместе с показателями

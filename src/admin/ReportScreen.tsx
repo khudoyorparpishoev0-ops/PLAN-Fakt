@@ -1,11 +1,12 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
-import { api } from '../lib/api';
+import { api, type ApiDictionaries, type ApiProject } from '../lib/api';
 import { ROW_PAD, SOFT, num } from '../theme';
 import { fmt, sgn, pct1 } from '../lib/format';
 import { badge, incDevB, expDevB, profDevB, devInfo, type BadgeData } from '../lib/badges';
 import { Badge, Th } from '../components/ui';
+import ArticleOpsDrawer from './ArticleOpsDrawer';
 
 export interface ReportScreenProps {
   incomes: Income[];
@@ -13,13 +14,25 @@ export interface ReportScreenProps {
   totals: Totals;
   /** Подпись выбранного периода («Октябрь 2026», «2026 год», …). */
   periodLabel: string;
+  /** Границы периода — для детализации операций статьи. */
+  from?: string;
+  to?: string;
+  /** Справочники и проекты: по названию находим id для фильтра журнала. */
+  dicts: ApiDictionaries | null;
+  projects: ApiProject[];
+  onError: (msg: string) => void;
 }
+
+/** Строка, по которой открывается детализация операций (ТЗ, п. 3.1). */
+interface DetailTarget { article: string; articleId?: number; project?: string; projectId?: number }
 
 interface RepRow {
   name: string; planF: string; factF: string; devF: string; devPctF: string; devFg: string;
   b: BadgeData; chev: string; cur: 'default' | 'pointer'; rowBg: string;
   fw: number; fwF: number; nameFg: string; padL: string; resp: string;
   toggle?: () => void;
+  /** Клик по строке — детализация операций статьи. */
+  detail?: DetailTarget;
 }
 
 const expBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' };
@@ -55,6 +68,22 @@ function aggregate(rows: { cat: string; proj: string; plan: number; fact: number
 export default function ReportScreen(props: ReportScreenProps) {
   const { incPlan, incFact, expPlan, expFact, profPlan, profFact } = props.totals;
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [detail, setDetail] = useState<DetailTarget | null>(null);
+
+  /** Название статьи → id (вместе с подстатьями) для фильтра журнала. */
+  const articleIds = useMemo(() => {
+    const map = new Map<string, number>();
+    const all = props.dicts ? [...props.dicts.articles.income, ...props.dicts.articles.expense] : [];
+    for (const a of all) {
+      map.set(a.name, a.id);
+      for (const ch of a.children) map.set(ch.name, ch.id);
+    }
+    return map;
+  }, [props.dicts]);
+  const projectIds = useMemo(
+    () => new Map(props.projects.map(p => [p.name, p.id])),
+    [props.projects],
+  );
 
   const rows: RepRow[] = [];
   const push = (o: Partial<RepRow> & Pick<RepRow, 'name' | 'planF' | 'factF' | 'devF' | 'devPctF' | 'devFg' | 'b'>) =>
@@ -71,7 +100,9 @@ export default function ReportScreen(props: ReportScreenProps) {
       ...devInfo(type, c.plan, c.fact, c.pending),
       b: type === 'inc' ? incDevB(c.plan, c.fact, c.pending) : expDevB(c.plan, c.fact, c.pending),
       resp: c.resp,
-      ...(many ? { chev: open ? '▾' : '▸', cur: 'pointer' as const, toggle: () => setExpanded(st => ({ ...st, [key]: !st[key] })) } : {}),
+      cur: 'pointer' as const,
+      detail: { article: c.name, articleId: articleIds.get(c.name) },
+      ...(many ? { chev: open ? '▾' : '▸', toggle: () => setExpanded(st => ({ ...st, [key]: !st[key] })) } : {}),
     });
     if (many && open) {
       for (const ch of c.children) {
@@ -83,6 +114,8 @@ export default function ReportScreen(props: ReportScreenProps) {
             ? { devF: '—', devPctF: '—', devFg: '#9AA29E', b: badge('Ожидается', 'gray') }
             : { ...devInfo(type, ch.plan, ch.fact), b: type === 'inc' ? incDevB(ch.plan, ch.fact) : expDevB(ch.plan, ch.fact) }),
           padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8',
+          cur: 'pointer' as const,
+          detail: { article: c.name, articleId: articleIds.get(c.name), project: ch.name, projectId: projectIds.get(ch.name) },
         });
       }
     }
@@ -116,8 +149,15 @@ export default function ReportScreen(props: ReportScreenProps) {
           </tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} onClick={r.toggle} style={{ cursor: r.cur, background: r.rowBg }}>
-                <td style={{ padding: ROW_PAD, paddingLeft: r.padL, borderBottom: '1px solid #F3F2ED', fontSize: 13, fontWeight: r.fw, color: r.nameFg }}><span style={{ display: 'inline-block', width: 14, color: '#A6ACA8', fontSize: 10 }}>{r.chev}</span>{r.name}</td>
+              <tr key={i} onClick={r.detail ? () => setDetail(r.detail!) : r.toggle} className={r.cur === 'pointer' ? 'hv-row' : undefined} style={{ cursor: r.cur, background: r.rowBg }}>
+                <td style={{ padding: ROW_PAD, paddingLeft: r.padL, borderBottom: '1px solid #F3F2ED', fontSize: 13, fontWeight: r.fw, color: r.nameFg }}>
+                  <span
+                    onClick={r.toggle ? e => { e.stopPropagation(); r.toggle!(); } : undefined}
+                    title={r.toggle ? 'Показать по проектам' : undefined}
+                    style={{ display: 'inline-block', width: 14, color: '#A6ACA8', fontSize: 10, cursor: r.toggle ? 'pointer' : 'inherit' }}
+                  >{r.chev}</span>
+                  {r.name}
+                </td>
                 <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fw, ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
                 <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fwF, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
                 <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
@@ -129,7 +169,21 @@ export default function ReportScreen(props: ReportScreenProps) {
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
+      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Клик по строке — операции статьи за период, «▸» — разбивка по проектам. Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
+
+      {detail && (
+        <ArticleOpsDrawer
+          article={detail.article}
+          articleId={detail.articleId}
+          project={detail.project}
+          projectId={detail.projectId}
+          from={props.from}
+          to={props.to}
+          periodLabel={props.periodLabel}
+          onClose={() => setDetail(null)}
+          onError={props.onError}
+        />
+      )}
     </div>
   );
 }

@@ -214,6 +214,22 @@ export interface ApiOperation {
   amount: number; // TJS, сомони
 }
 
+/** Карточка операции (ТЗ, п. 3.2 — клик по строке журнала). */
+export interface ApiOperationCard extends ApiOperation {
+  accountId: number | null;
+  projectId: number | null;
+  /** Сумма в валюте операции и курс на дату (ТЗ, п. 8). */
+  amountOriginal: number;
+  currency: string;
+  rate: number;
+  rateDate: string | null;
+  externalRef: string | null;
+  /** Операция из одобренной заявки — правке не подлежит, только сторно. */
+  locked: boolean;
+  createdAt: string;
+  history: { at: string; user: string; action: string; value: unknown }[];
+}
+
 export interface ApiPlanFactRow {
   n: string;
   cat: string;
@@ -511,6 +527,25 @@ export interface ApiAuditRow {
   newValue: unknown;
 }
 
+/** Фильтры журнала → query-строка (одна и та же для списка и выгрузки). */
+function operationsQuery(query: OperationQuery): string {
+  const q = new URLSearchParams();
+  if (query.type?.length) q.set('type', query.type.join(','));
+  if (query.confirmed !== undefined) q.set('confirmed', String(query.confirmed));
+  if (query.dateFrom) q.set('date_from', query.dateFrom);
+  if (query.dateTo) q.set('date_to', query.dateTo);
+  if (query.account != null) q.set('account', String(query.account));
+  if (query.counterparty != null) q.set('counterparty', String(query.counterparty));
+  if (query.article != null) q.set('article', String(query.article));
+  if (query.project != null) q.set('project', String(query.project));
+  if (query.amountMin != null) q.set('amount_min', String(query.amountMin));
+  if (query.amountMax != null) q.set('amount_max', String(query.amountMax));
+  if (query.q) q.set('q', query.q);
+  if (query.limit != null) q.set('limit', String(query.limit));
+  if (query.offset != null) q.set('offset', String(query.offset));
+  return q.toString();
+}
+
 export const api = {
   login: (email: string, password: string) =>
     req<Session>('/auth/login', { method: 'POST', body: { email, password } }),
@@ -546,23 +581,19 @@ export const api = {
     authedReq<ApiRequest>(`/requests/${id}/storno`, { method: 'PATCH', body: comment ? { comment } : {} }),
 
   operations: (query: OperationQuery = {}) => {
-    const q = new URLSearchParams();
-    if (query.type?.length) q.set('type', query.type.join(','));
-    if (query.confirmed !== undefined) q.set('confirmed', String(query.confirmed));
-    if (query.dateFrom) q.set('date_from', query.dateFrom);
-    if (query.dateTo) q.set('date_to', query.dateTo);
-    if (query.account != null) q.set('account', String(query.account));
-    if (query.counterparty != null) q.set('counterparty', String(query.counterparty));
-    if (query.article != null) q.set('article', String(query.article));
-    if (query.project != null) q.set('project', String(query.project));
-    if (query.amountMin != null) q.set('amount_min', String(query.amountMin));
-    if (query.amountMax != null) q.set('amount_max', String(query.amountMax));
-    if (query.q) q.set('q', query.q);
-    if (query.limit != null) q.set('limit', String(query.limit));
-    if (query.offset != null) q.set('offset', String(query.offset));
-    const qs = q.toString();
+    const qs = operationsQuery(query);
     return authedReq<{ rows: ApiOperation[]; total: number }>(`/operations${qs ? `?${qs}` : ''}`);
   },
+
+  /** Карточка операции: валюта и курс, признак «из заявки», история. */
+  operation: (id: number) => authedReq<ApiOperationCard>(`/operations/${id}`),
+
+  /** Массовые действия журнала: подтвердить, удалить, сменить проект. */
+  bulkOperations: (ids: number[], action: 'confirm' | 'delete' | 'project', projectId?: number) =>
+    authedReq<{ updated: number; skipped: number }>('/operations/bulk', {
+      method: 'PATCH',
+      body: { ids, action, ...(projectId != null ? { projectId } : {}) },
+    }),
 
   createOperation: (payload: CreateOperationPayload) =>
     authedReq<ApiOperation>('/operations', { method: 'POST', body: payload }),
@@ -686,13 +717,14 @@ export const api = {
   notifications: () => authedReq<{ items: ApiNotification[]; count: number }>('/notifications'),
 
   /** Скачать Excel-экспорт (report | projects). */
-  downloadExport: async (name: 'report' | 'projects'): Promise<void> => {
-    const res = await authedFetch(`/export/${name}.xlsx`);
+  downloadExport: async (name: 'report' | 'projects' | 'operations', query?: OperationQuery): Promise<void> => {
+    const qs = name === 'operations' && query ? operationsQuery({ ...query, limit: undefined, offset: undefined }) : '';
+    const res = await authedFetch(`/export/${name}.xlsx${qs ? `?${qs}` : ''}`);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = name === 'report' ? 'план-факт.xlsx' : 'проекты.xlsx';
+    a.download = name === 'report' ? 'план-факт.xlsx' : name === 'projects' ? 'проекты.xlsx' : 'операции.xlsx';
     document.body.appendChild(a);
     a.click();
     a.remove();

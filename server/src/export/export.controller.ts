@@ -1,8 +1,12 @@
-import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import * as ExcelJS from 'exceljs';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
 import { DataService } from '../data/data.service';
+import type { OperationFilters } from '../data/operations.dto';
+
+/** Число из query-строки: пустое и нечисловое → undefined. */
+const num = (v?: string) => (v && Number.isFinite(Number(v)) ? Number(v) : undefined);
 
 /** Экспорт в Excel (ТЗ, п. 9 и критерии приёмки п. 11):
  *  отчёт «План-Факт» и список проектов. Только админ/директор. */
@@ -61,6 +65,59 @@ export class ExportController {
     profit.font = { bold: true, size: 12 };
     [5, 6].forEach((i) => { profit.getCell(i).numFmt = numFmt; });
     await this.send(res, wb, 'план-факт.xlsx');
+  }
+
+  /** Журнал операций с теми же фильтрами, что и на экране (ТЗ, п. 3.2 — «⋯ → экспорт»). */
+  @Get('operations.xlsx')
+  @Roles('admin', 'director')
+  async operations(@Res() res: Response, @Query() q: Record<string, string | undefined>) {
+    const filters: OperationFilters = {
+      type: q.type
+        ? (q.type.split(',').filter((t) => ['in', 'out', 'move', 'accrual'].includes(t)) as OperationFilters['type'])
+        : undefined,
+      confirmed: q.confirmed === 'true' || q.confirmed === 'false' ? q.confirmed : undefined,
+      date_from: q.date_from?.match(/^\d{4}-\d{2}-\d{2}$/) ? q.date_from : undefined,
+      date_to: q.date_to?.match(/^\d{4}-\d{2}-\d{2}$/) ? q.date_to : undefined,
+      account: num(q.account),
+      counterparty: num(q.counterparty),
+      article: num(q.article),
+      project: num(q.project),
+      amount_min: num(q.amount_min),
+      amount_max: num(q.amount_max),
+      q: q.q,
+      // Выгружаем весь отфильтрованный список, а не только видимую страницу
+      limit: 200,
+      offset: 0,
+    };
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Операции');
+    ws.columns = [
+      { width: 12 }, { width: 24 }, { width: 14 }, { width: 26 }, { width: 30 },
+      { width: 26 }, { width: 16 }, { width: 16 }, { width: 34 },
+    ];
+    ws.addRow(['Журнал операций · суммы в сомони (TJS)']).font = { bold: true, size: 13 };
+    ws.addRow([]);
+    this.headerRow(ws, ['Дата', 'Счёт', 'Тип', 'Контрагент', 'Статья', 'Проект', 'Сумма', 'Оплата', 'Примечание']);
+    const TYPE: Record<string, string> = { in: 'Поступление', out: 'Выплата', move: 'Перемещение', accrual: 'Начисление' };
+    let total = 0;
+    for (let offset = 0; ; offset += 200) {
+      const page = await this.data.operations({ ...filters, offset });
+      for (const o of page.rows) {
+        const signed = o.type === 'in' ? o.amount : -o.amount;
+        const row = ws.addRow([
+          o.date, o.account ?? '—', TYPE[o.type] ?? o.type, o.party ?? '—',
+          (o.article ?? '—') + (o.isPlan ? ' (план)' : ''), o.project ?? '—',
+          signed, o.confirmed ? 'Подтверждена' : 'Не подтверждена', o.comment ?? '',
+        ]);
+        row.getCell(7).numFmt = '#,##0.00';
+        total += signed;
+      }
+      if (offset + page.rows.length >= page.total || page.rows.length === 0) break;
+    }
+    const totalRow = ws.addRow(['', 'Итого', '', '', '', '', total, '', '']);
+    totalRow.font = { bold: true };
+    totalRow.getCell(7).numFmt = '#,##0.00';
+    await this.send(res, wb, 'операции.xlsx');
   }
 
   @Get('projects.xlsx')

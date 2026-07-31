@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Matches } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Matches } from 'class-validator';
 
 /** Фильтры журнала операций (ТЗ, п. 9): разбираются из query-строки. */
 export interface OperationFilters {
@@ -64,4 +64,21 @@ export class CreateOperationDto {
   @IsString()
   @Length(0, 500)
   comment?: string;
+}
+
+/** Массовые действия журнала (ТЗ, п. 3.2). */
+export class BulkOperationsDto {
+  @IsArray()
+  @ArrayNotEmpty({ message: 'Не выбрано ни одной операции' })
+  @ArrayMaxSize(500, { message: 'За раз можно обработать не более 500 операций' })
+  @IsInt({ each: true })
+  ids!: number[];
+
+  @IsIn(['confirm', 'delete', 'project'], { message: 'action: confirm | delete | project' })
+  action!: 'confirm' | 'delete' | 'project';
+
+  /** Куда переносим — только для action = project. */
+  @IsOptional()
+  @IsInt()
+  projectId?: number;
 }

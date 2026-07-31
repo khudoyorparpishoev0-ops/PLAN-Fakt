@@ -1,12 +1,40 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ACC, PLEX, num } from '../theme';
 import { fmt } from '../lib/format';
-import { api, ApiError, type ApiDictionaries, type ApiOperation, type ApiProject } from '../lib/api';
+import { api, ApiError, type ApiDictionaries, type ApiOperation, type ApiProject, type OperationQuery } from '../lib/api';
 import { ruDate } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import OperationCard from './OperationCard';
 
 const PAGE = 50;
+
+/** Колонки, которые можно скрыть (ТЗ, п. 3.2 — «⋯ → настройка колонок»). */
+const OPTIONAL_COLUMNS = [
+  { key: 'account', label: 'Счёт' },
+  { key: 'type', label: 'Тип' },
+  { key: 'party', label: 'Контрагент' },
+  { key: 'article', label: 'Статья' },
+  { key: 'project', label: 'Проект' },
+] as const;
+type ColKey = typeof OPTIONAL_COLUMNS[number]['key'];
+
+const LS_FILTERS = 'ithona.ops.filtersOpen';
+const LS_COLUMNS = 'ithona.ops.columns';
+
+/** Состояние панели фильтров запоминается на пользователя (ТЗ, п. 3.2). */
+const loadFiltersOpen = (): boolean => {
+  try { return localStorage.getItem(LS_FILTERS) !== '0'; } catch { return true; }
+};
+const loadColumns = (): Record<ColKey, boolean> => {
+  const all = Object.fromEntries(OPTIONAL_COLUMNS.map(c => [c.key, true])) as Record<ColKey, boolean>;
+  try {
+    const raw = localStorage.getItem(LS_COLUMNS);
+    return raw ? { ...all, ...(JSON.parse(raw) as Partial<Record<ColKey, boolean>>) } : all;
+  } catch {
+    return all;
+  }
+};
 
 export interface OperationsScreenProps {
   dicts: ApiDictionaries | null;
@@ -15,18 +43,45 @@ export interface OperationsScreenProps {
   openCreate: (kind: 'in' | 'out') => void;
   /** Растёт при каждом добавлении операции — сигнал перезагрузить список. */
   refreshTick: number;
+  /** Данные журнала изменились — обновить панель и план-факт. */
+  onChanged?: () => void;
   onError: (msg: string) => void;
 }
 
 const selS: React.CSSProperties = { width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#5A625E', marginBottom: 8, outline: 'none' };
 const inpS: React.CSSProperties = { height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none' };
+const cellS: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 };
+/** Сумма — самая важная колонка: при горизонтальной прокрутке остаётся на виду. */
+const stickySum: React.CSSProperties = {
+  position: 'sticky', right: 0, background: '#fff',
+  boxShadow: '-6px 0 8px -6px rgba(0,0,0,.12)',
+};
+
+/** Квадратный чекбокс строки/шапки. */
+function Box({ on, half, onClick }: { on: boolean; half?: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <span
+      onClick={onClick}
+      style={{
+        width: 16, height: 16, borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        verticalAlign: 'middle', cursor: 'pointer', flex: 'none',
+        border: `1.5px solid ${on || half ? ACC : '#CFCCC4'}`, background: on || half ? ACC : '#fff', color: '#fff',
+      }}
+    >
+      {on && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2.5 6.2l2.4 2.4L9.5 3.8" /></svg>}
+      {!on && half && <span style={{ width: 8, height: 2, background: '#fff', borderRadius: 1 }} />}
+    </span>
+  );
+}
 
 /** Журнал операций: данные и фильтры — серверные (GET /api/operations,
  *  ТЗ п. 9: комбинируемые фильтры, лимит/оффсет). */
 export default function OperationsScreen(props: OperationsScreenProps) {
   const { dicts, projects } = props;
   const isMobile = useIsMobile();
-  const [filtersOn, setFiltersOn] = useState(true);
+  const [filtersOn, setFiltersOn] = useState(loadFiltersOpen);
+  const [columns, setColumns] = useState<Record<ColKey, boolean>>(loadColumns);
+  const [menu, setMenu] = useState(false);
   const [opType, setOpType] = useState({ in: true, out: true, move: true, accr: true });
   const [payConf, setPayConf] = useState({ conf: true, unconf: true });
   const [dateFrom, setDateFrom] = useState('');
@@ -43,10 +98,26 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   const [rows, setRows] = useState<ApiOperation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const [bulkProject, setBulkProject] = useState('');
+  const [cardId, setCardId] = useState<number | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const seq = useRef(0);
 
   const toggleType = (k: keyof typeof opType) => setOpType(st => ({ ...st, [k]: !st[k] }));
   const togglePay = (k: keyof typeof payConf) => setPayConf(st => ({ ...st, [k]: !st[k] }));
+
+  const setFilters = (on: boolean) => {
+    setFiltersOn(on);
+    try { localStorage.setItem(LS_FILTERS, on ? '1' : '0'); } catch { /* приватный режим — не критично */ }
+  };
+  const toggleColumn = (k: ColKey) => {
+    setColumns(c => {
+      const next = { ...c, [k]: !c[k] };
+      try { localStorage.setItem(LS_COLUMNS, JSON.stringify(next)); } catch { /* не критично */ }
+      return next;
+    });
+  };
 
   // Поиск с задержкой, чтобы не дёргать сервер на каждый символ
   useEffect(() => {
@@ -54,8 +125,16 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     return () => clearTimeout(t);
   }, [search]);
 
-  const buildQuery = (offset: number) => {
-    const types: string[] = [];
+  // Меню «⋯» закрывается по Escape
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menu]);
+
+  const buildQuery = (offset: number): OperationQuery => {
+    const types: ('in' | 'out' | 'move' | 'accrual')[] = [];
     if (opType.in) types.push('in');
     if (opType.out) types.push('out');
     if (opType.move) types.push('move');
@@ -93,6 +172,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   };
 
   useEffect(() => {
+    setSel(new Set());
     void load(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opType, payConf, dateFrom, dateTo, fAccount, fParty, fArticle, fProject, sumMin, sumMax, q, props.refreshTick]);
@@ -121,6 +201,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     const sign = o.amount < 0 ? '−' : o.type === 'in' ? '+' : '−';
     return {
       key: o.id,
+      iso: o.date,
       date: ruDate(o.date), account: o.account ?? '—', dirIn: o.type === 'in',
       party: o.party ?? '—', article: o.article ?? '—', sub: o.comment ?? '', project: o.project ?? '—',
       // Плановые операции (из одобренных заявок) помечаются в журнале тегом «План»
@@ -131,13 +212,72 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     };
   });
 
+  /* ── Группировка «Сегодня» / «Вчера и ранее» (ТЗ, п. 3.2) ── */
+  const today = new Date().toISOString().slice(0, 10);
+  const groups = useMemo(() => {
+    const todayRows = view.filter(r => r.iso === today);
+    const earlier = view.filter(r => r.iso !== today);
+    return { todayRows, earlier };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, columns]);
+
+  const colCount = 3 + OPTIONAL_COLUMNS.filter(c => columns[c.key]).length; // чекбокс + дата + сумма
+
+  const allOnPage = view.length > 0 && view.every(r => sel.has(r.key));
+  const someOnPage = view.some(r => sel.has(r.key));
+  const toggleAll = () => {
+    setSel(s => {
+      const next = new Set(s);
+      if (allOnPage) view.forEach(r => next.delete(r.key));
+      else view.forEach(r => next.add(r.key));
+      return next;
+    });
+  };
+  const toggleOne = (id: number) => setSel(s => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  /** Массовое действие: подтвердить, удалить, сменить проект. */
+  const bulk = async (action: 'confirm' | 'delete' | 'project') => {
+    const ids = [...sel];
+    if (!ids.length) return;
+    if (action === 'delete' && !window.confirm(`Удалить операций: ${ids.length}?`)) return;
+    if (action === 'project' && !bulkProject) return;
+    try {
+      const res = await api.bulkOperations(ids, action, action === 'project' ? Number(bulkProject) : undefined);
+      setSel(new Set());
+      setBulkProject('');
+      await load(0);
+      props.onChanged?.();
+      setFlash(
+        res.skipped > 0
+          ? `Обработано: ${res.updated}. Пропущено операций из заявок: ${res.skipped} — их можно только сторнировать.`
+          : `Обработано операций: ${res.updated}.`,
+      );
+      setTimeout(() => setFlash(null), 6000);
+    } catch (e) {
+      props.onError(e instanceof ApiError ? e.message : 'Не удалось выполнить действие');
+    }
+  };
+
+  const exportXlsx = () => {
+    setMenu(false);
+    api.downloadExport('operations', buildQuery(0))
+      .catch((e: unknown) => props.onError(e instanceof ApiError ? e.message : 'Не удалось выгрузить журнал'));
+  };
+
+  const th = (key: ColKey, label: string, extra?: React.CSSProperties) =>
+    columns[key] ? <Th style={{ padding: '9px 12px', ...extra }}>{label}</Th> : null;
+
   return (
     <div data-screen-label="Операции" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
       {filtersOn ? (
-        <div style={{ width: isMobile ? '100%' : 236, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ width: isMobile ? '100%' : 236, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', alignSelf: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>Фильтры</div>
-            <div onClick={() => setFiltersOn(false)} title="Свернуть фильтры" className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: ACC }}>
+            <div onClick={() => setFilters(false)} title="Свернуть фильтры" className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: ACC }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3L5 7l4 4" /><path d="M3 2.5v9" /></svg>
             </div>
           </div>
@@ -172,58 +312,92 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           </div>
         </div>
       ) : (
-        <div onClick={() => setFiltersOn(true)} title="Показать фильтры" className="hv-row" style={{ width: 38, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '11px 0', display: 'flex', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}>
+        <div onClick={() => setFilters(true)} title="Показать фильтры" className="hv-row" style={{ width: 38, flex: 'none', alignSelf: 'flex-start', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '11px 0', display: 'flex', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h12L9.5 8.5V13l-3-1.5V8.5z" /></svg>
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 12.5, color: '#8A918D' }}>{loading ? 'Загрузка…' : `Всего: ${fmt(total)}`}</div>
           <div style={{ flex: 1 }} />
           <div style={{ position: 'relative' }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по операциям" style={{ width: 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по операциям" style={{ width: isMobile ? '100%' : 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" strokeWidth="1.5" style={{ position: 'absolute', left: 11, top: 10 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
           </div>
           <div onClick={() => props.openCreate('in')} title="Добавить доход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#1A7A4B', fontSize: 12.5, fontWeight: 600 }}>+ Доход</div>
           <div onClick={() => props.openCreate('out')} title="Добавить расход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#B93227', fontSize: 12.5, fontWeight: 600 }}>+ Расход</div>
+          <div style={{ position: 'relative' }}>
+            <div onClick={() => setMenu(v => !v)} title="Ещё" data-ops-menu className="hv-soft" style={{ width: 36, height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', background: menu ? '#F1F0EB' : '#fff' }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="2.5" cy="7" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="11.5" cy="7" r="1.2" /></svg>
+            </div>
+            {menu && (
+              <>
+                <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                <div data-ops-menu-panel style={{ position: 'absolute', right: 0, top: 42, zIndex: 40, width: 220, background: '#fff', border: '1px solid #E7E5E0', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 6 }}>
+                  <div onClick={exportXlsx} className="hv-soft" style={{ padding: '8px 10px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Экспорт в Excel</div>
+                  <div style={{ borderTop: '1px solid #F0EFEA', margin: '5px 0', padding: '7px 10px 3px', fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', color: '#A6ACA8' }}>КОЛОНКИ</div>
+                  {OPTIONAL_COLUMNS.map(c => (
+                    <div key={c.key} onClick={() => toggleColumn(c.key)} className="hv-soft" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer' }}>
+                      <Box on={columns[c.key]} onClick={e => { e.stopPropagation(); toggleColumn(c.key); }} />
+                      {c.label}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
+
+        {flash && (
+          <div style={{ background: '#E6F4EB', border: '1px solid #BFE3CD', color: '#1A7A4B', borderRadius: 10, padding: '9px 13px', fontSize: 12.5, marginBottom: 10 }}>{flash}</div>
+        )}
+
+        {sel.size > 0 && (
+          <div data-bulk-bar style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '1px solid ' + ACC, borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Выбрано: {sel.size}</span>
+            <div onClick={() => void bulk('confirm')} className="hv-dim" style={{ background: ACC, color: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Подтвердить оплату</div>
+            <select value={bulkProject} onChange={e => setBulkProject(e.target.value)} style={{ height: 32, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff' }}>
+              <option value="">Сменить проект…</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div onClick={() => void bulk('project')} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: bulkProject ? '#3E4643' : '#A6ACA8', cursor: bulkProject ? 'pointer' : 'default' }}>Перенести</div>
+            <div onClick={() => void bulk('delete')} className="hv-soft" style={{ border: '1px solid #F0CFC9', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</div>
+            <div style={{ flex: 1 }} />
+            <span onClick={() => setSel(new Set())} style={{ fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer' }}>Снять выделение</span>
+          </div>
+        )}
+
         <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <thead><tr>
-                <th style={{ padding: '9px 10px 9px 16px', width: 20, borderBottom: '1px solid #E7E5E0' }}><span style={{ width: 16, height: 16, borderRadius: 4, border: '1.5px solid #CFCCC4', display: 'inline-block', verticalAlign: 'middle' }} /></th>
+                <th style={{ padding: '9px 10px 9px 16px', width: 20, borderBottom: '1px solid #E7E5E0' }}>
+                  <Box on={allOnPage} half={!allOnPage && someOnPage} onClick={toggleAll} />
+                </th>
                 <Th style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>Дата ▾</Th>
-                <Th style={{ padding: '9px 12px' }}>Счёт</Th>
-                <Th style={{ padding: '9px 8px', textAlign: 'center' }}>Тип</Th>
-                <Th style={{ padding: '9px 12px' }}>Контрагент</Th>
-                <Th style={{ padding: '9px 12px' }}>Статья</Th>
-                <Th style={{ padding: '9px 12px' }}>Проект</Th>
-                <Th right style={{ padding: '9px 16px 9px 12px' }}>Сумма</Th>
+                {th('account', 'Счёт')}
+                {th('type', 'Тип', { textAlign: 'center', padding: '9px 8px' })}
+                {th('party', 'Контрагент')}
+                {th('article', 'Статья')}
+                {th('project', 'Проект')}
+                <Th right style={{ padding: '9px 16px 9px 12px', ...stickySum, background: '#fff', zIndex: 2 }}>Сумма</Th>
               </tr></thead>
               <tbody>
                 {view.length === 0 && !loading && (
-                  <tr><td colSpan={8} style={{ padding: '16px', fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
+                  <tr><td colSpan={colCount} style={{ padding: '16px', fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
                 )}
-                {view.map((r) => (
-                  <tr key={r.key} className="hv-row">
-                    <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid #F3F2ED' }}><span style={{ width: 16, height: 16, borderRadius: 4, border: '1.5px solid #CFCCC4', display: 'inline-block', verticalAlign: 'middle', cursor: 'pointer' }} /></td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#3E4643', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#3E4643', whiteSpace: 'nowrap' }}>{r.account}</td>
-                    <td style={{ padding: '10px 8px', borderBottom: '1px solid #F3F2ED', textAlign: 'center' }}>
-                      {r.dirIn
-                        ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#22935B" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 8H3" /><path d="M6.5 4.5L3 8l3.5 3.5" /></svg>
-                        : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C86B5E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10" /><path d="M9.5 4.5L13 8l-3.5 3.5" /></svg>}
-                    </td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, whiteSpace: 'nowrap' }}>{r.party}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}><div style={{ fontWeight: 600, color: '#1B1F1E' }}>{r.article} <span style={{ fontWeight: 500, color: '#A6ACA8' }}>[{r.tag}]</span></div><div style={{ fontSize: 11.5, color: '#A6ACA8', marginTop: 1 }}>{r.sub}</div></td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E', whiteSpace: 'nowrap' }}>{r.project}</td>
-                    <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid #F3F2ED', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: '#A6ACA8' }}>{r.sumFrac}</span></span>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {view.length > 0 && (
+                  <>
+                    <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: '#8A918D' }}>
+                      {groups.todayRows.length ? 'СЕГОДНЯ' : 'СЕГОДНЯ НЕТ ОПЕРАЦИЙ'}
+                    </td></tr>
+                    {groups.todayRows.map(r => opRow(r))}
+                    {groups.earlier.length > 0 && (
+                      <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: '#8A918D' }}>ВЧЕРА И РАНЕЕ</td></tr>
+                    )}
+                    {groups.earlier.map(r => opRow(r))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -234,6 +408,54 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           )}
         </div>
       </div>
+
+      {cardId != null && (
+        <OperationCard
+          id={cardId}
+          projects={projects}
+          onClose={() => setCardId(null)}
+          onChanged={() => { void load(0); props.onChanged?.(); }}
+          onError={props.onError}
+        />
+      )}
     </div>
   );
+
+  /** Строка журнала: клик открывает карточку, чекбокс — выделение. */
+  function opRow(r: typeof view[number]) {
+    return (
+      <tr key={r.key} onClick={() => setCardId(r.key)} className="hv-row" style={{ cursor: 'pointer', background: sel.has(r.key) ? '#F4F8F5' : undefined }}>
+        <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid #F3F2ED' }}>
+          <Box on={sel.has(r.key)} onClick={e => { e.stopPropagation(); toggleOne(r.key); }} />
+        </td>
+        <td style={{ ...cellS, color: '#3E4643', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
+        {columns.account && <td style={{ ...cellS, color: '#3E4643', whiteSpace: 'nowrap' }}>{r.account}</td>}
+        {columns.type && (
+          <td style={{ ...cellS, padding: '10px 8px', textAlign: 'center' }}>
+            {r.dirIn
+              ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#22935B" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 8H3" /><path d="M6.5 4.5L3 8l3.5 3.5" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C86B5E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10" /><path d="M9.5 4.5L13 8l-3.5 3.5" /></svg>}
+          </td>
+        )}
+        {columns.party && <td style={{ ...cellS, whiteSpace: 'nowrap' }}>{r.party}</td>}
+        {columns.article && (
+          <td style={cellS}>
+            <div style={{ fontWeight: 600, color: '#1B1F1E' }}>{r.article} <span style={{ fontWeight: 500, color: '#A6ACA8' }}>[{r.tag}]</span></div>
+            {r.sub && <div style={{ fontSize: 11.5, color: '#A6ACA8', marginTop: 1 }}>{r.sub}</div>}
+          </td>
+        )}
+        {columns.project && <td style={{ ...cellS, color: '#5A625E', whiteSpace: 'nowrap' }}>{r.project}</td>}
+        <td style={{ ...cellS, padding: '10px 16px 10px 12px', textAlign: 'right', whiteSpace: 'nowrap', ...stickySum, background: sel.has(r.key) ? '#F4F8F5' : '#fff' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+            {r.sub && (
+              <span title={r.sub} style={{ color: '#A6ACA8', display: 'inline-flex' }}>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" /></svg>
+              </span>
+            )}
+            <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: '#A6ACA8' }}>{r.sumFrac}</span></span>
+          </span>
+        </td>
+      </tr>
+    );
+  }
 }

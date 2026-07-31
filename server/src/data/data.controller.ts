@@ -5,7 +5,7 @@ import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString, Len
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
 import { DataService, REF_KINDS, type RefKind } from './data.service';
-import { CreateOperationDto, type OperationFilters } from './operations.dto';
+import { BulkOperationsDto, CreateOperationDto, type OperationFilters } from './operations.dto';
 
 /** Проверка вида справочника из пути. */
 function refKind(kind: string): RefKind {
@@ -104,6 +104,20 @@ export class DataController {
   @Roles('admin', 'director')
   createOperation(@Req() req: AuthRequest, @Body() dto: CreateOperationDto) {
     return this.data.createOperation(req.user!.sub, dto);
+  }
+
+  /** Массовые действия: подтвердить оплату, удалить, сменить проект. */
+  @Patch('operations/bulk')
+  @Roles('admin', 'director')
+  bulkOperations(@Req() req: AuthRequest, @Body() dto: BulkOperationsDto) {
+    return this.data.bulkOperations(req.user!.sub, dto.ids, dto.action, dto.projectId);
+  }
+
+  /** Карточка операции: валюта и курс, признак «из заявки», история. */
+  @Get('operations/:id')
+  @Roles('admin', 'director')
+  operation(@Param('id', ParseIntPipe) id: number) {
+    return this.data.operation(id);
   }
 
   /** План-факт за период: from/to = YYYY-MM-DD (без них — все данные). */

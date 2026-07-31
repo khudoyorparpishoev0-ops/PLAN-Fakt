@@ -319,9 +319,9 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
               {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
-              {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onError={setLoadError} />}
+              {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
-              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} periodLabel={range.label} />}
+              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} periodLabel={range.label} from={range.from} to={range.to} dicts={dicts} projects={apiProjects} onError={setLoadError} />}
               {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} onSaved={loadData} onError={setLoadError} />}
               {screen === 'sprav' && <SpravScreen dicts={dicts} onChanged={reloadDicts} />}
               {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} user={user} onChangePassword={onChangePassword} />}
