@@ -76,6 +76,19 @@ export class UsersController {
     return { items: users };
   }
 
+  /** Список исполнителей для назначения задач: имя и роль, без контактов.
+   *  Доступен и директору — он ставит задачи, но карточками не управляет. */
+  @Get('assignees')
+  @Roles('admin', 'director')
+  async assignees() {
+    const users = await this.prisma.user.findMany({
+      where: { deletedAt: null, active: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, role: { select: { code: true, name: true } } },
+    });
+    return { items: users };
+  }
+
   @Post()
   @HttpCode(201)
   @Roles('admin')

@@ -49,6 +49,8 @@ model User {
   requests         Request[]  @relation("RequestAuthor")
   decisions        Request[]  @relation("RequestDecider")
   stornos          Request[]  @relation("RequestStorno")
+  tasksAuthored    Task[]     @relation("TaskAuthor")
+  tasksAssigned    Task[]     @relation("TaskAssignee")
   auditLogs        AuditLog[]
   responsibleFor   Project[]  @relation("ProjectResponsible")
 
@@ -81,6 +83,9 @@ model Project {
   operations Operation[]
   plans      Plan[]
   requests   Request[]
+  tasks      Task[]
+  deals      Deal[]
+  stockMoves StockMove[]
 
   @@map("projects")
 }
@@ -120,11 +125,19 @@ model Counterparty {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   note      String? // «Заказчик · ИНН 010203045» и т.п.
+  // Карточка клиента (модуль «Клиенты», этап 2)
+  kind      String    @default("both") // client | supplier | both
+  inn       String?
+  phone     String?
+  email     String?
+  address   String?
+  contact   String? // контактное лицо
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
   operations Operation[]
+  deals      Deal[]
 
   @@map("counterparties")
 }
@@ -163,11 +176,123 @@ model Good {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   note      String? // «арт. NS-200 · шт» и т.п.
+  // Складской учёт (модуль «Склад», этап 2)
+  sku       String? // артикул
+  unit      String    @default("шт") // единица измерения
+  minQty    Decimal   @default(0) @db.Decimal(18, 3) @map("min_qty") // неснижаемый остаток
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  moves     StockMove[]
+  positions DealPosition[]
+
   @@map("goods")
+}
+
+// ── Склад: движения товаров (остаток = сумма приходов − расходов) ───────────
+
+model StockMove {
+  id        Int       @id @default(autoincrement())
+  goodId    Int       @map("good_id")
+  good      Good      @relation(fields: [goodId], references: [id])
+  type      String // in — приход, out — расход (списание/отгрузка)
+  qty       Decimal   @db.Decimal(18, 3)
+  date      DateTime  @db.Date
+  comment   String?
+  projectId Int?      @map("project_id")
+  project   Project?  @relation(fields: [projectId], references: [id])
+  dealId    Int?      @map("deal_id") // приход по закупке
+  deal      Deal?     @relation(fields: [dealId], references: [id])
+  userId    Int?      @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([goodId, date])
+  @@map("stock_moves")
+}
+
+// ── Закупки: сделка с позициями (ТЗ, экран «Сделки по закупкам») ────────────
+
+enum DealStatus {
+  draft // Черновик
+  active // В работе
+  done // Закрыта (позиции оприходованы на склад)
+  canceled // Отменена
+}
+
+model Deal {
+  id             Int          @id @default(autoincrement())
+  number         String       @unique // «СД-001»
+  title          String
+  status         DealStatus   @default(draft)
+  date           DateTime     @db.Date
+  counterpartyId Int?         @map("counterparty_id")
+  counterparty   Counterparty? @relation(fields: [counterpartyId], references: [id])
+  projectId      Int?         @map("project_id")
+  project        Project?     @relation(fields: [projectId], references: [id])
+  comment        String?
+  authorId       Int?         @map("author_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+
+  positions DealPosition[]
+  moves     StockMove[]
+
+  @@index([status])
+  @@map("deals")
+}
+
+model DealPosition {
+  id          Int       @id @default(autoincrement())
+  dealId      Int       @map("deal_id")
+  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  name        String
+  goodId      Int?      @map("good_id")
+  good        Good?     @relation(fields: [goodId], references: [id])
+  qty         Decimal   @db.Decimal(18, 3)
+  unit        String    @default("шт")
+  priceDirams BigInt    @map("price_dirams") // цена за единицу, в дирамах
+  discountPct Decimal   @default(0) @db.Decimal(5, 2) @map("discount_pct")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@map("deal_positions")
+}
+
+// ── Задачи (модуль «Задачи», этап 2) ────────────────────────────────────────
+
+enum TaskStatus {
+  open // Новая
+  in_progress // В работе
+  done // Выполнена
+  canceled // Отменена
+}
+
+model Task {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus @default(open)
+  priority    String     @default("normal") // low | normal | high
+  dueDate     DateTime?  @map("due_date") @db.Date
+  doneAt      DateTime?  @map("done_at")
+  projectId   Int?       @map("project_id")
+  project     Project?   @relation(fields: [projectId], references: [id])
+  assigneeId  Int?       @map("assignee_id")
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  authorId    Int        @map("author_id")
+  author      User       @relation("TaskAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+
+  @@index([status])
+  @@index([assigneeId])
+  @@map("tasks")
 }
 
 model Service {

@@ -4,13 +4,14 @@ import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
-  type ApiDictionaries, type ApiMetrics, type ApiProject, type ApiRequest, type AuthUser,
+  type ApiAssignee, type ApiDictionaries, type ApiMetrics, type ApiProject, type ApiRequest, type AuthUser,
 } from '../lib/api';
 import { toExpense, toIncome } from '../lib/mapping';
 import { DEFAULT_PERIOD, periodRange, type PeriodKind } from '../lib/period';
 import { TAP, useIsMobile } from '../lib/responsive';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
+import NotifyBell from '../components/NotifyBell';
 import PanelScreen from './PanelScreen';
 import OperationsScreen from './OperationsScreen';
 import ExpensesScreen from './ExpensesScreen';
@@ -19,17 +20,24 @@ import ProjectsScreen from './ProjectsScreen';
 import SpravScreen from './SpravScreen';
 import SettingsScreen from './SettingsScreen';
 import DealsScreen from './DealsScreen';
+import TasksScreen from './TasksScreen';
+import PlanningScreen from './PlanningScreen';
+import StockScreen from './StockScreen';
+import ClientsScreen from './ClientsScreen';
 import MobileView from './MobileView';
 import IncomeDrawer from './IncomeDrawer';
 import ExpenseDrawer from './ExpenseDrawer';
 import ProjectDrawer from './ProjectDrawer';
 
-export type Screen = 'panel' | 'incomes' | 'expenses' | 'report' | 'sprav' | 'settings' | 'projects' | 'deals';
+export type Screen =
+  | 'panel' | 'incomes' | 'expenses' | 'report' | 'sprav' | 'settings' | 'projects' | 'deals'
+  | 'tasks' | 'planning' | 'stock' | 'clients';
 
 const TITLES: Record<Screen, string> = {
   panel: 'Финансовая панель', incomes: 'Операции', expenses: 'Операции · Расходы',
   report: 'Отчёт «План–Факт»', sprav: 'Справочники', settings: 'Настройки',
   projects: 'Проекты', deals: 'Сделки по закупкам',
+  tasks: 'Задачи', planning: 'Планирование', stock: 'Склад', clients: 'Клиенты и поставщики',
 };
 
 /** Пункт бокового меню. */
@@ -113,7 +121,9 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
   const [requests, setRequests] = useState<ApiRequest[]>([]);
   const [apiProjects, setApiProjects] = useState<ApiProject[]>([]);
   const [dicts, setDicts] = useState<ApiDictionaries | null>(null);
+  const [assignees, setAssignees] = useState<ApiAssignee[]>([]);
   const [opsTick, setOpsTick] = useState(0);
+  const [notifyTick, setNotifyTick] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   /** Отчётный период — общий для панели, расходов и отчёта. */
@@ -141,6 +151,11 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
         if (!dicts) {
           const d = await api.dictionaries();
           if (alive) setDicts(d);
+        }
+        if (!assignees.length) {
+          // Список исполнителей нужен «Задачам»; бухгалтеру он недоступен (403)
+          const a = await api.assignees().catch(() => ({ items: [] as ApiAssignee[] }));
+          if (alive) setAssignees(a.items);
         }
       } catch (e) {
         if (alive) setLoadError(e instanceof ApiError ? e.message : 'Не удалось загрузить данные');
@@ -173,6 +188,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
       await api.changeRequestStatus(id, status);
       await loadData();
       setOpsTick(t => t + 1);
+      setNotifyTick(t => t + 1);
     } catch (e) {
       setLoadError(e instanceof ApiError ? e.message : 'Не удалось изменить статус заявки');
     }
@@ -185,6 +201,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
       setSelExp(null);
       await loadData();
       setOpsTick(t => t + 1);
+      setNotifyTick(t => t + 1);
     } catch (e) {
       setLoadError(e instanceof ApiError ? e.message : 'Не удалось сторнировать заявку');
     }
@@ -243,13 +260,13 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
             <NavItem label="План-Факт" icon={I.pf} active={screen === 'report'} onClick={go(() => setScreen('report'))} />
             <NavItem label="Показатели" icon={I.pok} active={screen === 'panel'} onClick={go(() => setScreen('panel'))} />
             <NavItem label="Операции" icon={I.ops} active={screen === 'incomes' || screen === 'expenses'} onClick={go(() => setScreen('incomes'))} />
-            <NavItem label="Задачи" icon={I.tasks} disabled />
-            <NavItem label="Планирование" icon={I.plan} disabled />
+            <NavItem label="Задачи" icon={I.tasks} active={screen === 'tasks'} onClick={go(() => setScreen('tasks'))} />
+            <NavItem label="Планирование" icon={I.plan} active={screen === 'planning'} onClick={go(() => setScreen('planning'))} />
             <SectionLabel>МОДУЛИ</SectionLabel>
             <NavItem label="Проекты" icon={I.prj} active={screen === 'projects'} onClick={go(() => setScreen('projects'))} />
             <NavItem label="Закупки" icon={I.deals} active={screen === 'deals'} onClick={go(() => setScreen('deals'))} />
-            <NavItem label="Склад" icon={I.store} disabled />
-            <NavItem label="Клиенты" icon={I.clients} disabled />
+            <NavItem label="Склад" icon={I.store} active={screen === 'stock'} onClick={go(() => setScreen('stock'))} />
+            <NavItem label="Клиенты" icon={I.clients} active={screen === 'clients'} onClick={go(() => setScreen('clients'))} />
             <SectionLabel>НАСТРОЙКИ</SectionLabel>
             <NavItem label="Справочники" icon={I.sprav} active={screen === 'sprav'} onClick={go(() => setScreen('sprav'))} />
             <NavItem label="Пользователи" icon={I.users} active={screen === 'settings' && setTab === 'users'} onClick={go(goUsers)} />
@@ -292,10 +309,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
                   </div>
                 </>
               )}
-              <div className="hv-soft" style={{ position: 'relative', width: isMobile ? TAP : 38, height: isMobile ? TAP : 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', flex: 'none' }}>
-                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
-                <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
-              </div>
+              <NotifyBell refreshTick={notifyTick} />
               {onLogout && (
                 <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer', flex: 'none' }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
@@ -311,7 +325,11 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} onSaved={loadData} onError={setLoadError} />}
               {screen === 'sprav' && <SpravScreen dicts={dicts} onChanged={reloadDicts} />}
               {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} user={user} onChangePassword={onChangePassword} />}
-              {screen === 'deals' && <DealsScreen />}
+              {screen === 'deals' && <DealsScreen dicts={dicts} projects={apiProjects} onError={setLoadError} onChanged={() => setNotifyTick(t => t + 1)} />}
+              {screen === 'tasks' && <TasksScreen projects={apiProjects} users={assignees} role={user?.role ?? 'director'} onError={setLoadError} />}
+              {screen === 'planning' && <PlanningScreen onError={setLoadError} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} />}
+              {screen === 'stock' && <StockScreen projects={apiProjects} onError={setLoadError} />}
+              {screen === 'clients' && <ClientsScreen onError={setLoadError} />}
             </div>
           </div>
         </>

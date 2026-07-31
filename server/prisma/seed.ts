@@ -23,7 +23,7 @@ import { randomBytes } from 'node:crypto';
 import { PrismaClient, ArticleType, OperationType, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-import { ART, EXPENSES, GEN, INCOMES, OPS, PROJECTS } from '../../src/data/admin';
+import { ART, EXPENSES, GEN, INCOMES, OPS, POSITIONS, PROJECTS } from '../../src/data/admin';
 import { CARS, PAY, TRIPS, type ReqStatus } from '../../src/data/cabinet';
 
 const prisma = new PrismaClient();
@@ -474,6 +474,105 @@ async function seedRequests() {
   }
 }
 
+/** Демо-данные модулей этапа 2: карточки клиентов, единицы товаров с остатками,
+ *  сделка по закупке и задачи. Идемпотентно (по уникальным именам/номерам). */
+async function seedStage2() {
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'admin@it-hona.tj' } });
+  const director = await prisma.user.findUniqueOrThrow({ where: { email: 'director@it-hona.tj' } });
+  const accountant = await prisma.user.findUniqueOrThrow({ where: { email: 'accountant@it-hona.tj' } });
+
+  // Клиенты и поставщики: вид и ИНН разбираются из подписи справочника
+  const parties = await prisma.counterparty.findMany({ where: { deletedAt: null } });
+  for (const c of parties) {
+    const note = c.note ?? '';
+    const kind = note.startsWith('Заказчик') ? 'client' : note.startsWith('Поставщик') ? 'supplier' : 'both';
+    const inn = note.match(/ИНН\s+(\d+)/)?.[1] ?? null;
+    if (c.kind === kind && c.inn === inn) continue;
+    await prisma.counterparty.update({ where: { id: c.id }, data: { kind, inn } });
+  }
+
+  // Товары: артикул и единица из подписи «арт. NS-200 · шт»
+  const goods = await prisma.good.findMany({ where: { deletedAt: null } });
+  for (const g of goods) {
+    const sku = g.note?.match(/арт\.\s*([A-Za-z0-9-]+)/)?.[1] ?? null;
+    const unit = g.note?.match(/·\s*(шт|м|кг|л|компл)\b/)?.[1] ?? 'шт';
+    await prisma.good.update({
+      where: { id: g.id },
+      data: { sku, unit, minQty: new Prisma.Decimal(g.minQty.equals(0) ? 5 : g.minQty) },
+    });
+  }
+
+  // Стартовые остатки склада (по одному приходу на товар)
+  const openingStock: Record<string, number> = {
+    'Насос центробежный НЦ-200': 4,
+    'Муфта для труб Ø200': 60,
+    'Кабель силовой ВВГ 3×2,5': 320,
+    'Задвижка чугунная Ду100': 12,
+    'Труба стальная Ø159': 85,
+  };
+  for (const [name, qty] of Object.entries(openingStock)) {
+    const good = goods.find((g) => g.name === name);
+    if (!good) continue;
+    const exists = await prisma.stockMove.findFirst({
+      where: { goodId: good.id, comment: 'Входящий остаток склада' },
+    });
+    if (exists) continue;
+    await prisma.stockMove.create({
+      data: {
+        goodId: good.id, type: 'in', qty: new Prisma.Decimal(qty),
+        date: utcDate(2026, 9, 30), comment: 'Входящий остаток склада', userId: admin.id,
+      },
+    });
+  }
+
+  // Демо-сделка по закупке с позициями из фикстур прототипа
+  const vahdat = await projectId('Насосная станция Вахдат');
+  const supplier = await prisma.counterparty.findFirst({ where: { name: '«ТаджТехСнаб»' } });
+  const cable = await prisma.good.findFirst({ where: { name: 'Кабель силовой ВВГ 3×2,5' } });
+  const dealExists = await prisma.deal.findUnique({ where: { number: 'СД-001' } });
+  if (!dealExists) {
+    await prisma.deal.create({
+      data: {
+        number: 'СД-001',
+        title: 'Закупка кабеля и пусконаладка СКС',
+        status: 'active',
+        date: utcDate(2026, 10, 11),
+        counterpartyId: supplier?.id ?? null,
+        projectId: vahdat,
+        authorId: admin.id,
+        positions: {
+          create: POSITIONS.map(([name, qty, unit, price, discount]) => ({
+            name,
+            goodId: name.includes('Кабель') ? cable?.id ?? null : null,
+            qty: new Prisma.Decimal(qty),
+            unit,
+            priceDirams: dirams(price),
+            discountPct: new Prisma.Decimal(discount),
+          })),
+        },
+      },
+    });
+  }
+
+  // Задачи: по одной на роль, чтобы экран не был пустым
+  const tasks: Array<{ title: string; assignee: number; due: Date; priority: string; project: number | null; status?: 'open' | 'in_progress' }> = [
+    { title: 'Собрать закрывающие документы по сделке СД-001', assignee: accountant.id, due: utcDate(2026, 10, 20), priority: 'high', project: vahdat, status: 'in_progress' },
+    { title: 'Согласовать бюджет ГЭС Помир-1 на ноябрь', assignee: director.id, due: utcDate(2026, 10, 25), priority: 'normal', project: await projectId('ГЭС Помир-1') },
+    { title: 'Проверить остатки на складе перед закупкой', assignee: admin.id, due: utcDate(2026, 10, 18), priority: 'normal', project: null },
+  ];
+  for (const t of tasks) {
+    const exists = await prisma.task.findFirst({ where: { title: t.title } });
+    if (exists) continue;
+    await prisma.task.create({
+      data: {
+        title: t.title, assigneeId: t.assignee, authorId: admin.id,
+        dueDate: t.due, priority: t.priority, projectId: t.project,
+        status: t.status ?? 'open',
+      },
+    });
+  }
+}
+
 /* ── Запуск ─────────────────────────────────────────────────────────────── */
 
 async function main() {
@@ -497,6 +596,8 @@ async function main() {
   await seedOperationsJournal();
   console.log('[seed] Заявки кабинета…');
   await seedRequests();
+  console.log('[seed] Модули этапа 2 (клиенты, склад, закупки, задачи)…');
+  await seedStage2();
 
   const [projects, articles, counterparties, accounts, operations, plans, requests, attachments, users] =
     await Promise.all([

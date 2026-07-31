@@ -8,18 +8,21 @@ import {
 } from '../lib/api';
 import { monthlyStats, toCar, toPay, toTrip } from '../lib/mapping';
 import { Logo } from '../components/ui';
+import NotifyBell from '../components/NotifyBell';
 import { CB, type ReqKind, type ReqStatus } from '../data/cabinet';
 import { setKmRate, tripAmount } from '../data/settings';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import HistoryScreen from './HistoryScreen';
 import CabinetProjectsScreen from './CabinetProjectsScreen';
+import TasksScreen from '../admin/TasksScreen';
 import { TAP, useIsMobile } from '../lib/responsive';
 
-export type CabScreen = 'pay' | 'car' | 'history' | 'projects';
+export type CabScreen = 'pay' | 'car' | 'history' | 'projects' | 'tasks';
 
 const TITLES: Record<CabScreen, string> = {
-  pay: 'Заявки на оплату', car: 'Заявки на машину', history: 'Список всего / История', projects: 'Проекты',
+  pay: 'Заявки на оплату', car: 'Заявки на машину', history: 'Список всего / История',
+  projects: 'Проекты', tasks: 'Мои задачи',
 };
 
 function NavItem({ label, icon, active, onClick }: { label: string; icon: JSX.Element; active?: boolean; onClick?: () => void }) {
@@ -46,6 +49,7 @@ const I = {
   car: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 10l1-3.4A2 2 0 015 5.2h6a2 2 0 011.9 1.4L14 10" /><rect x="1.5" y="9.7" width="13" height="3.3" rx="1.2" /><circle cx="4.5" cy="13.4" r=".8" fill="currentColor" stroke="none" /><circle cx="11.5" cy="13.4" r=".8" fill="currentColor" stroke="none" /></svg>,
   hist: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 14V2" /><path d="M2 13h12" /><rect x="4" y="8.5" width="2.4" height="4" rx=".5" fill="currentColor" stroke="none" /><rect x="7.6" y="5.5" width="2.4" height="7" rx=".5" fill="currentColor" stroke="none" /><rect x="11.2" y="3" width="2.4" height="9.5" rx=".5" fill="currentColor" stroke="none" /></svg>,
   proj: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="12" height="8.5" rx="1.8" /><path d="M6 5V3.8A1.3 1.3 0 017.3 2.5h1.4A1.3 1.3 0 0110 3.8V5" /><path d="M2 8.7h12" /></svg>,
+  task: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="2.5" width="10" height="11.5" rx="1.8" /><rect x="5.5" y="1" width="5" height="3" rx="1" /><path d="M5.8 8l1.6 1.6 3-3.3" /></svg>,
 };
 
 const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) => (
@@ -172,6 +176,8 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   const [reqs, setReqs] = useState<ApiRequest[]>([]);
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  /** Сигнал колокольчику перечитать уведомления (после отправки заявки). */
+  const [notifyTick, setNotifyTick] = useState(0);
   const [pwdModal, setPwdModal] = useState(false);
 
   useEffect(() => { applyThemeVars(); }, []);
@@ -214,6 +220,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
     try {
       const r = await api.createRequest(payload);
       setReqs(list => [r, ...list]);
+      setNotifyTick(t => t + 1);
       toast(`Заявка ${r.number} отправлена Директору`);
       return true;
     } catch (e) {
@@ -297,6 +304,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
         <SectionLabel>ОТЧЁТЫ</SectionLabel>
         <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => { setScreen('history'); setMenuOpen(false); }} />
         <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => { setScreen('projects'); setMenuOpen(false); }} />
+        <NavItem label="Мои задачи" icon={I.task} active={screen === 'tasks'} onClick={() => { setScreen('tasks'); setMenuOpen(false); }} />
         <div onClick={() => setPwdModal(true)} title="Сменить пароль" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'Ф' : 'Ф'}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -335,10 +343,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
               </div>
             </>
           )}
-          <div className="hv-soft" style={{ position: 'relative', width: isMobile ? TAP : 38, height: isMobile ? TAP : 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', flex: 'none' }}>
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
-            <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
-          </div>
+          <NotifyBell refreshTick={notifyTick} />
           {onLogout && (
             <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer', flex: 'none' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
@@ -378,6 +383,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
+          {screen === 'tasks' && <TasksScreen projects={projects} users={[]} role="accountant" onError={msg => toast(msg)} />}
         </div>
       </div>
       {pwdModal && (

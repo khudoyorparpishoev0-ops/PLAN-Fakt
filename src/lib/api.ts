@@ -360,7 +360,146 @@ export interface ApiUser {
   role: { code: RoleCode; name: string };
 }
 
+/** Исполнитель задачи: имя и роль без контактов (доступно и директору). */
+export interface ApiAssignee {
+  id: number;
+  name: string;
+  role: { code: RoleCode; name: string };
+}
+
 export interface ApiRate { code: string; name: string; rate: number | null; rateDate: string | null }
+
+/* ── Этап 2: задачи, закупки, склад, клиенты, планирование, уведомления ─── */
+
+export type TaskStatus = 'open' | 'in_progress' | 'done' | 'canceled';
+
+export interface ApiTask {
+  id: number;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: 'low' | 'normal' | 'high';
+  dueDate: string | null;
+  project: string | null;
+  projectId: number | null;
+  assignee: string | null;
+  assigneeId: number | null;
+  author: string;
+  doneAt: string | null;
+}
+
+export interface TaskPayload {
+  title?: string;
+  description?: string;
+  projectId?: number;
+  assigneeId?: number;
+  priority?: 'low' | 'normal' | 'high';
+  dueDate?: string;
+  status?: TaskStatus;
+}
+
+export type DealStatus = 'draft' | 'active' | 'done' | 'canceled';
+
+export interface ApiDealPosition {
+  id?: number;
+  name: string;
+  goodId?: number | null;
+  qty: number;
+  unit: string;
+  price: number;
+  discountPct: number;
+  total?: number;
+}
+
+export interface ApiDeal {
+  id: number;
+  number: string;
+  title: string;
+  status: DealStatus;
+  date: string;
+  counterparty: string | null;
+  counterpartyId: number | null;
+  project: string | null;
+  projectId: number | null;
+  comment: string | null;
+  positions: ApiDealPosition[];
+  total: number;
+}
+
+export interface DealPayload {
+  title?: string;
+  date?: string;
+  counterpartyId?: number;
+  projectId?: number;
+  comment?: string;
+  status?: DealStatus;
+  positions?: ApiDealPosition[];
+}
+
+export interface ApiStockItem {
+  id: number;
+  name: string;
+  note: string;
+  sku: string | null;
+  unit: string;
+  qty: number;
+  minQty: number;
+  low: boolean;
+}
+
+export interface ApiStockMove {
+  id: number;
+  date: string;
+  good: string;
+  goodId: number;
+  type: 'in' | 'out';
+  qty: number;
+  unit: string;
+  project: string | null;
+  deal: string | null;
+  comment: string | null;
+}
+
+export interface ApiClient {
+  id: number;
+  name: string;
+  note: string;
+  kind: 'client' | 'supplier' | 'both';
+  inn: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  contact: string | null;
+  income: number;
+  expense: number;
+  deals: number;
+}
+
+export interface ApiPlanRow {
+  id: number;
+  articleId: number;
+  article: string;
+  type: 'income' | 'expense';
+  projectId: number | null;
+  project: string;
+  amount: number;
+  fact: number;
+}
+
+export interface ApiPlans {
+  period: string;
+  rows: ApiPlanRow[];
+  articles: { id: number; name: string; type: string }[];
+  projects: { id: number; name: string }[];
+}
+
+export interface ApiNotification {
+  id: string;
+  kind: string;
+  title: string;
+  note: string;
+  date: string | null;
+}
 
 export interface ApiAuditRow {
   id: number;
@@ -481,6 +620,9 @@ export const api = {
 
   users: () => authedReq<{ items: ApiUser[] }>('/users'),
 
+  /** Кого можно назначить исполнителем задачи (админ и директор). */
+  assignees: () => authedReq<{ items: ApiAssignee[] }>('/users/assignees'),
+
   createUser: (payload: { name: string; email: string; phone?: string; role: RoleCode }) =>
     authedReq<{ user: ApiUser; tempPassword: string }>('/users', { method: 'POST', body: payload }),
 
@@ -503,6 +645,45 @@ export const api = {
     window.open(url, '_blank', 'noopener');
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   },
+
+  /* ── Этап 2 ── */
+
+  tasks: (filters: { status?: string; project?: number; assignee?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (filters.status) q.set('status', filters.status);
+    if (filters.project != null) q.set('project', String(filters.project));
+    if (filters.assignee != null) q.set('assignee', String(filters.assignee));
+    const qs = q.toString();
+    return authedReq<ApiTask[]>(`/tasks${qs ? `?${qs}` : ''}`);
+  },
+  createTask: (payload: TaskPayload) => authedReq<{ id: number }>('/tasks', { method: 'POST', body: payload }),
+  updateTask: (id: number, payload: TaskPayload) =>
+    authedReq<{ id: number }>(`/tasks/${id}`, { method: 'PATCH', body: payload }),
+  removeTask: (id: number) => authedReq<{ id: number }>(`/tasks/${id}`, { method: 'DELETE' }),
+
+  deals: (status?: string) => authedReq<ApiDeal[]>(`/deals${status ? `?status=${status}` : ''}`),
+  createDeal: (payload: DealPayload) => authedReq<{ id: number; number: string }>('/deals', { method: 'POST', body: payload }),
+  updateDeal: (id: number, payload: DealPayload) =>
+    authedReq<{ id: number; closed: boolean }>(`/deals/${id}`, { method: 'PATCH', body: payload }),
+  removeDeal: (id: number) => authedReq<{ id: number }>(`/deals/${id}`, { method: 'DELETE' }),
+
+  stock: () => authedReq<ApiStockItem[]>('/stock'),
+  stockMoves: (goodId?: number) => authedReq<ApiStockMove[]>(`/stock/moves${goodId ? `?good=${goodId}` : ''}`),
+  createStockMove: (payload: { goodId: number; type: 'in' | 'out'; qty: number; date?: string; projectId?: number; comment?: string }) =>
+    authedReq<{ id: number }>('/stock/moves', { method: 'POST', body: payload }),
+  updateGood: (id: number, payload: { sku?: string; unit?: string; minQty?: number }) =>
+    authedReq<{ id: number }>(`/stock/goods/${id}`, { method: 'PATCH', body: payload }),
+
+  clients: () => authedReq<ApiClient[]>('/clients'),
+  updateClient: (id: number, payload: Partial<Omit<ApiClient, 'id' | 'income' | 'expense' | 'deals'>>) =>
+    authedReq<{ id: number }>(`/clients/${id}`, { method: 'PATCH', body: payload }),
+
+  plans: (period: string) => authedReq<ApiPlans>(`/plans?period=${period}`),
+  savePlan: (payload: { period: string; articleId: number; projectId?: number; amount: number }) =>
+    authedReq<{ id: number }>('/plans', { method: 'POST', body: payload }),
+  removePlan: (id: number) => authedReq<{ id: number }>(`/plans/${id}`, { method: 'DELETE' }),
+
+  notifications: () => authedReq<{ items: ApiNotification[]; count: number }>('/notifications'),
 
   /** Скачать Excel-экспорт (report | projects). */
   downloadExport: async (name: 'report' | 'projects'): Promise<void> => {
