@@ -1,9 +1,10 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
-import type { ApiRequest } from '../lib/api';
+import type { ApiProject, ApiRequest } from '../lib/api';
+import { PERIOD_KINDS, type PeriodKind } from '../lib/period';
 import { ACC, SOFT, ROW_PAD, CARD_PAD, GOLOS, num } from '../theme';
-import { fmt } from '../lib/format';
+import { fmt, pct1 } from '../lib/format';
 import { devInfo, incDevB, expDevB } from '../lib/badges';
 import { Badge, Th } from '../components/ui';
 
@@ -15,16 +16,16 @@ export interface PanelScreenProps {
   pendingReqs: ApiRequest[];
   /** Решение по заявке — PATCH /api/requests/:id/status. */
   decideRequest: (id: number, status: 'approved' | 'rejected') => void;
+  /** Отчётный период (общий для панели, расходов и отчёта). */
+  period: PeriodKind;
+  setPeriod: (p: PeriodKind) => void;
+  projects: ApiProject[];
   goReport: () => void;
   goExpenses: () => void;
 }
 
 const KIND_LABEL: Record<ApiRequest['kind'], string> = { payment: 'Оплата', trip: 'Поездка', auto: 'Авто' };
 
-const PERIODS = ['День', 'Неделя', 'Месяц', 'Квартал', 'Год', 'Период'];
-const FILTERS: [string, string][] = [
-  ['Проект', 'Все'], ['Категория', 'Все'], ['Контрагент', 'Все'], ['Валюта', 'TJS'], ['Статус', 'Все'],
-];
 const chipS: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff',
   borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer',
@@ -39,6 +40,31 @@ const v500: CSSProperties = { color: '#1B1F1E', fontWeight: 500, ...num };
 const v600: CSSProperties = { color: '#1B1F1E', fontWeight: 600, ...num };
 const red6: CSSProperties = { fontWeight: 600, color: '#B93227', ...num };
 const grn6: CSSProperties = { fontWeight: 600, color: '#1A7A4B', ...num };
+
+/** Чип-фильтр со скрытым select: вид из прототипа, поведение — настоящий выбор. */
+function FilterChip({ label, value, options, onChange }: {
+  label: string; value: string; options: string[]; onChange: (v: string) => void;
+}) {
+  const active = value !== 'Все';
+  return (
+    <div
+      className="hv-soft"
+      style={{ ...chipS, position: 'relative', ...(active ? { borderColor: ACC, color: ACC } : {}) }}
+      title={`${label}: ${value}`}
+    >
+      {label}: <b style={{ color: active ? ACC : '#1B1F1E', fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</b>
+      <span style={{ color: '#A6ACA8' }}>▾</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+      >
+        <option value="Все">Все</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
 
 /** Иконочный чип шапки KPI-карточки (28px, акцент). */
 function KpiChip({ children }: { children: ReactNode }) {
@@ -106,8 +132,29 @@ const thTop: CSSProperties = { borderTop: '1px solid #F0EFEA' };
 const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' };
 
 export default function PanelScreen(props: PanelScreenProps) {
-  const { expenses, totals: t, pendingReqs, decideRequest, goReport, goExpenses } = props;
-  const [period, setPeriod] = useState('Месяц');
+  const { totals: t, pendingReqs, decideRequest, period, setPeriod, projects, goReport, goExpenses } = props;
+
+  /* ── Фильтры-чипы: проект, категория, контрагент, статус (валюта учёта одна) ── */
+  const [fProject, setFProject] = useState('Все');
+  const [fCat, setFCat] = useState('Все');
+  const [fParty, setFParty] = useState('Все');
+  const [fStatus, setFStatus] = useState('Все');
+
+  const passes = (r: { proj: string; cat: string; party?: string; payee?: string; status: string }) =>
+    (fProject === 'Все' || r.proj === fProject)
+    && (fCat === 'Все' || r.cat === fCat)
+    && (fParty === 'Все' || (r.party ?? r.payee) === fParty)
+    && (fStatus === 'Все' || r.status === fStatus);
+
+  const incomes = props.incomes.filter(passes);
+  const expenses = props.expenses.filter(passes);
+
+  const uniq = (vals: (string | undefined)[]) =>
+    [...new Set(vals.filter((v): v is string => !!v && v !== '—'))].sort((a, b) => a.localeCompare(b, 'ru'));
+  const catOptions = uniq([...props.incomes.map(r => r.cat), ...props.expenses.map(r => r.cat)]);
+  const partyOptions = uniq([...props.incomes.map(r => r.party), ...props.expenses.map(r => r.payee)]);
+  const statusOptions = uniq([...props.incomes.map(r => r.status), ...props.expenses.map(r => r.status)]);
+  const projectOptions = uniq([...projects.map(p => p.name), 'Без проекта']);
 
   /* ── «План–факт по категориям» — выжимка из реальных данных:
    *    крупнейшая доходная категория + топ-5 расходных по плану ── */
@@ -121,15 +168,62 @@ export default function PanelScreen(props: PanelScreenProps) {
     return [...byCat.entries()].sort((a, b) => b[1].plan - a[1].plan);
   };
   const dashRows = [
-    ...aggregate(props.incomes).slice(0, 1).map(([cat, v]) => dR('inc', cat, v.plan, v.fact, v.pending && !v.fact)),
+    ...aggregate(incomes).slice(0, 1).map(([cat, v]) => dR('inc', cat, v.plan, v.fact, v.pending && !v.fact)),
     ...aggregate(expenses).slice(0, 5).map(([cat, v]) => dR('exp', cat, v.plan, v.fact, v.pending && !v.fact)),
   ];
 
+  /* ── «Требует внимания» — события считаются из данных периода ── */
+  const today = new Date().toISOString().slice(0, 10);
+  const daysBetween = (a: string, b: string) =>
+    Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+  const plural = (n: number, one: string, few: string, many: string) => {
+    const m10 = n % 10, m100 = n % 100;
+    return `${n} ${m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? few : many}`;
+  };
+
+  // Просрочка: плановая дата прошла, а оплата/поступление не закрыты
+  const overdueRows = [
+    ...incomes.filter(r => r.plan > r.fact && r.pIso && r.pIso < today)
+      .map(r => ({ r, kind: 'inc' as const, party: r.party })),
+    ...expenses.filter(r => r.plan > r.fact && r.pIso && r.pIso < today)
+      .map(r => ({ r, kind: 'exp' as const, party: r.payee })),
+  ].sort((a, b) => (b.r.plan - b.r.fact) - (a.r.plan - a.r.fact)).slice(0, 3);
+
+  // Перерасход: факт выше плана более чем на 5%
+  const overRows = expenses
+    .filter(r => r.plan > 0 && r.fact > r.plan * 1.05)
+    .sort((a, b) => (b.fact - b.plan) - (a.fact - a.plan))
+    .slice(0, 2);
+
+  // Ближайшие обязательные платежи: плановая дата в пределах 10 дней
+  const soonRows = expenses
+    .filter(r => r.plan > r.fact && r.pIso && r.pIso >= today && daysBetween(today, r.pIso) <= 10)
+    .sort((a, b) => (a.pIso! < b.pIso! ? -1 : 1))
+    .slice(0, 2);
+
   const attnItems: AttnItem[] = [
-    { ic: 'clock', chipBg: '#FAE7E4', chipFg: '#B93227', t: 'Просроченный платёж', m: '«Сомон Сервис» · 10 дней просрочки', sum: '60 000', sumFg: '#B93227', tag: 'дебиторка' },
-    { ic: 'cart', chipBg: '#FAE7E4', chipFg: '#B93227', t: 'Перерасход: закупка оборудования', m: '«ТаджТехСнаб» · причина: рост цены', sum: '+25 000', sumFg: '#B93227', tag: '+12,5% к плану' },
-    { ic: 'percent', chipBg: '#FBECDE', chipFg: '#B25313', t: 'Обязательный платёж: налоги', m: 'Оплатить до 25.10', sum: '85 000', sumFg: '#1B1F1E', tag: '4 дня' },
-    // Реальные заявки кабинета, ждущие решения (ШАГ 3)
+    ...overdueRows.map(({ r, kind, party }): AttnItem => ({
+      ic: 'clock', chipBg: '#FAE7E4', chipFg: '#B93227',
+      t: kind === 'inc' ? 'Просроченное поступление' : 'Просроченный платёж',
+      m: `${party} · ${r.cat} · просрочка ${plural(daysBetween(r.pIso!, today), 'день', 'дня', 'дней')}`,
+      sum: fmt(r.plan - r.fact), sumFg: '#B93227',
+      tag: kind === 'inc' ? 'дебиторка' : 'кредиторка',
+    })),
+    ...overRows.map((r): AttnItem => ({
+      ic: 'cart', chipBg: '#FAE7E4', chipFg: '#B93227',
+      t: `Перерасход: ${r.cat.toLowerCase()}`,
+      m: `${r.payee}${r.reason ? ` · причина: ${r.reason}` : ''}`,
+      sum: '+' + fmt(r.fact - r.plan), sumFg: '#B93227',
+      tag: `+${pct1(((r.fact - r.plan) / r.plan) * 100)}% к плану`,
+    })),
+    ...soonRows.map((r): AttnItem => ({
+      ic: 'percent', chipBg: '#FBECDE', chipFg: '#B25313',
+      t: `Предстоящий платёж: ${r.cat.toLowerCase()}`,
+      m: `Оплатить до ${r.pdate}`,
+      sum: fmt(r.plan - r.fact), sumFg: '#1B1F1E',
+      tag: plural(daysBetween(today, r.pIso!), 'день', 'дня', 'дней'),
+    })),
+    // Заявки кабинета, ждущие решения директора
     ...pendingReqs.map((r): AttnItem => ({
       ic: 'bell', chipBg: '#FAF2D8', chipFg: '#8A6A00',
       t: 'Ждёт вашего согласования',
@@ -145,7 +239,7 @@ export default function PanelScreen(props: PanelScreenProps) {
     <div data-screen-label="Финансовая панель">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
         <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
-          {PERIODS.map(p => {
+          {PERIOD_KINDS.map(p => {
             const a = period === p;
             return (
               <div key={p} onClick={() => setPeriod(p)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? '#1B1F1E' : '#6B7370', background: a ? '#FFFFFF' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{p}</div>
@@ -153,10 +247,20 @@ export default function PanelScreen(props: PanelScreenProps) {
           })}
         </div>
         <div style={{ width: 1, height: 22, background: '#E0DED8' }} />
-        {FILTERS.map(([l, v]) => (
-          <div key={l} style={chipS}>{l}: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>{v}</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
-        ))}
-        <div title="Ответственный, тип операции" className="hv-cream" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #CFCCC4', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#6B7370', cursor: 'pointer' }}>Ещё <span style={{ color: '#A6ACA8' }}>▾</span></div>
+        <FilterChip label="Проект" value={fProject} options={projectOptions} onChange={setFProject} />
+        <FilterChip label="Категория" value={fCat} options={catOptions} onChange={setFCat} />
+        <FilterChip label="Контрагент" value={fParty} options={partyOptions} onChange={setFParty} />
+        <div style={chipS}>Валюта: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>TJS</b></div>
+        <FilterChip label="Статус" value={fStatus} options={statusOptions} onChange={setFStatus} />
+        {(fProject !== 'Все' || fCat !== 'Все' || fParty !== 'Все' || fStatus !== 'Все') && (
+          <div
+            onClick={() => { setFProject('Все'); setFCat('Все'); setFParty('Все'); setFStatus('Все'); }}
+            className="hv-cream"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #CFCCC4', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#6B7370', cursor: 'pointer' }}
+          >
+            Сбросить фильтры ✕
+          </div>
+        )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 16 }}>
         <div style={cardS}>
@@ -218,7 +322,12 @@ export default function PanelScreen(props: PanelScreenProps) {
           <KV l="Ожидаемые поступления" v={t.cashIn} vs={grn6} />
           <KV l="Предстоящие выплаты" v={t.cashOut} vs={red6} />
           <KV l="Свободный остаток" ls={{ fontWeight: 600, color: '#1B1F1E' }} v={t.cashFree} vs={{ color: '#1B1F1E', fontWeight: 700, ...num }} style={{ borderTop: '1px dashed #E7E5E0', paddingTop: 6, marginTop: 6, marginBottom: 0 }} />
-          <KV l="Кассовый разрыв" vs={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, color: '#1A7A4B' }} style={{ marginTop: 5, marginBottom: 0 }} v={<><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22935B' }} />не ожидается</>} />
+          <KV
+            l="Кассовый разрыв"
+            vs={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, color: t.cashGap ? '#B93227' : '#1A7A4B' }}
+            style={{ marginTop: 5, marginBottom: 0 }}
+            v={<><span style={{ width: 6, height: 6, borderRadius: '50%', background: t.cashGap ? '#D24A3D' : '#22935B' }} />{t.cashGap ? 'ожидается' : 'не ожидается'}</>}
+          />
         </div>
         <div style={cardS}>
           <div style={headS}>

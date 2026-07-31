@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
-import { ChangeRequestStatusDto, CreateRequestDto } from './requests.dto';
+import { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
 import { RequestsService } from './requests.service';
 
 /** Заявки кабинета (ТЗ, п. 9): POST /api/requests · PATCH /api/requests/:id/status
@@ -26,6 +26,13 @@ export class RequestsController {
   @Roles('accountant')
   create(@Req() req: AuthRequest, @Body() dto: CreateRequestDto) {
     return this.requests.create(req.user!, dto);
+  }
+
+  /** Правка своей заявки в «Черновик»/«Отклонено» (+ повторная отправка). */
+  @Patch(':id')
+  @Roles('accountant')
+  update(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRequestDto) {
+    return this.requests.update(req.user!, id, dto);
   }
 
   @Patch(':id/status')

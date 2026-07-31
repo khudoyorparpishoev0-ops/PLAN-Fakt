@@ -1,9 +1,51 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { IsBoolean, IsIn, IsNumber, IsPositive, Matches, Min } from 'class-validator';
+import {
+  Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards,
+} from '@nestjs/common';
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString, Length, Matches, Min } from 'class-validator';
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
-import { DataService } from './data.service';
+import { DataService, REF_KINDS, type RefKind } from './data.service';
 import { CreateOperationDto, type OperationFilters } from './operations.dto';
+
+/** Проверка вида справочника из пути. */
+function refKind(kind: string): RefKind {
+  if (!REF_KINDS.includes(kind as RefKind)) {
+    throw new HttpException(
+      { code: 'validation', message: `Неизвестный справочник: ${kind}` },
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+  }
+  return kind as RefKind;
+}
+
+export class RefDto {
+  @IsOptional() @IsString() @Length(2, 200) name?: string;
+  @IsOptional() @IsString() @Length(0, 300) note?: string;
+  /** Только для статей: тип и родительская статья. */
+  @IsOptional() @IsIn(['income', 'expense', 'asset', 'liability', 'equity']) type?: string;
+  @IsOptional() @IsInt() parentId?: number;
+  /** Только для счетов: касса или расчётный счёт (карточка «Деньги»). */
+  @IsOptional() @IsIn(['cash', 'bank']) kind?: string;
+}
+
+export class ProjectDto {
+  @IsString() @Length(2, 200, { message: 'Название проекта — от 2 до 200 символов' }) name!: string;
+  @IsOptional() @IsString() @Length(0, 200) group?: string;
+  @IsOptional() @IsString() @Length(0, 200) resp?: string;
+  @IsOptional() @IsIn(['plan', 'work', 'done']) status?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) start?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) end?: string;
+}
+
+export class PatchProjectDto {
+  @IsOptional() @IsBoolean() archived?: boolean;
+  @IsOptional() @IsString() @Length(2, 200) name?: string;
+  @IsOptional() @IsString() @Length(0, 200) group?: string;
+  @IsOptional() @IsString() @Length(0, 200) resp?: string;
+  @IsOptional() @IsIn(['plan', 'work', 'done']) status?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) start?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) end?: string;
+}
 
 export class UpdateSettingsDto {
   @IsNumber({}, { message: 'kmRate — число (сомони за км)' })
@@ -20,11 +62,6 @@ export class AddRateDto {
 
   @IsPositive({ message: 'Курс должен быть больше нуля' })
   rate!: number;
-}
-
-export class ArchiveProjectDto {
-  @IsBoolean()
-  archived!: boolean;
 }
 
 const int = (v: string | undefined): number | undefined => {
@@ -69,10 +106,12 @@ export class DataController {
     return this.data.createOperation(req.user!.sub, dto);
   }
 
+  /** План-факт за период: from/to = YYYY-MM-DD (без них — все данные). */
   @Get('planfact')
   @Roles('admin', 'director')
-  planFact() {
-    return this.data.planFact();
+  planFact(@Query('from') from?: string, @Query('to') to?: string) {
+    const ok = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+    return this.data.planFact(ok(from), ok(to));
   }
 
   /** Метаданные — всем ролям; суммы добавляются только админу/директору. */
@@ -88,16 +127,46 @@ export class DataController {
     return this.data.projectSummary(id);
   }
 
+  /** Архив (`archived`) и/или правка карточки проекта. */
   @Patch('projects/:id')
   @Roles('admin', 'director')
-  archiveProject(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: ArchiveProjectDto) {
-    return this.data.setProjectArchived(req.user!.sub, id, dto.archived);
+  async patchProject(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: PatchProjectDto) {
+    if (dto.archived !== undefined) await this.data.setProjectArchived(req.user!.sub, id, dto.archived);
+    const fields = ['name', 'group', 'resp', 'status', 'start', 'end'] as const;
+    if (fields.some((f) => dto[f] !== undefined)) return this.data.updateProject(req.user!.sub, id, dto);
+    return { id, archived: dto.archived };
+  }
+
+  @Post('projects')
+  @Roles('admin', 'director')
+  createProject(@Req() req: AuthRequest, @Body() dto: ProjectDto) {
+    return this.data.createProject(req.user!.sub, dto);
   }
 
   @Get('dictionaries')
   @Roles('admin', 'director')
   dictionaries() {
     return this.data.dictionaries();
+  }
+
+  /* ── Справочники: ввод, правка, удаление (ТЗ, п. 8) ── */
+
+  @Post('dictionaries/:kind')
+  @Roles('admin', 'director')
+  createRef(@Req() req: AuthRequest, @Param('kind') kind: string, @Body() dto: RefDto) {
+    return this.data.createRef(req.user!.sub, refKind(kind), dto);
+  }
+
+  @Patch('dictionaries/:kind/:id')
+  @Roles('admin', 'director')
+  updateRef(@Req() req: AuthRequest, @Param('kind') kind: string, @Param('id', ParseIntPipe) id: number, @Body() dto: RefDto) {
+    return this.data.updateRef(req.user!.sub, refKind(kind), id, dto);
+  }
+
+  @Delete('dictionaries/:kind/:id')
+  @Roles('admin', 'director')
+  removeRef(@Req() req: AuthRequest, @Param('kind') kind: string, @Param('id', ParseIntPipe) id: number) {
+    return this.data.removeRef(req.user!.sub, refKind(kind), id);
   }
 
   @Get('settings')

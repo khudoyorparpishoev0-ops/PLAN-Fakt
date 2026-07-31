@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, type ApiProject, type UpdateRequestPayload } from '../lib/api';
 import {
   dirB,
   type CarReq, type PayReq, type ReqKind, type ReqStatus, type TripReq,
@@ -17,8 +17,93 @@ export interface HistoryScreenProps {
   monthly: { m: string; sum: number }[];
   /** Названия проектов для фильтра. */
   projectNames: string[];
+  /** Проекты для селекта в форме правки. */
+  projects: ApiProject[];
   deleteReq: (kind: ReqKind, id: string) => void;
+  /** Правка своей заявки (черновик / отклонённая) + повторная отправка. */
+  editRequest: (number: string, patch: UpdateRequestPayload) => Promise<boolean>;
   toast?: (msg: string) => void;
+}
+
+const EDIT_INP: CSSProperties = { width: '100%', height: 38, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 11px', fontSize: 13, background: '#fff', outline: 'none' };
+const EDIT_LAB: CSSProperties = { fontSize: 11.5, color: '#6B7370', marginBottom: 4 };
+const CAR_CATEGORIES = ['Бензин', 'Ремонт', 'Мойка', 'Штраф', 'Запчасти'];
+
+/** Правка заявки прямо в шторке: доступна автору в статусах
+ *  «Черновик» и «Отклонено» (ТЗ, п. 8). */
+function EditRequestForm({ dv, projects, onCancel, onSubmit }: {
+  dv: DrawerView;
+  projects: ApiProject[];
+  onCancel: () => void;
+  onSubmit: (patch: UpdateRequestPayload, resend: boolean) => Promise<void>;
+}) {
+  const isTrip = dv.kind === 'trip';
+  const [project, setProject] = useState(String(dv.projectId ?? ''));
+  const [name, setName] = useState(dv.nameValue);
+  const [value, setValue] = useState(isTrip ? String(dv.km ?? '') : String(dv.amount ?? ''));
+  const [busy, setBusy] = useState(false);
+
+  const num = parseFloat(value.trim().replace(/\s/g, '').replace(',', '.'));
+  const valid = name.trim().length >= 3 && Number.isFinite(num) && num > 0 && !busy;
+
+  const build = (): UpdateRequestPayload => ({
+    ...(project !== '' ? { projectId: Number(project) } : {}),
+    name: name.trim(),
+    // У авто-расхода наименование — это категория из справочного списка
+    ...(dv.kind === 'auto' ? { category: name.trim() } : {}),
+    ...(isTrip ? { km: Math.round(num) } : { amount: num }),
+  });
+
+  const send = async (resend: boolean) => {
+    if (!valid) return;
+    setBusy(true);
+    await onSubmit(build(), resend);
+    setBusy(false);
+  };
+
+  return (
+    <div data-edit-request style={{ background: '#FAF9F6', border: '1px solid #EFEDE8', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 12 }}>ИСПРАВИТЬ ЗАЯВКУ</div>
+      <div style={{ marginBottom: 10 }}>
+        <div style={EDIT_LAB}>Проект</div>
+        <select value={project} onChange={(e) => setProject(e.target.value)} style={{ ...EDIT_INP, padding: '0 8px' }}>
+          <option value="">Без проекта</option>
+          {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+        </select>
+      </div>
+      <div style={{ marginBottom: 10 }}>
+        <div style={EDIT_LAB}>{dv.nameLabel}</div>
+        {dv.kind === 'auto' ? (
+          <select value={name} onChange={(e) => setName(e.target.value)} style={{ ...EDIT_INP, padding: '0 8px' }}>
+            {CAR_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        ) : (
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} style={EDIT_INP} />
+        )}
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={EDIT_LAB}>{isTrip ? 'Километры' : 'Сумма'}</div>
+        <input value={value} onChange={(e) => setValue(e.target.value)} style={{ ...EDIT_INP, textAlign: 'right', fontFamily: "'IBM Plex Sans',sans-serif" }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <div onClick={onCancel} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+        <div
+          onClick={valid ? () => void send(false) : undefined}
+          className={valid ? 'hv-soft' : undefined}
+          style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+        >
+          Сохранить
+        </div>
+        <div
+          onClick={valid ? () => void send(true) : undefined}
+          className={valid ? 'hv-dim' : undefined}
+          style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+        >
+          {busy ? 'Отправляем…' : 'Отправить снова'}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const SUM_LAB: CSSProperties = { fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 };
@@ -206,6 +291,8 @@ interface DrawerView {
   metricLabel: string; metricValue: string; currencyValue: string;
   nameLabel: string; nameValue: string; contragent?: string; attachLabel: string; attachValue: string;
   attId?: number;
+  /** Сырые значения для формы правки. */
+  projectId?: number; amount?: number; km?: number;
 }
 
 function findRow(pays: PayReq[], trips: TripReq[], cars: CarReq[], sel: { kind: ReqKind; id: string }): PayReq | TripReq | CarReq | undefined {
@@ -221,7 +308,7 @@ function buildDrawerView(kind: ReqKind, row: PayReq | TripReq | CarReq): DrawerV
       kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.name, date: r.date,
       metricLabel: 'СУММА', metricValue: fmt(r.amount), currencyValue: r.currency,
       nameLabel: 'Наименование', nameValue: r.name, attachLabel: 'Документ', attachValue: r.doc || '—',
-      attId: r.attId,
+      attId: r.attId, projectId: r.projectId, amount: r.amount,
     };
   }
   if (kind === 'trip') {
@@ -230,7 +317,7 @@ function buildDrawerView(kind: ReqKind, row: PayReq | TripReq | CarReq): DrawerV
       kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.goal, date: r.date,
       metricLabel: 'КМ', metricValue: `${fmt(r.km)} км`, currencyValue: 'TJS',
       nameLabel: 'Цель', nameValue: r.goal, contragent: r.contragent, attachLabel: 'Фото', attachValue: r.photo || '—',
-      attId: r.attId,
+      attId: r.attId, projectId: r.projectId, km: r.km,
     };
   }
   const r = row as CarReq;
@@ -238,7 +325,7 @@ function buildDrawerView(kind: ReqKind, row: PayReq | TripReq | CarReq): DrawerV
     kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.category, date: r.date,
     metricLabel: 'СУММА', metricValue: fmt(r.amount), currencyValue: r.currency,
     nameLabel: 'Категория', nameValue: r.category, attachLabel: 'Чек', attachValue: r.receipt || '—',
-    attId: r.attId,
+    attId: r.attId, projectId: r.projectId, amount: r.amount,
   };
 }
 
@@ -249,7 +336,8 @@ interface HistRow {
 }
 
 export default function HistoryScreen(props: HistoryScreenProps) {
-  const { pays, trips, cars, monthly, projectNames, deleteReq } = props;
+  const { pays, trips, cars, monthly, projectNames, projects, deleteReq, editRequest } = props;
+  const [editing, setEditing] = useState(false);
 
   const [fProject, setFProject] = useState('Все');
   const [kind, setKind] = useState<ReqKind>('payment');
@@ -389,6 +477,27 @@ export default function HistoryScreen(props: HistoryScreenProps) {
                 <div><div style={SUM_LAB}>{dv.metricLabel}</div><div style={{ ...num, fontSize: 15, fontWeight: 600 }}>{dv.metricValue}</div></div>
                 <div><div style={SUM_LAB}>ВАЛЮТА</div><div style={{ ...num, fontSize: 15, fontWeight: 600 }}>{dv.currencyValue}</div></div>
               </div>
+
+              {/* Правка доступна автору только в «Черновик» и «Отклонено» (ТЗ, п. 8) */}
+              {editing ? (
+                <EditRequestForm
+                  dv={dv}
+                  projects={projects}
+                  onCancel={() => setEditing(false)}
+                  onSubmit={async (patch, resend) => {
+                    const ok = await editRequest(dv.id, { ...patch, ...(resend ? { resend: true } : {}) });
+                    if (ok) { setEditing(false); setSelReq(null); }
+                  }}
+                />
+              ) : (dv.status === 'Черновик' || dv.status === 'Отклонено') && (
+                <div
+                  onClick={() => setEditing(true)}
+                  className="hv-soft"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid #E0DED8', borderRadius: 10, padding: 11, marginBottom: 18, fontSize: 13, fontWeight: 600, color: ACC, cursor: 'pointer' }}
+                >
+                  Исправить и отправить снова
+                </div>
+              )}
 
               <div style={{ ...SECTION_LAB, marginBottom: 12 }}>ИСТОРИЯ СТАТУСОВ</div>
               <StatusTimeline status={dv.status} />

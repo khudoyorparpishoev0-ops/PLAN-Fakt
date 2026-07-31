@@ -121,7 +121,10 @@ async function articleId(name: string, type: ArticleType, parentId: number | nul
 async function accountId(name: string): Promise<number> {
   const cached = accountIds.get(name);
   if (cached) return cached;
-  const row = await prisma.account.upsert({ where: { name }, update: {}, create: { name } });
+  // Вид счёта для счетов из журнала («Наличный», «Касса», «Электронный»):
+  // наличные — касса, остальное — банк (карточка «Деньги» показывает раздельно).
+  const kind = /касс|наличн/i.test(name) ? 'cash' : 'bank';
+  const row = await prisma.account.upsert({ where: { name }, update: {}, create: { name, kind } });
   accountIds.set(name, row.id);
   return row.id;
 }
@@ -210,7 +213,12 @@ async function seedDictionaries() {
     counterpartyIds.delete(name);
   }
   for (const [name, note] of GEN.accounts.rows) {
-    await prisma.account.upsert({ where: { name }, update: { note }, create: { name, note } });
+    // Вид счёта и входящий остаток разбираются из подписи справочника
+    // («Расчётный счёт · остаток 512 600 смн» → bank, 512 600).
+    const kind = note.startsWith('Наличные') ? 'cash' : note.startsWith('Расчётный счёт') ? 'bank' : 'other';
+    const opening = Number(note.match(/остаток\s+([\d\s]+)/)?.[1]?.replace(/\s/g, '') ?? 0);
+    const data = { note, kind, openingDirams: dirams(opening) };
+    await prisma.account.upsert({ where: { name }, update: data, create: { name, ...data } });
     accountIds.delete(name);
   }
   for (const [name, note] of GEN.entities.rows) {
@@ -429,7 +437,9 @@ async function seedRequests() {
     };
     const row = await prisma.request.upsert({
       where: { number: req.number },
-      update: data,
+      // deletedAt: null — повторный seed восстанавливает демо-заявку,
+      // удалённую во время проверок
+      update: { ...data, deletedAt: null },
       create: { number: req.number, ...data },
     });
     for (const a of req.attachments) {

@@ -11,6 +11,8 @@ export interface ReportScreenProps {
   incomes: Income[];
   expenses: Expense[];
   totals: Totals;
+  /** Подпись выбранного периода («Октябрь 2026», «2026 год», …). */
+  periodLabel: string;
 }
 
 interface RepRow {
@@ -95,7 +97,7 @@ export default function ReportScreen(props: ReportScreenProps) {
   return (
     <div data-screen-label="Сводный План-Факт">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>Октябрь 2026</b> · все проекты · в сомони</div>
+        <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>{props.periodLabel}</b> · все проекты · в сомони</div>
         <div style={{ flex: 1 }} />
         <div onClick={() => void api.downloadExport('report')} title="Скачать план-факт.xlsx" className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
         <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>

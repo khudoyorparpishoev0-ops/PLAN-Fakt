@@ -4,9 +4,10 @@ import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
-  type ApiDictionaries, type ApiProject, type ApiRequest, type AuthUser,
+  type ApiDictionaries, type ApiMetrics, type ApiProject, type ApiRequest, type AuthUser,
 } from '../lib/api';
 import { toExpense, toIncome } from '../lib/mapping';
+import { DEFAULT_PERIOD, periodRange, type PeriodKind } from '../lib/period';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
 import PanelScreen from './PanelScreen';
@@ -107,18 +108,26 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
    *    opsTick — сигнал ему перечитать список после изменений. ── */
   const [incomesRaw, setIncomesRaw] = useState<Income[]>([]);
   const [expensesRaw, setExpensesRaw] = useState<Expense[]>([]);
+  const [metrics, setMetrics] = useState<ApiMetrics | null>(null);
   const [requests, setRequests] = useState<ApiRequest[]>([]);
   const [apiProjects, setApiProjects] = useState<ApiProject[]>([]);
   const [dicts, setDicts] = useState<ApiDictionaries | null>(null);
   const [opsTick, setOpsTick] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  /** Отчётный период — общий для панели, расходов и отчёта. */
+  const [period, setPeriod] = useState<PeriodKind>(DEFAULT_PERIOD);
+  const range = useMemo(() => periodRange(period), [period]);
+
   useEffect(() => { applyThemeVars(); }, []);
 
   const loadData = async () => {
-    const [pf, reqs, projs] = await Promise.all([api.planFact(), api.requests(), api.projects()]);
+    const [pf, reqs, projs] = await Promise.all([
+      api.planFact({ from: range.from, to: range.to }), api.requests(), api.projects(),
+    ]);
     setIncomesRaw(pf.incomes.map(toIncome));
     setExpensesRaw(pf.expenses.map(toExpense));
+    setMetrics(pf.metrics);
     setRequests(reqs);
     setApiProjects(projs);
   };
@@ -128,20 +137,26 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
     (async () => {
       try {
         await loadData();
-        const d = await api.dictionaries();
-        if (alive) setDicts(d);
+        if (!dicts) {
+          const d = await api.dictionaries();
+          if (alive) setDicts(d);
+        }
       } catch (e) {
         if (alive) setLoadError(e instanceof ApiError ? e.message : 'Не удалось загрузить данные');
       }
     })();
     return () => { alive = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range.from, range.to]);
+
+  /** Перечитать справочники (после правки в «Справочниках»). */
+  const reloadDicts = () => { void api.dictionaries().then(setDicts).catch(() => {}); };
 
   const expenses: Expense[] = useMemo(
     () => expensesRaw.map(e => ({ ...e, status: expStatuses[e.n] ?? e.status })),
     [expensesRaw, expStatuses],
   );
-  const totals = useMemo(() => computeTotals(incomesRaw, expenses), [incomesRaw, expenses]);
+  const totals = useMemo(() => computeTotals(incomesRaw, expenses, metrics), [incomesRaw, expenses, metrics]);
   const projects = useMemo(() => apiProjects.map(toProject), [apiProjects]);
 
   /** Заявки, ждущие решения (Отправлено / На рассмотрении) — «Требует внимания». */
@@ -231,7 +246,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: '#FFFFFF', borderBottom: '1px solid #E7E5E0' }}>
               <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.01em' }}>{TITLES[screen]}</div>
-              <div style={{ fontSize: 12, color: '#8A918D' }}>Октябрь 2026 · суммы в сомони (TJS)</div>
+              <div style={{ fontSize: 12, color: '#8A918D' }}>{range.label} · суммы в сомони (TJS)</div>
               <div style={{ flex: 1 }} />
               <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
                 <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
@@ -252,12 +267,12 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
-              {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
+              {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
-              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} />}
-              {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} />}
-              {screen === 'sprav' && <SpravScreen dicts={dicts} />}
+              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} periodLabel={range.label} />}
+              {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} onSaved={loadData} onError={setLoadError} />}
+              {screen === 'sprav' && <SpravScreen dicts={dicts} onChanged={reloadDicts} />}
               {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} user={user} onChangePassword={onChangePassword} />}
               {screen === 'deals' && <DealsScreen />}
             </div>
@@ -296,6 +311,8 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
           proj={sp}
           onClose={() => setSelProj(null)}
           onArchive={() => { toggleArchive(sp.id); setSelProj(null); }}
+          onSaved={() => { setSelProj(null); void loadData(); }}
+          onError={setLoadError}
         />
       )}
     </div>

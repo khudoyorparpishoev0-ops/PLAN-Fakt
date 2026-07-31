@@ -2,7 +2,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
-import type { ChangeRequestStatusDto, CreateRequestDto } from './requests.dto';
+import type { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
+
+/** Дирамы → сомони (для проверок при правке заявки). */
+const somoniOf = (v: bigint | null): number | undefined => (v == null ? undefined : Number(v) / 100);
 
 type Kind = 'payment' | 'trip' | 'auto';
 type Status = 'draft' | 'sent' | 'review' | 'approved' | 'rejected';
@@ -204,6 +207,63 @@ export class RequestsService {
         if (!unique || attempt >= 2) throw e;
       }
     }
+  }
+
+  /** Правка заявки автором. ТЗ, п. 8: «редактируется автором только в статусе
+   *  „Черновик“ / „Отклонено“». С resend = true заявка снова уходит директору. */
+  async update(user: { sub: number }, id: number, dto: UpdateRequestDto): Promise<RequestDto> {
+    const req = await this.prisma.request.findFirst({ where: { id, deletedAt: null }, include: REQUEST_INCLUDE });
+    if (!req || req.authorId !== user.sub) err(HttpStatus.NOT_FOUND, 'not_found', 'Заявка не найдена');
+    if (req.status !== 'draft' && req.status !== 'rejected')
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'not_editable', 'Редактировать можно только черновик или отклонённую заявку');
+
+    const kind = req.kind as Kind;
+    const amount = dto.amount ?? somoniOf(req.amountDirams);
+    // Чек обязателен для авто-расхода от 100 TJS (ТЗ, п. 4.2)
+    const hasAttachment = dto.attachment != null || req.attachments.length > 0;
+    if (kind === 'auto' && (amount ?? 0) >= 100 && !hasAttachment)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Для суммы от 100 TJS чек обязателен', 'attachment');
+    if (kind === 'trip' && !hasAttachment)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Приложите фото одометра (км)', 'attachment');
+    if (dto.projectId != null) {
+      const project = await this.prisma.project.findFirst({ where: { id: dto.projectId, deletedAt: null } });
+      if (!project) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Проект не найден', 'projectId');
+    }
+
+    const row = await this.prisma.request.update({
+      where: { id },
+      data: {
+        ...(dto.projectId !== undefined ? { projectId: dto.projectId } : {}),
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.amount !== undefined ? { amountDirams: BigInt(Math.round(dto.amount * 100)) } : {}),
+        ...(dto.currency !== undefined ? { currencyCode: dto.currency } : {}),
+        ...(dto.km !== undefined ? { km: dto.km } : {}),
+        ...(dto.category !== undefined ? { category: dto.category } : {}),
+        ...(dto.counterpartyName !== undefined ? { counterpartyName: dto.counterpartyName.trim() || null } : {}),
+        // Повторная отправка сбрасывает прежнее решение директора
+        ...(dto.resend
+          ? { status: 'sent' as Status, decisionById: null, decisionAt: null, decisionComment: null, requestDate: todayUtc() }
+          : {}),
+        ...(dto.attachment
+          ? {
+              attachments: {
+                // Новый файл заменяет прежний (у заявки одно вложение)
+                deleteMany: {},
+                create: [{
+                  kind: ATTACH_KIND[kind],
+                  fileName: dto.attachment.fileName,
+                  storageKey: dto.attachment.key,
+                  mime: dto.attachment.mime ?? null,
+                  size: dto.attachment.size ?? null,
+                }],
+              },
+            }
+          : {}),
+      },
+      include: REQUEST_INCLUDE,
+    });
+    await this.audit(user.sub, id, dto.resend ? 'resend' : 'update', { status: req.status }, dto as unknown);
+    return this.toDto(row);
   }
 
   /** Решение директора. Переходы (ТЗ, п. 5): Отправлено → На рассмотрении /

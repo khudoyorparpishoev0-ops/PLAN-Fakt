@@ -1,7 +1,8 @@
 import { useState, type MouseEvent } from 'react';
 import type { Project } from '../data/admin';
 import { PRJ_GROUPS } from '../data/admin';
-import { api } from '../lib/api';
+import { api, type ProjectPayload } from '../lib/api';
+import ProjectForm from './ProjectForm';
 import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD, pct1, plural } from '../lib/format';
 import { badge, type BadgeData } from '../lib/badges';
@@ -11,6 +12,9 @@ export interface ProjectsScreenProps {
   projects: (Project & { archived: boolean })[];
   toggleArchive: (id: string) => void;
   openProject: (id: string) => void;
+  /** Проект создан или изменён — перечитать данные. */
+  onSaved: () => void;
+  onError: (msg: string) => void;
 }
 
 interface Row {
@@ -30,7 +34,10 @@ interface Row {
 const projBadge = (st: Project['status']): BadgeData =>
   st === 'plan' ? badge('Плановый', 'blue') : st === 'work' ? badge('В работе', 'yellow') : badge('Завершён', 'green');
 
-export default function ProjectsScreen({ projects, toggleArchive, openProject }: ProjectsScreenProps) {
+export default function ProjectsScreen({ projects, toggleArchive, openProject, onSaved }: ProjectsScreenProps) {
+  /** Открытая форма проекта: новый или правка существующего. */
+  const [form, setForm] = useState<{ id?: number; initial?: Partial<ProjectPayload> } | null>(null);
+  const [search, setSearch] = useState('');
   const [projFiltersOn, setProjFiltersOn] = useState(true);
   const [fPlan, setFPlan] = useState(true);
   const [fWork, setFWork] = useState(true);
@@ -42,8 +49,11 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject }:
   const [showPlan, setShowPlan] = useState(false);
   const [projMenu, setProjMenu] = useState<string | null>(null);
 
+  const q = search.trim().toLowerCase();
   const projF = projects.filter(p =>
-    (p.status === 'plan' ? fPlan : p.status === 'work' ? fWork : fDone) && (p.archived ? fArch : fActive));
+    (p.status === 'plan' ? fPlan : p.status === 'work' ? fWork : fDone)
+    && (p.archived ? fArch : fActive)
+    && (!q || p.name.toLowerCase().includes(q) || p.group.toLowerCase().includes(q) || p.resp.toLowerCase().includes(q)));
   const money = (n: number) => (n ? fmt(n) : '—');
 
   const mkRow = (p: Project & { archived: boolean }, padL: string, sub: string): Row => {
@@ -57,7 +67,14 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject }:
       open: () => { setProjMenu(null); openProject(p.id); },
       menuOpen: projMenu === p.id,
       menuClick: (e) => { e.stopPropagation(); setProjMenu(m => (m === p.id ? null : p.id)); },
-      actEdit: (e) => { e.stopPropagation(); setProjMenu(null); openProject(p.id); },
+      actEdit: (e) => {
+        e.stopPropagation();
+        setProjMenu(null);
+        setForm({
+          id: Number(p.id),
+          initial: { name: p.name, group: p.group, resp: p.resp, status: p.status, start: p.s ?? '', end: p.e ?? '' },
+        });
+      },
       actArch: (e) => { e.stopPropagation(); setProjMenu(null); toggleArchive(p.id); },
       archLabel: p.archived ? 'Вернуть из архива' : 'Убрать в архив',
       actDel: (e) => { e.stopPropagation(); setProjMenu(null); },
@@ -121,13 +138,13 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject }:
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-          <AccentBtn style={{ padding: '8px 15px' }}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Проект</AccentBtn>
+          <AccentBtn style={{ padding: '8px 15px' }} onClick={() => setForm({})}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Проект</AccentBtn>
           <select title="Показатель для анализа" style={{ height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#1B1F1E', fontWeight: 500 }}><option>Прибыль методом начисления</option><option>Прибыль кассовым методом</option><option>Движение денег</option></select>
           <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
             <div onClick={() => setProjView('flat')} title="По проектам" style={{ width: 32, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: projView === 'flat' ? '#FFFFFF' : 'transparent', boxShadow: projView === 'flat' ? '0 1px 2px rgba(0,0,0,.08)' : 'none', color: '#3E4643' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3.5h10M2 7h10M2 10.5h10" /></svg></div>
             <div onClick={() => setProjView('groups')} title="По группам проектов" style={{ width: 32, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: projView === 'groups' ? '#FFFFFF' : 'transparent', boxShadow: projView === 'groups' ? '0 1px 2px rgba(0,0,0,.08)' : 'none', color: '#3E4643' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h10" /><path d="M5 7h7M5 11h7" /><path d="M2.5 5v6" /></svg></div>
           </div>
-          <input placeholder="Поиск по проектам" style={{ flex: 1, minWidth: 150, maxWidth: 260, height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по проектам" style={{ flex: 1, minWidth: 150, maxWidth: 260, height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
           <div style={{ flex: 1 }} />
           <div onClick={() => setShowPlan(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <span style={{ width: 34, height: 20, borderRadius: 99, background: showPlan ? ACC : '#D8D5CE', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)', transform: `translateX(${showPlan ? '14px' : '0px'})`, transition: 'transform .15s' }} /></span>
@@ -188,6 +205,15 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject }:
         </div>
         <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Нажмите строку — откроется карточка проекта. Дата начала — первая операция по проекту, дата окончания — последняя. Итоги в нижней строке считаются по выбранным фильтрам.</div>
       </div>
+      {form && (
+        <ProjectForm
+          id={form.id}
+          initial={form.initial}
+          groups={PRJ_GROUPS}
+          onClose={() => setForm(null)}
+          onSaved={() => { setForm(null); onSaved(); }}
+        />
+      )}
     </div>
   );
 }

@@ -233,6 +233,25 @@ export interface ApiPlanFactRow {
   attachments?: { id: number; fileName: string; hasFile: boolean }[];
 }
 
+/** Показатели дашборда (считаются сервером из данных периода). */
+export interface ApiMetrics {
+  cashBox: number;
+  cashBank: number;
+  cashTotal: number;
+  cashIn: number;
+  cashOut: number;
+  cashFree: number;
+  cashGap: boolean;
+  receivable: number;
+  receivableOverdue: number;
+  payable: number;
+  payableOverdue: number;
+  expOver: number;
+  expSave: number;
+  incForecast: number;
+  prevProfitFact: number | null;
+}
+
 export interface ApiProject {
   id: number;
   name: string;
@@ -256,6 +275,40 @@ export interface ApiProjectSummary {
 }
 
 export interface NamedRef { id: number; name: string; note: string }
+
+/** Виды справочников с общим CRUD (совпадают с путями API). */
+export type RefKind = 'counterparty' | 'account' | 'entity' | 'good' | 'service' | 'article';
+
+export interface RefPayload {
+  name?: string;
+  note?: string;
+  /** Статьи: тип и родитель. */
+  type?: 'income' | 'expense' | 'asset' | 'liability' | 'equity';
+  parentId?: number;
+  /** Счета: касса или расчётный счёт. */
+  kind?: 'cash' | 'bank';
+}
+
+export interface ProjectPayload {
+  name: string;
+  group?: string;
+  resp?: string;
+  status?: 'plan' | 'work' | 'done';
+  start?: string;
+  end?: string;
+}
+
+export interface UpdateRequestPayload {
+  projectId?: number;
+  name?: string;
+  amount?: number;
+  currency?: string;
+  km?: number;
+  category?: string;
+  counterpartyName?: string;
+  attachment?: UploadedRef;
+  resend?: boolean;
+}
 
 export interface ApiDictionaries {
   articles: Record<'income' | 'expense' | 'asset' | 'liability' | 'equity', { id: number; name: string; children: { id: number; name: string }[]; isSystem: boolean }[]>;
@@ -375,7 +428,15 @@ export const api = {
   createOperation: (payload: CreateOperationPayload) =>
     authedReq<ApiOperation>('/operations', { method: 'POST', body: payload }),
 
-  planFact: () => authedReq<{ incomes: ApiPlanFactRow[]; expenses: ApiPlanFactRow[] }>('/planfact'),
+  planFact: (range?: { from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (range?.from) q.set('from', range.from);
+    if (range?.to) q.set('to', range.to);
+    const qs = q.toString();
+    return authedReq<{ incomes: ApiPlanFactRow[]; expenses: ApiPlanFactRow[]; metrics: ApiMetrics }>(
+      `/planfact${qs ? `?${qs}` : ''}`,
+    );
+  },
 
   projects: () => authedReq<ApiProject[]>('/projects'),
 
@@ -384,7 +445,27 @@ export const api = {
   archiveProject: (id: number, archived: boolean) =>
     authedReq<{ id: number; archived: boolean }>(`/projects/${id}`, { method: 'PATCH', body: { archived } }),
 
+  createProject: (payload: ProjectPayload) =>
+    authedReq<{ id: number; name: string }>('/projects', { method: 'POST', body: payload }),
+
+  updateProject: (id: number, payload: Partial<ProjectPayload>) =>
+    authedReq<{ id: number; name: string }>(`/projects/${id}`, { method: 'PATCH', body: payload }),
+
   dictionaries: () => authedReq<ApiDictionaries>('/dictionaries'),
+
+  /** Справочники: ввод, правка, удаление (системные и занятые — 422). */
+  createRef: (kind: RefKind, payload: RefPayload) =>
+    authedReq<NamedRef>(`/dictionaries/${kind}`, { method: 'POST', body: payload }),
+
+  updateRef: (kind: RefKind, id: number, payload: RefPayload) =>
+    authedReq<NamedRef>(`/dictionaries/${kind}/${id}`, { method: 'PATCH', body: payload }),
+
+  removeRef: (kind: RefKind, id: number) =>
+    authedReq<{ id: number; deleted: boolean }>(`/dictionaries/${kind}/${id}`, { method: 'DELETE' }),
+
+  /** Правка своей заявки (черновик / отклонённая), resend — отправить снова. */
+  updateRequest: (id: number, payload: UpdateRequestPayload) =>
+    authedReq<ApiRequest>(`/requests/${id}`, { method: 'PATCH', body: payload }),
 
   settings: () => authedReq<{ kmRate: number }>('/settings'),
 

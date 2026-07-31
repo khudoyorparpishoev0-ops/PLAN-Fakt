@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Project } from '../data/admin';
+import { PRJ_GROUPS } from '../data/admin';
+import ProjectForm from './ProjectForm';
 import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD, pct1 } from '../lib/format';
 import { badge } from '../lib/badges';
@@ -10,9 +12,13 @@ export interface ProjectDrawerProps {
   proj: Project & { archived: boolean };
   onClose: () => void;
   onArchive: () => void;
+  /** Карточка проекта изменена — перечитать данные. */
+  onSaved: () => void;
+  onError: (msg: string) => void;
 }
 
-export default function ProjectDrawer({ proj, onClose, onArchive }: ProjectDrawerProps) {
+export default function ProjectDrawer({ proj, onClose, onArchive, onSaved }: ProjectDrawerProps) {
+  const [editing, setEditing] = useState(false);
   /* Сводка по статьям — GET /api/projects/:id/summary (ТЗ, п. 9) */
   const [summary, setSummary] = useState<ApiProjectSummary | null>(null);
   useEffect(() => {
@@ -88,10 +94,24 @@ export default function ProjectDrawer({ proj, onClose, onArchive }: ProjectDrawe
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid #EFEEE9' }}>
           <div onClick={onArchive} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>{spArchLabel}</div>
-          <div className="hv-red" style={{ border: '1px solid #F0CFC9', color: '#B93227', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Удалить</div>
-          <div className="hv-dim" style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Редактировать</div>
+          <div
+            onClick={() => setEditing(true)}
+            className="hv-dim"
+            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Редактировать
+          </div>
         </div>
       </div>
+      {editing && (
+        <ProjectForm
+          id={Number(proj.id)}
+          initial={{ name: proj.name, group: proj.group, resp: proj.resp, status: proj.status, start: proj.s ?? '', end: proj.e ?? '' }}
+          groups={PRJ_GROUPS}
+          onClose={() => setEditing(false)}
+          onSaved={() => { setEditing(false); onSaved(); }}
+        />
+      )}
     </div>
   );
 }

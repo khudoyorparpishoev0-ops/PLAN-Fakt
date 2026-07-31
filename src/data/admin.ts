@@ -9,10 +9,14 @@
 export interface Income {
   n: string; cat: string; proj: string; party: string; pdate: string; fdate: string;
   plan: number; fact: number; status: string; resp: string; pending?: boolean;
+  /** Плановая дата в ISO (для расчёта просрочки); у фикстур отсутствует. */
+  pIso?: string | null;
 }
 export interface Expense {
   n: string; cat: string; proj: string; payee: string; pdate: string; fdate: string;
   plan: number; fact: number; status: string; resp: string; reason?: string; pending?: boolean;
+  /** Плановая дата в ISO (для расчёта просрочки). */
+  pIso?: string | null;
   /** Для строк из заявок кабинета (ШАГ 4): id заявки, сторно, вложения. */
   requestId?: number; storno?: boolean;
   attachments?: { id: number; fileName: string; hasFile: boolean }[];

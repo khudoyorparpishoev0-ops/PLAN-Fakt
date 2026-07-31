@@ -4,7 +4,7 @@ import { fmt } from '../lib/format';
 import { initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
-  type ApiProject, type ApiRequest, type AuthUser, type CreateRequestPayload,
+  type ApiProject, type ApiRequest, type AuthUser, type CreateRequestPayload, type UpdateRequestPayload,
 } from '../lib/api';
 import { monthlyStats, toCar, toPay, toTrip } from '../lib/mapping';
 import { Logo } from '../components/ui';
@@ -219,6 +219,22 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
     }
   };
 
+  /** Правка своей заявки в «Черновик»/«Отклонено» (ТЗ, п. 8).
+   *  resend = true — отправить директору заново. */
+  const editRequest = async (number: string, patch: UpdateRequestPayload): Promise<boolean> => {
+    const r = reqs.find(x => x.number === number);
+    if (!r) return false;
+    try {
+      const updated = await api.updateRequest(r.id, patch);
+      setReqs(list => list.map(x => (x.id === updated.id ? updated : x)));
+      toast(patch.resend ? `Заявка ${number} отправлена Директору заново` : `Заявка ${number} изменена`);
+      return true;
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Не удалось изменить заявку');
+      return false;
+    }
+  };
+
   /** Удаление черновика (ТЗ: только «Черновик»). */
   const deleteReq = async (_kind: ReqKind, number: string) => {
     const r = reqs.find(x => x.number === number);
@@ -326,7 +342,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           </div>
           {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
           {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
-          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} deleteReq={deleteReq} toast={toast} />}
+          {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
         </div>
       </div>

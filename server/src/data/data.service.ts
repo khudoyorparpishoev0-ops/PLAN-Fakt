@@ -1,8 +1,30 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type ArticleType, type ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
 import type { CreateOperationDto, OperationFilters } from './operations.dto';
+
+/** Виды справочников с общим CRUD. */
+export type RefKind = 'counterparty' | 'account' | 'entity' | 'good' | 'service' | 'article';
+export const REF_KINDS: RefKind[] = ['counterparty', 'account', 'entity', 'good', 'service', 'article'];
+const ARTICLE_TYPES: ArticleType[] = ['income', 'expense', 'asset', 'liability', 'equity'];
+
+/** Строка простого справочника (у всех пяти моделей одинаковый набор полей). */
+interface RefRow { id: number; name: string; note: string | null; deletedAt: Date | null }
+interface RefDelegate {
+  findFirst(args: { where: Record<string, unknown> }): Promise<RefRow | null>;
+  create(args: { data: Record<string, unknown> }): Promise<RefRow>;
+  update(args: { where: { id: number }; data: Record<string, unknown> }): Promise<RefRow>;
+}
+
+export interface ProjectInput {
+  name: string;
+  group?: string;
+  resp?: string;
+  status?: string;
+  start?: string | null;
+  end?: string | null;
+}
 
 /** Строка отчёта «План-Факт» — форма экранов «Показатели»/«Расходы»/«План-Факт». */
 export interface PlanFactRow {
@@ -22,6 +44,26 @@ export interface PlanFactRow {
   requestId?: number;
   storno?: boolean;
   attachments?: { id: number; fileName: string; hasFile: boolean }[];
+}
+
+/** Показатели дашборда, считаются из данных периода и остатков счетов.
+ *  Все суммы — в сомони. */
+export interface DashboardMetrics {
+  cashBox: number; // касса (наличные)
+  cashBank: number; // расчётные счета
+  cashTotal: number;
+  cashIn: number; // ожидаемые поступления = план − факт по доходам
+  cashOut: number; // предстоящие выплаты = план − факт по расходам
+  cashFree: number; // свободный остаток = остаток + ожидания − обязательства
+  cashGap: boolean; // кассовый разрыв ожидается
+  receivable: number; // дебиторская задолженность
+  receivableOverdue: number; // из них просрочено (плановая дата прошла)
+  payable: number; // кредиторская задолженность
+  payableOverdue: number;
+  expOver: number; // перерасход = Σ(факт − план), где факт > план
+  expSave: number; // экономия по полностью оплаченным строкам
+  incForecast: number; // прогноз доходов = факт + ожидаемые поступления
+  prevProfitFact: number | null; // прибыль прошлого периода (null — нет данных)
 }
 
 /** Строка журнала операций. */
@@ -203,11 +245,40 @@ export class DataService {
 
   /* ── План-факт ────────────────────────────────────────────────────────── */
 
-  /** План-факт: строки из таблицы plans (+ факт-операции по externalRef) и
-   *  плановые операции из одобренных заявок (`req:<номер>`, сторно схлопывается). */
-  async planFact(): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
+  /** План-факт за период (по умолчанию — все данные) вместе с показателями
+   *  дашборда: остатки счетов, ожидания/обязательства, задолженности. */
+  async planFact(from?: string, to?: string): Promise<{
+    incomes: PlanFactRow[]; expenses: PlanFactRow[]; metrics: DashboardMetrics;
+  }> {
+    const dFrom = from ? new Date(from + 'T00:00:00Z') : undefined;
+    const dTo = to ? new Date(to + 'T00:00:00Z') : undefined;
+    const { incomes, expenses } = await this.planFactRows(dFrom, dTo);
+
+    // Прибыль предыдущего периода той же длины — для «К прошлому периоду»
+    let prevProfitFact: number | null = null;
+    if (dFrom && dTo) {
+      const span = dTo.getTime() - dFrom.getTime() + 24 * 3600 * 1000;
+      const prev = await this.planFactRows(new Date(dFrom.getTime() - span), new Date(dFrom.getTime() - 24 * 3600 * 1000));
+      const sum = (rows: PlanFactRow[], f: (r: PlanFactRow) => number) => rows.reduce((s, r) => s + f(r), 0);
+      const inc = sum(prev.incomes, (r) => r.fact);
+      const exp = sum(prev.expenses, (r) => r.fact);
+      if (prev.incomes.length || prev.expenses.length) prevProfitFact = inc - exp;
+    }
+
+    const metrics = await this.dashboardMetrics(incomes, expenses, prevProfitFact);
+    return { incomes, expenses, metrics };
+  }
+
+  /** Строки план-факта: планы (+ факт-операции по externalRef) и плановые
+   *  операции из одобренных заявок (`req:<номер>`, сторно схлопывается). */
+  private async planFactRows(from?: Date, to?: Date): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
     const plans = await this.prisma.plan.findMany({
-      where: { deletedAt: null, externalRef: { startsWith: 'plan:' } },
+      where: {
+        deletedAt: null,
+        externalRef: { startsWith: 'plan:' },
+        // Период плана — первый день месяца; для «Года» попадают все месяцы года
+        ...(from || to ? { period: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
+      },
       include: { article: true, project: true },
       orderBy: { externalRef: 'asc' },
     });
@@ -243,7 +314,10 @@ export class DataService {
     // Плановые операции из одобренных заявок; пара op + storno даёт net 0 —
     // строка остаётся с планом 0 и статусом «Сторнировано»
     const requestOps = await this.prisma.operation.findMany({
-      where: { deletedAt: null, isPlan: true, externalRef: { startsWith: 'req:' } },
+      where: {
+        deletedAt: null, isPlan: true, externalRef: { startsWith: 'req:' },
+        ...(from || to ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
+      },
       include: { article: true, project: true },
       orderBy: { id: 'asc' },
     });
@@ -284,6 +358,70 @@ export class DataService {
       });
     }
     return { incomes, expenses };
+  }
+
+  /** Показатели дашборда из строк план-факта и остатков счетов.
+   *
+   *  Бизнес-правила (ТЗ, п. 8; в прототипе на этих местах были константы):
+   *  — остаток счёта = входящий остаток + подтверждённые поступления − выплаты;
+   *  — ожидаемые поступления / предстоящие выплаты = Σ(план − факт), где план > факт;
+   *  — дебиторская/кредиторская задолженность = то же, просрочка — если плановая
+   *    дата прошла;
+   *  — свободный остаток = остаток счетов + ожидания − обязательства; если он
+   *    отрицательный, ожидается кассовый разрыв. */
+  private async dashboardMetrics(
+    incomes: PlanFactRow[], expenses: PlanFactRow[], prevProfitFact: number | null,
+  ): Promise<DashboardMetrics> {
+    const accounts = await this.prisma.account.findMany({ where: { deletedAt: null } });
+    const moves = await this.prisma.operation.groupBy({
+      by: ['accountId', 'type'],
+      where: { deletedAt: null, isPlan: false, status: 'confirmed', accountId: { not: null } },
+      _sum: { amountTjsDirams: true },
+    });
+    const balance = new Map<number, bigint>(accounts.map((a) => [a.id, a.openingDirams]));
+    for (const m of moves) {
+      const cur = balance.get(m.accountId!);
+      if (cur === undefined || (m.type !== 'in' && m.type !== 'out')) continue;
+      const sum = m._sum.amountTjsDirams ?? 0n;
+      balance.set(m.accountId!, m.type === 'in' ? cur + sum : cur - sum);
+    }
+    const bucket = (kind: string) =>
+      somoni(accounts.filter((a) => a.kind === kind).reduce((s, a) => s + (balance.get(a.id) ?? 0n), 0n))!;
+    const cashBox = bucket('cash');
+    const cashBank = accounts
+      .filter((a) => a.kind !== 'cash')
+      .reduce((s, a) => s + somoni(balance.get(a.id) ?? 0n)!, 0);
+
+    const today = dateStr(todayUtc())!;
+    const shortfall = (rows: PlanFactRow[]) => rows.filter((r) => r.plan > r.fact);
+    const sum = (rows: PlanFactRow[]) => rows.reduce((s, r) => s + (r.plan - r.fact), 0);
+    const overdue = (rows: PlanFactRow[]) => sum(rows.filter((r) => r.pdate != null && r.pdate < today));
+
+    const incShort = shortfall(incomes);
+    const expShort = shortfall(expenses);
+    const cashIn = sum(incShort);
+    const cashOut = sum(expShort);
+    const cashTotal = cashBox + cashBank;
+    const cashFree = cashTotal + cashIn - cashOut;
+
+    const expOver = expenses.filter((r) => r.fact > r.plan).reduce((s, r) => s + (r.fact - r.plan), 0);
+    // Экономия — только по полностью оплаченным строкам (частичная оплата
+    // и ожидание оплаты в экономию не попадают)
+    const expSave = expenses
+      .filter((r) => r.fact > 0 && r.fact < r.plan && !r.pending && !/Частично/i.test(r.status))
+      .reduce((s, r) => s + (r.plan - r.fact), 0);
+    const incFact = incomes.reduce((s, r) => s + r.fact, 0);
+
+    const round = (v: number) => Math.round(v * 100) / 100;
+    return {
+      cashBox: round(cashBox), cashBank: round(cashBank), cashTotal: round(cashTotal),
+      cashIn: round(cashIn), cashOut: round(cashOut), cashFree: round(cashFree), cashGap: cashFree < 0,
+      receivable: round(cashIn), receivableOverdue: round(overdue(incShort)),
+      payable: round(cashOut), payableOverdue: round(overdue(expShort)),
+      expOver: round(expOver), expSave: round(expSave),
+      incForecast: round(incFact + cashIn),
+      prevProfitFact: prevProfitFact == null ? null : round(prevProfitFact),
+    };
   }
 
   /* ── Проекты ──────────────────────────────────────────────────────────── */
@@ -441,6 +579,150 @@ export class DataService {
       goods: pair(goods),
       services: pair(services),
     };
+  }
+
+  /* ── CRUD справочников ────────────────────────────────────────────────── */
+
+  /** Создание / переименование / удаление записей справочников.
+   *  ТЗ, п. 8: системные статьи и записи, на которые есть ссылки, удалять
+   *  нельзя — только архивировать (мягкое удаление недоступно, отдаётся 422). */
+  async createRef(userId: number, kind: RefKind, dto: { name?: string; note?: string; type?: string; parentId?: number; kind?: string }) {
+    const name = (dto.name ?? '').trim();
+    if (name.length < 2) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Название — минимум 2 символа', 'name');
+    if (kind === 'article') {
+      const type = (dto.type ?? 'expense') as ArticleType;
+      if (!ARTICLE_TYPES.includes(type)) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Неверный тип статьи', 'type');
+      const exists = await this.prisma.article.findFirst({
+        where: { name, type, parentId: dto.parentId ?? null, deletedAt: null },
+      });
+      if (exists) err(HttpStatus.UNPROCESSABLE_ENTITY, 'name_taken', 'Такая статья уже есть', 'name');
+      const row = await this.prisma.article.create({ data: { name, type, parentId: dto.parentId ?? null } });
+      await this.auditRef(userId, 'article', row.id, 'create', { name, type });
+      return { id: row.id, name: row.name };
+    }
+    const model = this.refModel(kind);
+    const exists = await model.findFirst({ where: { name } });
+    if (exists && exists.deletedAt === null) err(HttpStatus.UNPROCESSABLE_ENTITY, 'name_taken', 'Запись с таким названием уже есть', 'name');
+    // Для счёта можно задать вид (касса / расчётный счёт) — влияет на карточку «Деньги»
+    const extra = kind === 'account' ? { kind: dto.kind === 'cash' || dto.kind === 'bank' ? dto.kind : 'bank' } : {};
+    const row = exists
+      ? await model.update({ where: { id: exists.id }, data: { note: dto.note ?? null, deletedAt: null, ...extra } })
+      : await model.create({ data: { name, note: dto.note ?? null, ...extra } });
+    await this.auditRef(userId, kind, row.id, 'create', { name });
+    return { id: row.id, name: row.name, note: row.note ?? '' };
+  }
+
+  async updateRef(userId: number, kind: RefKind, id: number, dto: { name?: string; note?: string }) {
+    if (kind === 'article') {
+      const row = await this.prisma.article.findFirst({ where: { id, deletedAt: null } });
+      if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Статья не найдена');
+      if (row.isSystem) err(HttpStatus.UNPROCESSABLE_ENTITY, 'system_article', 'Системную статью нельзя переименовать');
+      const updated = await this.prisma.article.update({
+        where: { id },
+        data: { ...(dto.name ? { name: dto.name.trim() } : {}) },
+      });
+      await this.auditRef(userId, 'article', id, 'update', dto);
+      return { id: updated.id, name: updated.name };
+    }
+    const model = this.refModel(kind);
+    const row = await model.findFirst({ where: { id, deletedAt: null } });
+    if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Запись не найдена');
+    const updated = await model.update({
+      where: { id },
+      data: { ...(dto.name ? { name: dto.name.trim() } : {}), ...(dto.note !== undefined ? { note: dto.note || null } : {}) },
+    });
+    await this.auditRef(userId, kind, id, 'update', dto);
+    return { id: updated.id, name: updated.name, note: updated.note ?? '' };
+  }
+
+  /** Мягкое удаление; при наличии ссылок или системном признаке — 422. */
+  async removeRef(userId: number, kind: RefKind, id: number) {
+    if (kind === 'article') {
+      const row = await this.prisma.article.findFirst({ where: { id, deletedAt: null }, include: { children: true } });
+      if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Статья не найдена');
+      if (row.isSystem) err(HttpStatus.UNPROCESSABLE_ENTITY, 'system_article', 'Системную статью удалить нельзя');
+      const [ops, plans] = await Promise.all([
+        this.prisma.operation.count({ where: { articleId: id, deletedAt: null } }),
+        this.prisma.plan.count({ where: { articleId: id, deletedAt: null } }),
+      ]);
+      if (ops + plans > 0)
+        err(HttpStatus.UNPROCESSABLE_ENTITY, 'in_use', `Статья используется (операций: ${ops}, планов: ${plans}) — удаление запрещено`);
+      if (row.children.some((c) => c.deletedAt === null))
+        err(HttpStatus.UNPROCESSABLE_ENTITY, 'has_children', 'Сначала удалите подстатьи');
+      await this.prisma.article.update({ where: { id }, data: { deletedAt: new Date() } });
+      await this.auditRef(userId, 'article', id, 'delete', { name: row.name });
+      return { id, deleted: true };
+    }
+    const model = this.refModel(kind);
+    const row = await model.findFirst({ where: { id, deletedAt: null } });
+    if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Запись не найдена');
+    const used =
+      kind === 'counterparty' ? await this.prisma.operation.count({ where: { counterpartyId: id, deletedAt: null } })
+      : kind === 'account' ? await this.prisma.operation.count({ where: { accountId: id, deletedAt: null } })
+      : 0;
+    if (used > 0)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'in_use', `Запись используется в операциях (${used}) — удаление запрещено`);
+    await model.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.auditRef(userId, kind, id, 'delete', { name: row.name });
+    return { id, deleted: true };
+  }
+
+  /** Модель Prisma по виду справочника (у всех одинаковый набор полей,
+   *  поэтому приводится к общему интерфейсу RefDelegate). */
+  private refModel(kind: Exclude<RefKind, 'article'>): RefDelegate {
+    const model =
+      kind === 'counterparty' ? this.prisma.counterparty
+      : kind === 'account' ? this.prisma.account
+      : kind === 'entity' ? this.prisma.legalEntity
+      : kind === 'good' ? this.prisma.good
+      : this.prisma.service;
+    return model as unknown as RefDelegate;
+  }
+
+  private async auditRef(userId: number, entity: string, entityId: number, action: string, value: unknown) {
+    await this.prisma.auditLog.create({
+      data: { userId, entity, entityId: String(entityId), action, newValue: value as Prisma.InputJsonValue },
+    });
+  }
+
+  /* ── Проекты: создание и правка ───────────────────────────────────────── */
+
+  async createProject(userId: number, dto: ProjectInput) {
+    const name = dto.name.trim();
+    const exists = await this.prisma.project.findUnique({ where: { name } });
+    if (exists && exists.deletedAt === null)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'name_taken', 'Проект с таким названием уже есть', 'name');
+    const data = {
+      name,
+      groupName: dto.group?.trim() || null,
+      responsibleName: dto.resp?.trim() || null,
+      status: (dto.status ?? 'plan') as ProjectStatus,
+      startDate: dto.start ? new Date(dto.start + 'T00:00:00Z') : null,
+      endDate: dto.end ? new Date(dto.end + 'T00:00:00Z') : null,
+    };
+    const row = exists
+      ? await this.prisma.project.update({ where: { id: exists.id }, data: { ...data, deletedAt: null } })
+      : await this.prisma.project.create({ data });
+    await this.auditRef(userId, 'project', row.id, 'create', { name });
+    return { id: row.id, name: row.name };
+  }
+
+  async updateProject(userId: number, id: number, dto: Partial<ProjectInput>) {
+    const row = await this.prisma.project.findFirst({ where: { id, deletedAt: null } });
+    if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Проект не найден');
+    const updated = await this.prisma.project.update({
+      where: { id },
+      data: {
+        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.group !== undefined ? { groupName: dto.group.trim() || null } : {}),
+        ...(dto.resp !== undefined ? { responsibleName: dto.resp.trim() || null } : {}),
+        ...(dto.status ? { status: dto.status as ProjectStatus } : {}),
+        ...(dto.start !== undefined ? { startDate: dto.start ? new Date(dto.start + 'T00:00:00Z') : null } : {}),
+        ...(dto.end !== undefined ? { endDate: dto.end ? new Date(dto.end + 'T00:00:00Z') : null } : {}),
+      },
+    });
+    await this.auditRef(userId, 'project', id, 'update', dto);
+    return { id: updated.id, name: updated.name };
   }
 
   /* ── Настройки, курсы, аудит ──────────────────────────────────────────── */

@@ -133,6 +133,12 @@ model Account {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   note      String? // «Расчётный счёт · остаток …» и т.п.
+  // Вид счёта: cash — касса (наличные), bank — расчётный счёт, other.
+  // Нужен для карточки «Деньги» (касса и банковские счета показываются раздельно).
+  kind      String    @default("other")
+  // Входящий остаток на начало учёта, в дирамах: баланс счёта =
+  // opening + подтверждённые поступления − подтверждённые выплаты.
+  openingDirams BigInt @default(0) @map("opening_dirams")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
