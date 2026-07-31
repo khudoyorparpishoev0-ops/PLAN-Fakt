@@ -4,6 +4,7 @@ import type { Totals } from '../lib/compute';
 import { ACC, SOFT, ROW_PAD, PLEX, GOLOS, num } from '../theme';
 import { expRow } from '../lib/rows';
 import { AccentBtn, Badge, Th } from '../components/ui';
+import { useIsMobile } from '../lib/responsive';
 
 export interface ExpensesScreenProps {
   expenses: Expense[];
@@ -23,6 +24,7 @@ const tjs: CSSProperties = { fontSize: 12, fontWeight: 500, color: '#8A918D', fo
 const ico: CSSProperties = { width: 30, height: 30, borderRadius: 9, background: SOFT, color: ACC, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
 export default function ExpensesScreen(props: ExpensesScreenProps) {
+  const isMobile = useIsMobile();
   const t = props.totals;
   const rows = props.expenses.map(expRow);
   return (
@@ -31,7 +33,7 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
         <div onClick={props.goIncomes} style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: '#6B7370', cursor: 'pointer' }}>Доходы</div>
         <div style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)', cursor: 'pointer' }}>Расходы</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 16 }}>
         <div style={card}>
           <div style={lab}>ПЛАН</div>
           <div style={val}>{t.expPlanF} <span style={tjs}>TJS</span></div>

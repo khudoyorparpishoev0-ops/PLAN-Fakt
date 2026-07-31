@@ -7,6 +7,7 @@ import {
   CabBadge, CameraIcon, DropZone, FORM_LABEL, INPUT44, projectIdOf, projectOptions,
   ReceiptIcon, Select44, SubmitBtn, TD_CAB, TH_CAB,
 } from './PayRequestsScreen';
+import { useIsMobile } from '../lib/responsive';
 
 export interface CarRequestsScreenProps {
   trips: TripReq[];
@@ -22,7 +23,7 @@ const CAR_CATEGORIES: CarCategory[] = ['Бензин', 'Ремонт', 'Мойк
 function SectionTab({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <div onClick={onClick} className="hv-tabbar" style={{
-      flex: 1, textAlign: 'center', padding: 16, fontSize: 13.5, cursor: 'pointer',
+      flex: 1, textAlign: 'center', padding: 16, fontSize: 13.5, cursor: 'pointer', minWidth: 0,
       fontWeight: active ? 700 : 500, color: active ? ACC : '#8A918D',
       boxShadow: active ? `inset 0 -3px 0 ${'var(--fin-accent,#1B7A3C)'}` : 'none',
     }}>{label}</div>
@@ -30,6 +31,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
 }
 
 export default function CarRequestsScreen({ trips, cars, projects, createRequest, toast }: CarRequestsScreenProps) {
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
   /* ── Форма поездки ── */
@@ -91,7 +93,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
         <div>
           <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>СОЗДАТЬ ЗАЯВКУ НА ПОЕЗДКУ</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
               <div>
                 <label style={FORM_LABEL}>1) Проект</label>
                 <Select44 value={tProject} onChange={setTProject}>
@@ -151,7 +153,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
         <div>
           <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>ДОБАВИТЬ РАСХОД НА АВТО</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
               <div>
                 <label style={FORM_LABEL}>1) Проект</label>
                 <Select44 value={aProject} onChange={setAProject}>

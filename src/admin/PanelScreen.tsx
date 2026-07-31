@@ -3,6 +3,7 @@ import type { Expense, Income } from '../data/admin';
 import type { Totals } from '../lib/compute';
 import type { ApiProject, ApiRequest } from '../lib/api';
 import { PERIOD_KINDS, type PeriodKind } from '../lib/period';
+import { useIsMobile } from '../lib/responsive';
 import { ACC, SOFT, ROW_PAD, CARD_PAD, GOLOS, num } from '../theme';
 import { fmt, pct1 } from '../lib/format';
 import { devInfo, incDevB, expDevB } from '../lib/badges';
@@ -133,6 +134,7 @@ const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid #F3F2E
 
 export default function PanelScreen(props: PanelScreenProps) {
   const { totals: t, pendingReqs, decideRequest, period, setPeriod, projects, goReport, goExpenses } = props;
+  const isMobile = useIsMobile();
 
   /* ── Фильтры-чипы: проект, категория, контрагент, статус (валюта учёта одна) ── */
   const [fProject, setFProject] = useState('Все');
@@ -262,7 +264,7 @@ export default function PanelScreen(props: PanelScreenProps) {
           </div>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5,1fr)', gap: 12, marginBottom: 16 }}>
         <div style={cardS}>
           <div style={headS}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -344,7 +346,7 @@ export default function PanelScreen(props: PanelScreenProps) {
           <KV l="Из них просрочено" v={t.creditOver} vs={red6} style={{ marginBottom: 0 }} />
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(430px,1fr))', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit,minmax(430px,1fr))', gap: 16, alignItems: 'start' }}>
         <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px' }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>План–факт по категориям</div>

@@ -8,6 +8,7 @@ import {
 } from '../data/cabinet';
 import { kmRateSet, tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
+import { useIsMobile } from '../lib/responsive';
 
 export interface HistoryScreenProps {
   pays: PayReq[];
@@ -336,6 +337,7 @@ interface HistRow {
 }
 
 export default function HistoryScreen(props: HistoryScreenProps) {
+  const isMobile = useIsMobile();
   const { pays, trips, cars, monthly, projectNames, projects, deleteReq, editRequest } = props;
   const [editing, setEditing] = useState(false);
 
@@ -391,7 +393,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   return (
     <div data-screen-label="Список всего / История" style={{ animation: 'cabFade .2s ease' }}>
       {/* ── 4 карточки-фильтра (прототип, строки 304–313) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
         <FilterCard label="ФИЛЬТР ПО ПРОЕКТУ" value={fProject} onChange={setFProject}
           options={[{ v: 'Все', t: 'Все проекты' }, ...projectNames.map((p) => ({ v: p, t: p })), { v: 'Без проекта', t: 'Без проекта' }]} />
         <FilterCard label="ТИП (Оплата/Авто)" value={kind} onChange={(v) => setKind(v as ReqKind)}
@@ -458,7 +460,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
       {dv && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
           <div onClick={() => setSelReq(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.38)', animation: 'finFade .15s ease' }} />
-          <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '94vw', background: '#fff', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '100vw', background: '#fff', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 22px', borderBottom: '1px solid #EFEEE9' }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{dv.title}</div>

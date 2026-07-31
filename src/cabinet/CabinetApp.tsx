@@ -14,6 +14,7 @@ import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import HistoryScreen from './HistoryScreen';
 import CabinetProjectsScreen from './CabinetProjectsScreen';
+import { TAP, useIsMobile } from '../lib/responsive';
 
 export type CabScreen = 'pay' | 'car' | 'history' | 'projects';
 
@@ -164,6 +165,8 @@ export interface CabinetAppProps {
 }
 
 export default function CabinetApp({ user, onLogout, onChangePassword }: CabinetAppProps) {
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [screen, setScreen] = useState<CabScreen>('pay');
   const [period, setPeriod] = useState('Месяц');
   const [reqs, setReqs] = useState<ApiRequest[]>([]);
@@ -266,7 +269,21 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
-      <div style={{ width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+      {/* Мобильная раскладка: сайдбар — выдвижное меню (ТЗ, п. 6, адаптив от 360px) */}
+      {isMobile && menuOpen && (
+        <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(21,24,23,.42)', zIndex: 79 }} />
+      )}
+      <div style={isMobile
+        ? {
+            position: 'fixed', top: 0, bottom: 0, left: 0, width: 260, zIndex: 80,
+            background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            transform: menuOpen ? 'none' : 'translateX(-100%)', transition: 'transform .2s ease',
+            // Свёрнутое меню не должно ловить нажатия и попадать в скринридер
+            visibility: menuOpen ? 'visible' : 'hidden',
+            boxShadow: menuOpen ? '4px 0 28px rgba(0,0,0,.3)' : 'none',
+          }
+        : { width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '18px 16px 2px' }}>
           <Logo />
           <div style={{ minWidth: 0 }}>
@@ -275,11 +292,11 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           </div>
         </div>
         <SectionLabel pt={16}>ЗАЯВКИ</SectionLabel>
-        <NavItem label="Заявки на оплату" icon={I.pay} active={screen === 'pay'} onClick={() => setScreen('pay')} />
-        <NavItem label="Заявки на машину" icon={I.car} active={screen === 'car'} onClick={() => setScreen('car')} />
+        <NavItem label="Заявки на оплату" icon={I.pay} active={screen === 'pay'} onClick={() => { setScreen('pay'); setMenuOpen(false); }} />
+        <NavItem label="Заявки на машину" icon={I.car} active={screen === 'car'} onClick={() => { setScreen('car'); setMenuOpen(false); }} />
         <SectionLabel>ОТЧЁТЫ</SectionLabel>
-        <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => setScreen('history')} />
-        <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => setScreen('projects')} />
+        <NavItem label="Список всего / История" icon={I.hist} active={screen === 'history'} onClick={() => { setScreen('history'); setMenuOpen(false); }} />
+        <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => { setScreen('projects'); setMenuOpen(false); }} />
         <div onClick={() => setPwdModal(true)} title="Сменить пароль" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'Ф' : 'Ф'}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -290,29 +307,46 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.01em' }}>{TITLES[screen]}</div>
-          <div style={{ fontSize: 12, color: '#8A918D' }}>Октябрь 2026 · суммы в сомони (TJS)</div>
+        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
+          {isMobile && (
+            <div
+              onClick={() => setMenuOpen(true)}
+              title="Меню"
+              className="hv-soft"
+              style={{ width: TAP, height: TAP, marginLeft: -6, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3E4643', flex: 'none' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
+            </div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{TITLES[screen]}</div>
+            {isMobile && <div style={{ fontSize: 11, color: '#8A918D' }}>Октябрь 2026 · TJS</div>}
+          </div>
+          {!isMobile && <div style={{ fontSize: 12, color: '#8A918D' }}>Октябрь 2026 · суммы в сомони (TJS)</div>}
           <div style={{ flex: 1 }} />
-          <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
-            <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
-            <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#6B7370' }}>Телефон</div>
-          </div>
-          <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: '#A6ACA8' }}>▾</span>
-          </div>
-          <div className="hv-soft" style={{ position: 'relative', width: 38, height: 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', flex: 'none' }}>
+          {!isMobile && (
+            <>
+              <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
+                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
+                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#6B7370' }}>Телефон</div>
+              </div>
+              <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: '#A6ACA8' }}>▾</span>
+              </div>
+            </>
+          )}
+          <div className="hv-soft" style={{ position: 'relative', width: isMobile ? TAP : 38, height: isMobile ? TAP : 38, borderRadius: 9, border: '1px solid #E7E5E0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', flex: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
             <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>3</span>
           </div>
           {onLogout && (
-            <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer' }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
-              Выйти
+            <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer', flex: 'none' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
+              {!isMobile && 'Выйти'}
             </div>
           )}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
           {/* ── Общая панель периодов и фильтров (прототип, строки 68–80) ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
             <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
@@ -334,7 +368,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
             </div>
           </div>
           {/* ── Общий KPI-ряд (прототип, строки 81–92; значения считаются из данных) ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
             <KpiCard label="ОТПРАВЛЕНО" value={String(nSent)} unit={pluralReq(nSent)} note="За месяц" icon="↗" iconBg="rgba(27,122,60,.1)" iconFg={ACC} b={CB.sent} />
             <KpiCard label="НА РАССМОТРЕНИИ" value={String(nPend)} unit={pluralReq(nPend)} note="Ждут решения Директора" icon="⏱" iconBg="#FCF1D6" iconFg="#9A6B00" b={CB.pending} />
             <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />

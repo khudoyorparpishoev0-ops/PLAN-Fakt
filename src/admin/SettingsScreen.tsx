@@ -9,6 +9,7 @@ import {
   type ApiAuditRow, type ApiRate, type ApiUser, type AuthUser, type RoleCode,
 } from '../lib/api';
 import { Badge, Th, AccentBtn } from '../components/ui';
+import { useIsMobile } from '../lib/responsive';
 
 export interface SettingsScreenProps {
   setTab: string;
@@ -97,6 +98,7 @@ function CreateUserModal({ onClose, onCreated }: {
 
 export default function SettingsScreen(props: SettingsScreenProps) {
   const { setTab, setSetTab, user } = props;
+  const isMobile = useIsMobile();
   const setNav = SETTINGS_NAV.map(([id, t]) => ({
     id, t,
     fw: setTab === id ? 600 : 400,
@@ -204,7 +206,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
   }, [notice]);
 
   return (
-    <div data-screen-label="Настройки" style={{ display: 'grid', gridTemplateColumns: '232px 1fr', gap: 16, alignItems: 'start' }}>
+    <div data-screen-label="Настройки" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '232px 1fr', gap: 16, alignItems: 'start' }}>
       <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: 8 }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', padding: '8px 10px 6px' }}>НАСТРОЙКИ</div>
         {setNav.map(n => (

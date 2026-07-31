@@ -7,6 +7,7 @@ import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD, pct1, plural } from '../lib/format';
 import { badge, type BadgeData } from '../lib/badges';
 import { AccentBtn, Badge, CheckRow, Th } from '../components/ui';
+import { useIsMobile } from '../lib/responsive';
 
 export interface ProjectsScreenProps {
   projects: (Project & { archived: boolean })[];
@@ -35,6 +36,7 @@ const projBadge = (st: Project['status']): BadgeData =>
   st === 'plan' ? badge('Плановый', 'blue') : st === 'work' ? badge('В работе', 'yellow') : badge('Завершён', 'green');
 
 export default function ProjectsScreen({ projects, toggleArchive, openProject, onSaved }: ProjectsScreenProps) {
+  const isMobile = useIsMobile();
   /** Открытая форма проекта: новый или правка существующего. */
   const [form, setForm] = useState<{ id?: number; initial?: Partial<ProjectPayload> } | null>(null);
   const [search, setSearch] = useState('');
@@ -109,10 +111,10 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
   const tIn = projF.reduce((a, p) => a + p.inF, 0), tOut = projF.reduce((a, p) => a + p.outF, 0), tProf = tIn - tOut;
 
   return (
-    <div data-screen-label="Проекты" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div data-screen-label="Проекты" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
       {projMenu != null && <div onClick={() => setProjMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />}
       {projFiltersOn ? (
-        <div style={{ width: 230, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ width: isMobile ? '100%' : 230, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>Фильтры</div>
             <div onClick={() => setProjFiltersOn(false)} title="Свернуть фильтры" className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370' }}>

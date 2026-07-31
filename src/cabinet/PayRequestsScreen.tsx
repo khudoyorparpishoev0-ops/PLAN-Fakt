@@ -3,6 +3,7 @@ import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
 import { api, ApiError, type ApiProject, type CreateRequestPayload, type UploadedRef } from '../lib/api';
 import { dirB, ownB, type PayReq } from '../data/cabinet';
+import { useIsMobile } from '../lib/responsive';
 
 export interface PayRequestsScreenProps {
   pays: PayReq[];
@@ -140,6 +141,7 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 const CURRENCIES = ['TJS', 'USD', 'EUR'];
 
 export default function PayRequestsScreen({ pays, projects, createRequest, toast }: PayRequestsScreenProps) {
+  const isMobile = useIsMobile();
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState('TJS');
@@ -168,7 +170,7 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
       {/* ── Форма (прототип, строки 96–120) ── */}
       <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>СОЗДАТЬ ЗАЯВКУ НА ОПЛАТУ</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 22px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
           <div>
             <label style={FORM_LABEL}>1) Проект</label>
             <Select44 value={project} onChange={setProject}>

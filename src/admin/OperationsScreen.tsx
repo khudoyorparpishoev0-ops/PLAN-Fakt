@@ -4,6 +4,7 @@ import { fmt } from '../lib/format';
 import { api, ApiError, type ApiDictionaries, type ApiOperation, type ApiProject } from '../lib/api';
 import { ruDate } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
+import { useIsMobile } from '../lib/responsive';
 
 const PAGE = 50;
 
@@ -24,6 +25,7 @@ const inpS: React.CSSProperties = { height: 34, border: '1px solid #DFDCD6', bor
  *  ТЗ п. 9: комбинируемые фильтры, лимит/оффсет). */
 export default function OperationsScreen(props: OperationsScreenProps) {
   const { dicts, projects } = props;
+  const isMobile = useIsMobile();
   const [filtersOn, setFiltersOn] = useState(true);
   const [opType, setOpType] = useState({ in: true, out: true, move: true, accr: true });
   const [payConf, setPayConf] = useState({ conf: true, unconf: true });
@@ -130,9 +132,9 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   });
 
   return (
-    <div data-screen-label="Операции" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div data-screen-label="Операции" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
       {filtersOn ? (
-        <div style={{ width: 236, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ width: isMobile ? '100%' : 236, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>Фильтры</div>
             <div onClick={() => setFiltersOn(false)} title="Свернуть фильтры" className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: ACC }}>

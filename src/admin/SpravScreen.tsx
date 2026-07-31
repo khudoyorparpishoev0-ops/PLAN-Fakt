@@ -4,6 +4,7 @@ import type { GenList, ArtRow } from '../data/admin';
 import { api, ApiError, type ApiDictionaries, type RefKind } from '../lib/api';
 import { initials } from '../lib/compute';
 import { AccentBtn } from '../components/ui';
+import { useIsMobile } from '../lib/responsive';
 
 const ART_TABS = ['Доходы', 'Расходы', 'Активы', 'Обязательства', 'Капитал'];
 
@@ -136,6 +137,7 @@ const DOTS = (
 );
 
 export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
+  const isMobile = useIsMobile();
   const [spravTab, setSpravTab] = useState('art');
   const [artTab, setArtTab] = useState('Расходы');
   const [artExp, setArtExp] = useState<Record<string, boolean>>({});
@@ -229,7 +231,7 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
     .filter(r => !q || r.p.toLowerCase().includes(q) || r.sec.toLowerCase().includes(q));
 
   return (
-    <div data-screen-label="Справочники" style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: 16, alignItems: 'start' }}>
+    <div data-screen-label="Справочники" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '230px 1fr', gap: 16, alignItems: 'start' }}>
       <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: 8 }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', padding: '8px 10px 6px' }}>СПРАВОЧНИКИ</div>
         {spravNav.map(navItem)}
