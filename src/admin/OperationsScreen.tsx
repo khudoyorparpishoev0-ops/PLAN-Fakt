@@ -6,6 +6,7 @@ import { ruDate } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import OperationCard from './OperationCard';
+import ExportDialog from './ExportDialog';
 
 const PAGE = 50;
 
@@ -97,6 +98,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
 
   const [rows, setRows] = useState<ApiOperation[]>([]);
   const [total, setTotal] = useState(0);
+  const [exportOpen, setExportOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [bulkProject, setBulkProject] = useState('');
@@ -262,11 +264,9 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     }
   };
 
-  const exportXlsx = () => {
-    setMenu(false);
-    api.downloadExport('operations', buildQuery(0))
-      .catch((e: unknown) => props.onError(e instanceof ApiError ? e.message : 'Не удалось выгрузить журнал'));
-  };
+  // Выгрузка идёт через диалог: состав колонок выбирается перед скачиванием,
+  // фильтры экрана уходят в файл и на лист «Параметры».
+  const exportXlsx = () => { setMenu(false); setExportOpen(true); };
 
   const th = (key: ColKey, label: string, extra?: React.CSSProperties) =>
     columns[key] ? <Th style={{ padding: '9px 12px', ...extra }}>{label}</Th> : null;
@@ -416,6 +416,13 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           onClose={() => setCardId(null)}
           onChanged={() => { void load(0); props.onChanged?.(); }}
           onError={props.onError}
+        />
+      )}
+
+      {exportOpen && (
+        <ExportDialog
+          kind="operations" query={buildQuery(0)} rowCount={total}
+          onClose={() => setExportOpen(false)}
         />
       )}
     </div>

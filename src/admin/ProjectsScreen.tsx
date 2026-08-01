@@ -8,6 +8,7 @@ import { fmt, fmtD, pct1, plural } from '../lib/format';
 import { badge, type BadgeData } from '../lib/badges';
 import { AccentBtn, Badge, CheckRow, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import ExportDialog from './ExportDialog';
 
 export interface ProjectsScreenProps {
   projects: (Project & { archived: boolean })[];
@@ -54,6 +55,7 @@ const projBadge = (st: Project['status']): BadgeData =>
   st === 'plan' ? badge('Плановый', 'gray') : st === 'work' ? badge('В работе', 'blue') : badge('Завершён', 'green');
 
 export default function ProjectsScreen({ projects, toggleArchive, openProject, onSaved, onError }: ProjectsScreenProps) {
+  const [exportOpen, setExportOpen] = useState(false);
   const isMobile = useIsMobile();
   /** Открытая форма проекта: новый или правка существующего. */
   const [form, setForm] = useState<{ id?: number; initial?: Partial<ProjectPayload> } | null>(null);
@@ -209,7 +211,7 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
             <span style={{ width: 34, height: 20, borderRadius: 99, background: showPlan ? ACC : 'var(--fin-border)', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--fin-surface)', boxShadow: '0 1px 3px rgba(0,0,0,.25)', transform: `translateX(${showPlan ? '14px' : '0px'})`, transition: 'transform .15s' }} /></span>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)' }}>Показывать план</span>
           </div>
-          <div onClick={() => void api.downloadExport('projects')} title="Скачать проекты.xlsx" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5" /><path d="M2.5 12h9" /></svg>Excel</div>
+          <div onClick={() => setExportOpen(true)} title="Скачать проекты.xlsx" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 2v7M4.5 6.5L7 9l2.5-2.5" /><path d="M2.5 12h9" /></svg>Excel</div>
         </div>
         <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -282,6 +284,8 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
           onSaved={() => { setForm(null); onSaved(); }}
         />
       )}
+
+      {exportOpen && <ExportDialog kind="projects" onClose={() => setExportOpen(false)} />}
     </div>
   );
 }

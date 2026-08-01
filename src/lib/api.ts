@@ -286,6 +286,18 @@ export interface ApiProject {
   outP?: number;
 }
 
+/** Состав колонок выгрузки (GET /api/export/columns). */
+export interface ApiExportColumn {
+  key: string;
+  title: string;
+  /** Ключевая колонка — без неё файл не сойдётся с экраном, снять нельзя. */
+  locked: boolean;
+  type: 'text' | 'money' | 'date' | 'int';
+}
+export interface ApiExportColumns {
+  kinds: { code: 'report' | 'projects' | 'operations'; name: string; columns: ApiExportColumn[] }[];
+}
+
 export interface ApiProjectSummary {
   id: number;
   name: string;
@@ -868,15 +880,31 @@ export const api = {
 
   notifications: () => authedReq<{ items: ApiNotification[]; count: number }>('/notifications'),
 
-  /** Скачать Excel-экспорт (report | projects). */
-  downloadExport: async (name: 'report' | 'projects' | 'operations', query?: OperationQuery): Promise<void> => {
-    const qs = name === 'operations' && query ? operationsQuery({ ...query, limit: undefined, offset: undefined }) : '';
-    const res = await authedFetch(`/export/${name}.xlsx${qs ? `?${qs}` : ''}`);
+  /** Состав колонок выгрузок — для диалога экспорта. */
+  exportColumns: () => authedReq<ApiExportColumns>('/export/columns'),
+
+  /** Скачать Excel-экспорт. Имя файла берём из заголовка ответа: сервер
+   *  проставляет туда дату и пометку о неполном составе колонок. */
+  downloadExport: async (
+    name: 'report' | 'projects' | 'operations',
+    query?: OperationQuery,
+    columns?: string[],
+  ): Promise<void> => {
+    const parts: string[] = [];
+    if (name === 'operations' && query) {
+      const qs = operationsQuery({ ...query, limit: undefined, offset: undefined });
+      if (qs) parts.push(qs);
+    }
+    if (columns?.length) parts.push(`columns=${encodeURIComponent(columns.join(','))}`);
+    const res = await authedFetch(`/export/${name}.xlsx${parts.length ? `?${parts.join('&')}` : ''}`);
     const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') ?? '';
+    const m = /filename\*=UTF-8''(.+)$/.exec(cd);
+    const fallback = name === 'report' ? 'план-факт.xlsx' : name === 'projects' ? 'проекты.xlsx' : 'операции.xlsx';
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = name === 'report' ? 'план-факт.xlsx' : name === 'projects' ? 'проекты.xlsx' : 'операции.xlsx';
+    a.download = m ? decodeURIComponent(m[1]) : fallback;
     document.body.appendChild(a);
     a.click();
     a.remove();

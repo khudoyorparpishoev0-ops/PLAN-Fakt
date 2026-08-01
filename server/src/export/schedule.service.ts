@@ -86,9 +86,14 @@ export class ExportScheduleService implements OnModuleInit, OnModuleDestroy {
     if (!s) return null;
     const kind = s.kind as ExportKind;
     try {
-      const buf = await this.exports.buildBuffer(kind);
+      // Лист «Параметры» должен объяснять и файлы из почты: получатель
+      // видит вложение без экрана, с которого его сняли.
+      const buf = await this.exports.buildBuffer(kind, undefined, {
+        who: `Планировщик выгрузок · ${FREQUENCY_LABEL[s.frequency as keyof typeof FREQUENCY_LABEL] ?? s.frequency}`,
+        filters: [['Источник', 'выгрузка по расписанию, фильтры экрана не применялись']],
+      });
       const stamp = now.toISOString().slice(0, 10);
-      const base = this.exports.fileName(kind).replace('.xlsx', '');
+      const base = this.exports.fileName(kind).replace(/-\d{4}-\d{2}-\d{2}\.xlsx$/, '').replace('.xlsx', '');
       const fileName = `${base}-${stamp}.xlsx`;
       const key = this.storage.newKey(fileName);
       await this.storage.put(key, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

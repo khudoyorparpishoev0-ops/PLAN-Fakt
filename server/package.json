@@ -12,7 +12,8 @@
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "check:expense": "tsx check/expense-rule.ts"
+    "check:expense": "tsx check/expense-rule.ts",
+    "check:export": "tsx check/export-format.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

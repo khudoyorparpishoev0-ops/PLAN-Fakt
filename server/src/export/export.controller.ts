@@ -9,7 +9,7 @@ import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/gu
 import type { OperationFilters } from '../data/operations.dto';
 import { PrismaService } from '../prisma.service';
 import { StorageService } from '../storage.service';
-import { EXPORT_LABEL, ExportService, type ExportKind } from './export.service';
+import { COLUMNS, EXPORT_LABEL, ExportService, type ExportKind, type ExportOptions } from './export.service';
 import { EXPORT_KINDS, ExportScheduleService, FREQUENCIES, FREQUENCY_LABEL, nextRun } from './schedule.service';
 
 /** Число из query-строки: пустое и нечисловое → undefined. */
@@ -57,22 +57,75 @@ export class ExportController {
     res.send(buf);
   }
 
+
+  /** Имя заказчика выгрузки — для листа «Параметры». */
+  private async who(req: AuthRequest): Promise<string> {
+    const u = await this.prisma.user.findFirst({
+      where: { id: req.user!.sub }, select: { name: true, email: true },
+    });
+    return u ? `${u.name} · ${u.email}` : '—';
+  }
+
+  /** Выбранные колонки из query: ?columns=date,amount */
+  private columnsOf(q: Record<string, string | undefined>): string[] | undefined {
+    return q.columns ? q.columns.split(',').map((c) => c.trim()).filter(Boolean) : undefined;
+  }
+
+  /** Фильтры журнала человеческим языком — как они выглядели на экране. */
+  private async describe(f: OperationFilters): Promise<[string, string][]> {
+    const TYPE: Record<string, string> = { in: 'Поступление', out: 'Выплата', move: 'Перемещение', accrual: 'Начисление' };
+    const out: [string, string][] = [];
+    if (f.type?.length) out.push(['Тип операции', f.type.map((t) => TYPE[t] ?? t).join(', ')]);
+    if (f.confirmed) out.push(['Оплата', f.confirmed === 'true' ? 'подтверждена' : 'не подтверждена']);
+    if (f.date_from || f.date_to) out.push(['Период', `${f.date_from ?? '…'} — ${f.date_to ?? '…'}`]);
+    if (f.amount_min != null || f.amount_max != null) {
+      out.push(['Сумма', `от ${f.amount_min ?? '…'} до ${f.amount_max ?? '…'}`]);
+    }
+    if (f.q) out.push(['Поиск', f.q]);
+    // Справочные значения подставляем именами, а не идентификаторами:
+    // «Проект: 12» через месяц никому ничего не скажет.
+    const byId = async (label: string, id: number | undefined, load: (id: number) => Promise<string | null>) => {
+      if (id == null) return;
+      out.push([label, (await load(id)) ?? `#${id}`]);
+    };
+    await byId('Счёт', f.account, async (id) => (await this.prisma.account.findUnique({ where: { id } }))?.name ?? null);
+    await byId('Контрагент', f.counterparty, async (id) => (await this.prisma.counterparty.findUnique({ where: { id } }))?.name ?? null);
+    await byId('Статья', f.article, async (id) => (await this.prisma.article.findUnique({ where: { id } }))?.name ?? null);
+    await byId('Проект', f.project, async (id) => (await this.prisma.project.findUnique({ where: { id } }))?.name ?? null);
+    return out;
+  }
+
+  /** Состав колонок для диалога выгрузки. */
+  @Get('columns')
+  @Roles('admin', 'director')
+  columns() {
+    return {
+      kinds: (Object.keys(COLUMNS) as ExportKind[]).map((k) => ({
+        code: k,
+        name: EXPORT_LABEL[k],
+        columns: COLUMNS[k].map((c) => ({ key: c.key, title: c.title, locked: !!c.locked, type: c.type })),
+      })),
+    };
+  }
+
   @Get('report.xlsx')
   @Roles('admin', 'director')
-  async report(@Res() res: Response) {
-    await this.send(res, await this.exports.buildBuffer('report'), this.exports.fileName('report'));
+  async report(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
+    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q) };
+    await this.send(res, await this.exports.buildBuffer('report', undefined, opts), this.exports.fileName('report', opts));
   }
 
   @Get('projects.xlsx')
   @Roles('admin', 'director')
-  async projects(@Res() res: Response) {
-    await this.send(res, await this.exports.buildBuffer('projects'), this.exports.fileName('projects'));
+  async projects(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
+    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q) };
+    await this.send(res, await this.exports.buildBuffer('projects', undefined, opts), this.exports.fileName('projects', opts));
   }
 
   /** Журнал операций с теми же фильтрами, что и на экране (ТЗ, п. 3.2). */
   @Get('operations.xlsx')
   @Roles('admin', 'director')
-  async operations(@Res() res: Response, @Query() q: Record<string, string | undefined>) {
+  async operations(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
     const filters: OperationFilters = {
       type: q.type
         ? (q.type.split(',').filter((t) => ['in', 'out', 'move', 'accrual'].includes(t)) as OperationFilters['type'])
@@ -88,7 +141,10 @@ export class ExportController {
       amount_max: num(q.amount_max),
       q: q.q,
     };
-    await this.send(res, await this.exports.buildBuffer('operations', filters), this.exports.fileName('operations'));
+    const opts: ExportOptions = {
+      who: await this.who(req), columns: this.columnsOf(q), filters: await this.describe(filters),
+    };
+    await this.send(res, await this.exports.buildBuffer('operations', filters, opts), this.exports.fileName('operations', opts));
   }
 
   /* ── Выгрузки по расписанию (ТЗ, п. 11, этап 2) ── */
