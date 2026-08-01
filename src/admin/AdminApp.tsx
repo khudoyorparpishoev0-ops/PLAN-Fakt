@@ -348,8 +348,8 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
                   )}
                 />
               )}
-              {screen === 'approvals' && <ApprovalsScreen onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
-              {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
+              {screen === 'approvals' && <ApprovalsScreen role={user?.role ?? 'director'} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
+              {screen === 'panel' && <PanelScreen role={user?.role ?? 'director'} incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
               {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} periodLabel={range.label} from={range.from} to={range.to} dicts={dicts} projects={apiProjects} onError={setLoadError} />}

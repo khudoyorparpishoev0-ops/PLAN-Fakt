@@ -17,6 +17,8 @@ export interface PanelScreenProps {
   pendingReqs: ApiRequest[];
   /** Решение по заявке — PATCH /api/requests/:id/status. */
   decideRequest: (id: number, status: 'approved' | 'rejected') => void;
+  /** Роль смотрящего: согласовывает только директор, администратор наблюдает. */
+  role: string;
   /** Отчётный период (общий для панели, расходов и отчёта). */
   period: PeriodKind;
   setPeriod: (p: PeriodKind) => void;
@@ -134,6 +136,7 @@ const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid var(--
 
 export default function PanelScreen(props: PanelScreenProps) {
   const { totals: t, pendingReqs, decideRequest, period, setPeriod, projects, goReport, goExpenses } = props;
+  const canDecide = props.role === 'director';
   const isMobile = useIsMobile();
 
   /* ── Фильтры-чипы: проект, категория, контрагент, статус (валюта учёта одна) ── */
@@ -404,10 +407,16 @@ export default function PanelScreen(props: PanelScreenProps) {
                   <div style={{ fontSize: 11, color: 'var(--fin-text-5)' }}>{a.tag}</div>
                 </div>
               </div>
+              {/* Кнопки решения — только директору: администратор наблюдает.
+                  Сервер и так вернёт 403, но кнопка обещать не должна. */}
               {a.reqId != null && (
                 <div style={{ display: 'flex', gap: 8, margin: '9px 0 2px 18px' }}>
-                  <div onClick={() => decideRequest(a.reqId!, 'approved')} className="hv-dim" style={{ background: ACC, color: 'var(--fin-surface)', ...btnS }}>Согласовать</div>
-                  <div onClick={() => decideRequest(a.reqId!, 'rejected')} className="hv-red" style={{ border: '1px solid var(--fin-minus-soft)', color: 'var(--fin-minus)', ...btnS }}>Отклонить</div>
+                  {canDecide && (
+                    <>
+                      <div onClick={() => decideRequest(a.reqId!, 'approved')} className="hv-dim" style={{ background: ACC, color: 'var(--fin-surface)', ...btnS }}>Согласовать</div>
+                      <div onClick={() => decideRequest(a.reqId!, 'rejected')} className="hv-red" style={{ border: '1px solid var(--fin-minus-soft)', color: 'var(--fin-minus)', ...btnS }}>Отклонить</div>
+                    </>
+                  )}
                   <div onClick={goReport} className="hv-soft" style={{ border: '1px solid var(--fin-border)', color: 'var(--fin-text-2)', ...btnS }}>Открыть</div>
                 </div>
               )}

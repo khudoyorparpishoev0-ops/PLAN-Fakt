@@ -8,7 +8,12 @@ import { RequestsService } from './requests.service';
 
 /** Заявки кабинета (ТЗ, п. 9): POST /api/requests · PATCH /api/requests/:id/status
  *  (директор) · GET /api/requests?kind=&status=. Права проверяются на сервере:
- *  чужая роль получает 403. */
+ *  чужая роль получает 403.
+ *
+ *  Решения по заявкам — одобрение, отклонение, сторнирование — принимает
+ *  ТОЛЬКО директор (решение заказчика 01.08.2026). Администратор роль
+ *  наблюдателя: он видит очередь и историю, раздаёт права и следит за
+ *  происходящим, но за директора не решает. */
 @Controller('requests')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, RolesGuard)
 export class RequestsController {
@@ -33,7 +38,7 @@ export class RequestsController {
    *  Объявлено ДО @Patch(':id') — иначе Nest разберёт «approve-many»
    *  как идентификатор и ParseIntPipe вернёт 400. */
   @Patch('approve-many')
-  @Roles('director', 'admin')
+  @Roles('director')
   approveMany(@Req() req: AuthRequest, @Body() dto: ApproveManyDto) {
     return this.requests.approveMany(req.user!, dto.ids);
   }
@@ -45,14 +50,14 @@ export class RequestsController {
   }
 
   @Patch(':id/status')
-  @Roles('director', 'admin')
+  @Roles('director')
   changeStatus(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: ChangeRequestStatusDto) {
     return this.requests.changeStatus(req.user!, id, dto);
   }
 
-  /** Сторнирование одобренной заявки (ТЗ, п. 5) — только директор/админ. */
+  /** Сторнирование одобренной заявки (ТЗ, п. 5) — только директор. */
   @Patch(':id/storno')
-  @Roles('director', 'admin')
+  @Roles('director')
   storno(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() body: { comment?: string }) {
     return this.requests.storno(req.user!, id, typeof body?.comment === 'string' ? body.comment : undefined);
   }

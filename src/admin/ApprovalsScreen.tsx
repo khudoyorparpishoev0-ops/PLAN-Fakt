@@ -14,6 +14,10 @@ export interface ApprovalsScreenProps {
   /** Очередь изменилась — обновить счётчики и списки в оболочке. */
   onChanged: () => void;
   onError: (msg: string | null) => void;
+  /** Роль смотрящего. Решения принимает только директор — администратор
+   *  видит ту же очередь, но без кнопок: он наблюдает и раздаёт права,
+   *  а за директора не решает (решение заказчика). */
+  role: string;
 }
 
 /* ── Виды заявок ───────────────────────────────────────────────────────── */
@@ -128,7 +132,9 @@ function Check({ on, onClick }: { on: boolean; onClick: (e: React.MouseEvent) =>
  *  Асимметрия решений намеренная и взята из макета: одобрение причины не
  *  требует, отклонение — требует. По ТЗ (п. 5) автор может исправить
  *  отклонённую заявку и отправить снова, и без причины он не знает, что чинить. */
-export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenProps) {
+export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsScreenProps) {
+  /** Право решения — только у директора; сервер отвечает 403 остальным. */
+  const canDecide = role === 'director';
   const isMobile = useIsMobile();
   const [rows, setRows] = useState<ApiRequest[]>([]);
   const [tab, setTab] = useState<'queue' | 'history'>('queue');
@@ -341,7 +347,7 @@ export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenP
                         style={{ cursor: 'pointer', background: open ? 'var(--fin-accent-soft)' : 'transparent' }}
                       >
                         <td style={cell}>
-                          {pendingRow && tab === 'queue' && (
+                          {pendingRow && tab === 'queue' && canDecide && (
                             <Check on={checked.has(r.id)} onClick={(e) => { e.stopPropagation(); toggle(r.id); }} />
                           )}
                         </td>
@@ -363,7 +369,7 @@ export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenP
                           </span>
                         </td>
                         <td style={cell}>
-                          {pendingRow ? (
+                          {pendingRow && canDecide ? (
                             /* Быстрые действия в строке: заявка на бензин за 340 сомони
                                не требует изучения — она закрывается одним нажатием. */
                             <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -396,7 +402,7 @@ export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenP
           <aside style={{ width: 420, flex: 'none' }}>
             {sel ? (
               <DetailPanel
-                req={sel} summary={summary} busy={busy}
+                req={sel} summary={summary} busy={busy} canDecide={canDecide}
                 rejectOpen={rejectOpen} reason={reason}
                 onOpenReject={() => setRejectOpen(true)}
                 onCancelReject={() => { setRejectOpen(false); setReason(''); }}
@@ -421,7 +427,7 @@ export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenP
       {isMobile && sel && (
         <MobileSheet onClose={() => setSelId(null)}>
           <DetailPanel
-            req={sel} summary={summary} busy={busy}
+            req={sel} summary={summary} busy={busy} canDecide={canDecide}
             rejectOpen={rejectOpen} reason={reason}
             onOpenReject={() => setRejectOpen(true)}
             onCancelReject={() => { setRejectOpen(false); setReason(''); }}
@@ -449,10 +455,11 @@ export default function ApprovalsScreen({ onChanged, onError }: ApprovalsScreenP
 
 /* ── Панель разбора заявки ─────────────────────────────────────────────── */
 
-function DetailPanel({ req, summary, busy, rejectOpen, reason, onOpenReject, onCancelReject, onReason, onApprove, onReject, onStorno }: {
+function DetailPanel({ req, summary, busy, canDecide, rejectOpen, reason, onOpenReject, onCancelReject, onReason, onApprove, onReject, onStorno }: {
   req: ApiRequest;
   summary: ApiProjectSummary | null;
   busy: boolean;
+  canDecide: boolean;
   rejectOpen: boolean;
   reason: string;
   onOpenReject: () => void;
@@ -462,7 +469,7 @@ function DetailPanel({ req, summary, busy, rejectOpen, reason, onOpenReject, onC
   onReject: () => void;
   onStorno: () => void;
 }) {
-  const pending = req.status === 'sent' || req.status === 'review';
+  const pending = (req.status === 'sent' || req.status === 'review') && canDecide;
   const st = statusBadge(req);
   const att = req.attachments[0];
 
@@ -603,6 +610,14 @@ function DetailPanel({ req, summary, busy, rejectOpen, reason, onOpenReject, onC
             </div>
           )}
         </div>
+      ) : !canDecide && (req.status === 'sent' || req.status === 'review') ? (
+        <div style={{ padding: '14px 18px', background: 'var(--fin-surface-alt)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Решение принимает директор</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fin-text-2)', lineHeight: 1.55 }}>
+            Администратор видит очередь и историю решений, раздаёт права и следит за
+            происходящим — но за директора заявки не согласовывает.
+          </div>
+        </div>
       ) : (
         <div style={{
           padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8,
@@ -616,7 +631,7 @@ function DetailPanel({ req, summary, busy, rejectOpen, reason, onOpenReject, onC
               ? `Расход ${fmt(amountOf(req))} ${unitOf(req)} встал в план проекта «${req.project}». Изменить заявку больше нельзя — только сторнировать.`
               : `Причина: ${req.decisionComment || 'не указана'}. Автор может исправить и отправить заново.`}
           </div>
-          {req.status === 'approved' && !req.stornoAt && (
+          {req.status === 'approved' && !req.stornoAt && canDecide && (
             <button
               type="button" data-storno onClick={onStorno} disabled={busy}
               style={{ alignSelf: 'flex-start', height: 32, padding: '0 12px', border: '1px solid var(--fin-border)', borderRadius: 8, background: 'var(--fin-surface)', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
