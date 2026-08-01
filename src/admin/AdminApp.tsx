@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ACC, applyThemeVars } from '../theme';
+import { ACC, applyThemeVars, num } from '../theme';
 import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
 import {
@@ -26,23 +26,28 @@ import StockScreen from './StockScreen';
 import ClientsScreen from './ClientsScreen';
 import MobileView from './MobileView';
 import IncomeDrawer from './IncomeDrawer';
+import ApprovalsScreen from './ApprovalsScreen';
 import ExpenseDrawer from './ExpenseDrawer';
 import ProjectDrawer from './ProjectDrawer';
 
 export type Screen =
   | 'panel' | 'incomes' | 'expenses' | 'report' | 'sprav' | 'settings' | 'projects' | 'deals'
-  | 'tasks' | 'planning' | 'stock' | 'clients';
+  | 'tasks' | 'planning' | 'stock' | 'clients' | 'approvals';
 
 const TITLES: Record<Screen, string> = {
   panel: 'Финансовая панель', incomes: 'Операции', expenses: 'Операции · Расходы',
   report: 'Отчёт «План–Факт»', sprav: 'Справочники', settings: 'Настройки',
   projects: 'Проекты', deals: 'Сделки по закупкам',
   tasks: 'Задачи', planning: 'Планирование', stock: 'Склад', clients: 'Клиенты и поставщики',
+  approvals: 'Заявки на утверждение',
 };
 
 /** Пункт бокового меню. */
-function NavItem({ label, icon, active, disabled, onClick }: {
-  label: string; icon: JSX.Element; active?: boolean; disabled?: boolean; onClick?: () => void;
+function NavItem({ label, icon, active, disabled, badge, onClick }: {
+  label: string; icon: JSX.Element; active?: boolean; disabled?: boolean;
+  /** Счётчик справа (очередь заявок); 0 не показывается. */
+  badge?: number;
+  onClick?: () => void;
 }) {
   return (
     <div
@@ -59,6 +64,13 @@ function NavItem({ label, icon, active, disabled, onClick }: {
     >
       {icon}
       <span style={{ fontSize: 13.5, fontWeight: active ? 600 : 500 }}>{label}</span>
+      {!!badge && (
+        <span style={{
+          marginLeft: 'auto', minWidth: 20, height: 19, padding: '0 6px', borderRadius: 99,
+          ...num, fontSize: 11, fontWeight: 700, lineHeight: '19px', textAlign: 'center',
+          background: active ? 'rgba(255,255,255,.22)' : 'var(--fin-minus)', color: 'var(--fin-surface)',
+        }}>{badge}</span>
+      )}
     </div>
   );
 }
@@ -68,6 +80,7 @@ const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) 
 );
 
 const I = {
+  approve: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="2" /><path d="M5.5 8.2l1.9 1.9L11 6.4" /></svg>,
   pf: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="9" width="3" height="5" rx="1" /><rect x="6.5" y="5.5" width="3" height="8.5" rx="1" /><rect x="11" y="2.5" width="3" height="11.5" rx="1" /></svg>,
   pok: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 11.5a5.5 5.5 0 1111 0" /><path d="M8 11.5l2.8-2.4" /><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none" /></svg>,
   ops: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 5.5h10" /><path d="M9.5 2.8l3 2.7-3 2.7" /><path d="M13.5 10.5h-10" /><path d="M6.5 7.8l-3 2.7 3 2.7" /></svg>,
@@ -258,6 +271,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               </div>
             </div>
             <SectionLabel pt={16}>ПАНЕЛЬ УПРАВЛЕНИЯ</SectionLabel>
+            <NavItem label="Заявки на утверждение" icon={I.approve} badge={pendingReqs.length} active={screen === 'approvals'} onClick={go(() => setScreen('approvals'))} />
             <NavItem label="План-Факт" icon={I.pf} active={screen === 'report'} onClick={go(() => setScreen('report'))} />
             <NavItem label="Показатели" icon={I.pok} active={screen === 'panel'} onClick={go(() => setScreen('panel'))} />
             <NavItem label="Операции" icon={I.ops} active={screen === 'incomes' || screen === 'expenses'} onClick={go(() => setScreen('incomes'))} />
@@ -319,6 +333,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               )}
             </div>
             <div data-app-scroll style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
+              {screen === 'approvals' && <ApprovalsScreen onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}

@@ -335,6 +335,28 @@ export class RequestsService {
     return this.toDto(row);
   }
 
+  /** Массовое одобрение из очереди директора.
+   *
+   *  Заявка на бензин за 340 сомони не требует изучения — такие закрываются
+   *  пачкой. Каждая проходит те же проверки перехода статуса, что и одиночное
+   *  решение, поэтому непригодные (черновик, уже решённая) не роняют всю
+   *  пачку, а возвращаются отдельным списком: директор должен видеть, что
+   *  прошло не всё, и почему. */
+  async approveMany(user: { sub: number }, ids: number[]): Promise<{ approved: number; skipped: { id: number; reason: string }[] }> {
+    const skipped: { id: number; reason: string }[] = [];
+    let approved = 0;
+    for (const id of ids) {
+      try {
+        await this.changeStatus(user, id, { status: 'approved' });
+        approved++;
+      } catch (e) {
+        const body = e instanceof HttpException ? (e.getResponse() as { message?: string }) : null;
+        skipped.push({ id, reason: body?.message ?? 'Не удалось одобрить' });
+      }
+    }
+    return { approved, skipped };
+  }
+
   /** Данные плановой операции по одобряемой заявке. */
   private async plannedOperationData(req: RequestRow) {
     const kind = req.kind as Kind;

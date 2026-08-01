@@ -652,6 +652,12 @@ export const api = {
 
   deleteRequest: (id: number) => authedReq<void>(`/requests/${id}`, { method: 'DELETE' }),
 
+  /** Массовое одобрение из очереди директора. Непригодные заявки не роняют
+   *  пачку — возвращаются в skipped с причиной. */
+  approveRequests: (ids: number[]) =>
+    authedReq<{ approved: number; skipped: { id: number; reason: string }[] }>(
+      '/requests/approve-many', { method: 'PATCH', body: { ids } }),
+
   /** Сторнирование одобренной заявки (директор/админ). */
   stornoRequest: (id: number, comment?: string) =>
     authedReq<ApiRequest>(`/requests/${id}/storno`, { method: 'PATCH', body: comment ? { comment } : {} }),

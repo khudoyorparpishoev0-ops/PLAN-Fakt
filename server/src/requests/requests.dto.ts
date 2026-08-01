@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
-  IsBoolean, IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Min, ValidateNested,
+  ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsPositive,
+  IsString, Length, Min, ValidateNested,
 } from 'class-validator';
 
 /** Ссылка на загруженный файл (POST /api/uploads → key). */
@@ -123,4 +124,13 @@ export class ChangeRequestStatusDto {
   @IsString()
   @Length(0, 500)
   comment?: string;
+}
+
+/** Массовое одобрение заявок из очереди директора. */
+export class ApproveManyDto {
+  @IsArray()
+  @ArrayNotEmpty({ message: 'Не выбрано ни одной заявки' })
+  @ArrayMaxSize(200, { message: 'За раз можно одобрить не более 200 заявок' })
+  @IsInt({ each: true })
+  ids!: number[];
 }

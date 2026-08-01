@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
-import { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
+import { ApproveManyDto, ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
 import { RequestsService } from './requests.service';
 
 /** Заявки кабинета (ТЗ, п. 9): POST /api/requests · PATCH /api/requests/:id/status
@@ -29,6 +29,15 @@ export class RequestsController {
   }
 
   /** Правка своей заявки в «Черновик»/«Отклонено» (+ повторная отправка). */
+  /** Массовое одобрение из очереди директора.
+   *  Объявлено ДО @Patch(':id') — иначе Nest разберёт «approve-many»
+   *  как идентификатор и ParseIntPipe вернёт 400. */
+  @Patch('approve-many')
+  @Roles('director', 'admin')
+  approveMany(@Req() req: AuthRequest, @Body() dto: ApproveManyDto) {
+    return this.requests.approveMany(req.user!, dto.ids);
+  }
+
   @Patch(':id')
   @Roles('accountant')
   update(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRequestDto) {
