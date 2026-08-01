@@ -298,6 +298,23 @@ export interface ApiExportColumns {
   kinds: { code: 'report' | 'projects' | 'operations'; name: string; columns: ApiExportColumn[] }[];
 }
 
+/** Годовая сетка планов: статьи × 12 месяцев. */
+export interface ApiPlanGridRow {
+  articleId: number;
+  article: string;
+  type: 'income' | 'expense';
+  /** По 12 чисел: январь…декабрь. */
+  plan: number[];
+  fact: number[];
+}
+export interface ApiPlanGrid {
+  year: number;
+  projectId: number | null;
+  rows: ApiPlanGridRow[];
+  articles: { id: number; name: string; type: string }[];
+  projects: { id: number; name: string }[];
+}
+
 export interface ApiProjectSummary {
   id: number;
   name: string;
@@ -887,6 +904,14 @@ export const api = {
   savePlan: (payload: { period: string; articleId: number; projectId?: number; amount: number }) =>
     authedReq<{ id: number }>('/plans', { method: 'POST', body: payload }),
   removePlan: (id: number) => authedReq<{ id: number }>(`/plans/${id}`, { method: 'DELETE' }),
+
+  /** Годовая сетка планов: один запрос вместо двенадцати помесячных. */
+  planGrid: (year: number, projectId?: number | null) =>
+    authedReq<ApiPlanGrid>(`/plans/grid?year=${year}${projectId ? `&project=${projectId}` : ''}`),
+
+  /** Сохранить изменённые ячейки пачкой. Ноль удаляет плановую строку. */
+  savePlanGrid: (year: number, projectId: number | null, cells: { articleId: number; month: number; amount: number }[]) =>
+    authedReq<{ saved: number; removed: number }>('/plans/grid', { method: 'POST', body: { year, projectId, cells } }),
 
   notifications: () => authedReq<ApiNotifications>('/notifications'),
 

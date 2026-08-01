@@ -551,6 +551,109 @@ export class Stage2Service {
   /* ── Планирование ─────────────────────────────────────────────────────── */
 
   /** Планы месяца по статьям и проектам + факт для сравнения. */
+  /** Годовая сетка планов: статьи × 12 месяцев, плюс факт по каждой клетке.
+   *
+   *  План на год — это двенадцать чисел на статью, и заполняют его один раз,
+   *  сидя с калькулятором. Помесячный список превращал бы эту работу в сотню
+   *  отдельных сохранений, поэтому год отдаётся одним запросом и сохраняется
+   *  пачкой (см. savePlans).
+   *
+   *  projectId: null — «все проекты», сводная сетка компании. */
+  async planGrid(year: number, projectId?: number | null) {
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year, 11, 31));
+    const scope = projectId == null ? {} : { projectId };
+
+    const [plans, facts, articles, projects] = await Promise.all([
+      this.prisma.plan.findMany({
+        where: { deletedAt: null, period: { gte: start, lte: end }, ...scope },
+        include: { article: true },
+      }),
+      this.prisma.operation.findMany({
+        where: { deletedAt: null, isPlan: false, date: { gte: start, lte: end }, ...scope },
+        select: { articleId: true, date: true, amountTjsDirams: true },
+      }),
+      this.prisma.article.findMany({
+        where: { deletedAt: null, type: { in: ['income', 'expense'] } },
+        orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.project.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } }),
+    ]);
+
+    const zero = () => Array.from({ length: 12 }, () => 0);
+    const planBy = new Map<number, number[]>();
+    const planIdBy = new Map<string, number>();
+    for (const p of plans) {
+      const arr = planBy.get(p.articleId) ?? zero();
+      const m = p.period.getUTCMonth();
+      arr[m] += Number(p.amountDirams) / 100;
+      planBy.set(p.articleId, arr);
+      planIdBy.set(`${p.articleId}:${m}`, p.id);
+    }
+    const factBy = new Map<number, number[]>();
+    for (const f of facts) {
+      if (f.articleId == null) continue;
+      const arr = factBy.get(f.articleId) ?? zero();
+      arr[f.date.getUTCMonth()] += Number(f.amountTjsDirams) / 100;
+      factBy.set(f.articleId, arr);
+    }
+
+    // Показываем статьи, по которым есть план или факт: полный справочник
+    // на 65 строк в сетке нечитаем, а пустые строки заполнять никто не будет.
+    const used = articles.filter((a) => planBy.has(a.id) || factBy.has(a.id));
+    return {
+      year,
+      projectId: projectId ?? null,
+      rows: used.map((a) => ({
+        articleId: a.id,
+        article: a.name,
+        type: a.type as 'income' | 'expense',
+        plan: planBy.get(a.id) ?? zero(),
+        fact: factBy.get(a.id) ?? zero(),
+      })),
+      articles: articles.map((a) => ({ id: a.id, name: a.name, type: a.type })),
+      projects: projects.map((p) => ({ id: p.id, name: p.name })),
+    };
+  }
+
+  /** Сохранение пачкой: строка сетки целиком или несколько строк сразу.
+   *  Ноль удаляет плановую строку — иначе в базе копились бы нули, которые
+   *  План-Факт считал бы за «план 0» и рисовал перерасход на весь факт. */
+  async savePlans(
+    userId: number,
+    year: number,
+    projectId: number | null | undefined,
+    cells: { articleId: number; month: number; amount: number }[],
+  ) {
+    const clean = cells.filter(
+      (c) => Number.isInteger(c.articleId) && Number.isInteger(c.month)
+        && c.month >= 0 && c.month <= 11 && Number.isFinite(c.amount) && c.amount >= 0,
+    );
+    if (!clean.length) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Нет ни одной корректной ячейки', 'cells');
+
+    let saved = 0, removed = 0;
+    await this.prisma.$transaction(async (tx) => {
+      for (const c of clean) {
+        const period = new Date(Date.UTC(year, c.month, 1));
+        const where = {
+          deletedAt: null, articleId: c.articleId, period,
+          projectId: projectId ?? null,
+        };
+        const existing = await tx.plan.findFirst({ where });
+        if (c.amount === 0) {
+          if (existing) { await tx.plan.update({ where: { id: existing.id }, data: { deletedAt: new Date() } }); removed++; }
+          continue;
+        }
+        const amountDirams = BigInt(Math.round(c.amount * 100));
+        if (existing) await tx.plan.update({ where: { id: existing.id }, data: { amountDirams } });
+        else await tx.plan.create({ data: { articleId: c.articleId, projectId: projectId ?? null, period, amountDirams } });
+        saved++;
+      }
+    });
+    await this.audit(userId, 'plan', 0, 'save_grid', { year, projectId: projectId ?? null, saved, removed });
+    return { saved, removed };
+  }
+
   async plans(period: string) {
     const start = new Date(period.slice(0, 7) + '-01T00:00:00Z');
     const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0));

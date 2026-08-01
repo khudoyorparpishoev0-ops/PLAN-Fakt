@@ -5,6 +5,7 @@ import { api, ApiError, type ApiPlans, type ApiPlanRow } from '../lib/api';
 import { AccentBtn, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import { useEscapeClose } from '../lib/escape';
+import PlanGrid from './PlanGrid';
 
 export interface PlanningScreenProps {
   onError: (msg: string) => void;
@@ -98,6 +99,10 @@ function PlanModal({ data, initial, onClose, onSubmit }: {
  *  месяц — та самая база сравнения для отчёта «План–Факт» (ТЗ, п. 7). */
 export default function PlanningScreen({ onError, onChanged }: PlanningScreenProps) {
   const isMobile = useIsMobile();
+  /* Год по умолчанию: план заполняют сразу на двенадцать месяцев. Помесячный
+     список оставлен для точечной правки одной строки — там видно проект,
+     которого в сводной сетке нет. */
+  const [mode, setMode] = useState<'year' | 'month'>('year');
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState<ApiPlans | null>(null);
   const [modal, setModal] = useState<{ row?: ApiPlanRow } | null>(null);
@@ -156,9 +161,39 @@ export default function PlanningScreen({ onError, onChanged }: PlanningScreenPro
     </>
   );
 
+  const modeSwitch = (
+    <div style={{ display: 'inline-flex', background: 'var(--fin-segment)', padding: 3, borderRadius: 9, gap: 2 }}>
+      {([['year', 'Год'], ['month', 'Месяц']] as const).map(([id, label]) => {
+        const on = mode === id;
+        return (
+          <button
+            key={id} type="button" data-plan-mode={id} onClick={() => setMode(id)}
+            style={{
+              padding: '6px 14px', border: 'none', cursor: 'pointer', borderRadius: 7,
+              fontFamily: 'inherit', fontSize: 12.5, fontWeight: on ? 600 : 500,
+              background: on ? 'var(--fin-surface)' : 'transparent',
+              color: on ? 'var(--fin-text)' : 'var(--fin-text-3)',
+              boxShadow: on ? 'var(--fin-shadow-seg)' : 'none',
+            }}
+          >{label}</button>
+        );
+      })}
+    </div>
+  );
+
+  if (mode === 'year') {
+    return (
+      <div data-screen-label="Планирование" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>{modeSwitch}</div>
+        <PlanGrid onChanged={onChanged} />
+      </div>
+    );
+  }
+
   return (
     <div data-screen-label="Планирование">
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+        {modeSwitch}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: '5px 8px' }}>
           <span onClick={() => setPeriod(shiftMonth(period + '-01', -1))} className="hv-cream" style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)' }}>‹</span>
           <span style={{ fontSize: 13, fontWeight: 600, minWidth: 120, textAlign: 'center' }}>{monthLabel(period + '-01')}</span>

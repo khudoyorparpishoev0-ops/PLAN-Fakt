@@ -166,6 +166,28 @@ export class Stage2Controller {
 
   /* ── Планирование ── */
 
+  /** Годовая сетка планов. Объявлена ДО @Get('plans'), чтобы не
+   *  конфликтовать при добавлении параметрических маршрутов. */
+  @Get('plans/grid')
+  @Roles('admin', 'director')
+  planGrid(@Query('year') year?: string, @Query('project') project?: string) {
+    const y = year && /^\d{4}$/.test(year) ? Number(year) : new Date().getUTCFullYear();
+    const pid = project && /^\d+$/.test(project) ? Number(project) : null;
+    return this.s.planGrid(y, pid);
+  }
+
+  /** Сохранить сетку пачкой. */
+  @Post('plans/grid')
+  @HttpCode(200)
+  @Roles('admin', 'director')
+  savePlanGrid(
+    @Req() req: AuthRequest,
+    @Body() body: { year?: number; projectId?: number | null; cells?: { articleId: number; month: number; amount: number }[] },
+  ) {
+    const y = Number.isInteger(body?.year) ? Number(body.year) : new Date().getUTCFullYear();
+    return this.s.savePlans(req.user!.sub, y, body?.projectId ?? null, Array.isArray(body?.cells) ? body.cells : []);
+  }
+
   @Get('plans')
   @Roles('admin', 'director')
   plans(@Query('period') period?: string) {
