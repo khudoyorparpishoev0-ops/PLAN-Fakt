@@ -34,7 +34,7 @@ function NavItem({ label, icon, active, onClick }: { label: string; icon: JSX.El
         display: 'flex', alignItems: 'center', gap: 11, height: 38, margin: '1px 10px', padding: '0 12px',
         borderRadius: 9, cursor: 'pointer',
         background: active ? ACC : 'transparent',
-        color: active ? '#FFFFFF' : 'rgba(255,255,255,.82)',
+        color: active ? 'var(--fin-surface)' : 'rgba(255,255,255,.82)',
       }}
     >
       {icon}
@@ -68,28 +68,28 @@ function KpiCard({ label, value, unit, note, icon, iconBg, iconFg, b }: {
   icon: string; iconBg: string; iconFg: string; b: { t: string; fg: string; bg: string; dot: string };
 }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '15px 16px' }}>
+    <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '15px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 28, height: 28, borderRadius: 8, background: iconBg, color: iconFg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 14, fontWeight: 700 }}>{icon}</span>
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#8A918D' }}>{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--fin-text-4)' }}>{label}</span>
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, color: b.fg, background: b.bg }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.dot }} />{b.t}
         </span>
       </div>
       <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-.02em', ...num }}>
-        {value} <span style={{ fontSize: 11.5, fontWeight: 500, color: '#8A918D', fontFamily: "'Golos Text',sans-serif" }}>{unit}</span>
+        {value} <span style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--fin-text-4)', fontFamily: "'Golos Text',sans-serif" }}>{unit}</span>
       </div>
-      <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 6 }}>{note}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 6 }}>{note}</div>
     </div>
   );
 }
 
-const CHIP: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer' };
+const CHIP: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: 'var(--fin-text-2)', cursor: 'pointer' };
 
-const PWD_LAB: React.CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
-const PWD_INP: React.CSSProperties = { width: '100%', height: 38, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 11px', fontSize: 13, outline: 'none', background: '#fff' };
+const PWD_LAB: React.CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
+const PWD_INP: React.CSSProperties = { width: '100%', height: 38, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 11px', fontSize: 13, outline: 'none', background: 'var(--fin-surface)' };
 
 /** Модалка «Сменить пароль». Если передан submit (API из ШАГА 2) — меняет
  *  пароль по-настоящему и показывает ошибки сервера. */
@@ -121,14 +121,14 @@ function ChangePasswordModal({ onClose, onDone, submit }: {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 440, maxWidth: '94vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 440, maxWidth: '94vw', background: 'var(--fin-surface)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>Сменить пароль</div>
-          <div onClick={onClose} className="hv-cream" style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}>
+          <div onClick={onClose} className="hv-cream" style={{ width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-4)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
           </div>
         </div>
-        <div style={{ fontSize: 12, color: '#8A918D', lineHeight: 1.5, marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--fin-text-4)', lineHeight: 1.5, marginBottom: 16 }}>
           Пароль из первоначальной настройки — временный: смените его при первом входе.
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -143,16 +143,16 @@ function ChangePasswordModal({ onClose, onDone, submit }: {
           <div style={PWD_LAB}>Повторите пароль</div>
           <input type="password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Ещё раз новый пароль" style={PWD_INP} />
           {repeat.length > 0 && repeat !== next && (
-            <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>Пароли не совпадают</div>
+            <div style={{ fontSize: 11.5, color: 'var(--fin-minus)', marginTop: 4 }}>Пароли не совпадают</div>
           )}
-          {error && <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>{error}</div>}
+          {error && <div style={{ fontSize: 11.5, color: 'var(--fin-minus)', marginTop: 4 }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отменить</div>
+          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отменить</div>
           <div
             onClick={valid ? doSubmit : undefined}
             className={valid ? 'hv-dim' : undefined}
-            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+            style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
           >
             {busy ? 'Сохраняем…' : 'Сменить пароль'}
           </div>
@@ -283,18 +283,18 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
       <div style={isMobile
         ? {
             position: 'fixed', top: 0, bottom: 0, left: 0, width: 260, zIndex: 80,
-            background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            background: 'var(--fin-sidebar)', display: 'flex', flexDirection: 'column', overflowY: 'auto',
             transform: menuOpen ? 'none' : 'translateX(-100%)', transition: 'transform .2s ease',
             // Свёрнутое меню не должно ловить нажатия и попадать в скринридер
             visibility: menuOpen ? 'visible' : 'hidden',
             boxShadow: menuOpen ? '4px 0 28px rgba(0,0,0,.3)' : 'none',
           }
-        : { width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+        : { width: 238, flex: 'none', background: 'var(--fin-sidebar)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '18px 16px 2px' }}>
           <Logo />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.03em', color: '#fff' }}>IT-HONA</div>
+            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.03em', color: 'var(--fin-surface)' }}>IT-HONA</div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', lineHeight: 1.35, marginTop: 2 }}>Интегрируем технологии.<br />Создаём надёжную инфраструктуру.</div>
           </div>
         </div>
@@ -306,46 +306,46 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
         <NavItem label="Проекты" icon={I.proj} active={screen === 'projects'} onClick={() => { setScreen('projects'); setMenuOpen(false); }} />
         <NavItem label="Мои задачи" icon={I.task} active={screen === 'tasks'} onClick={() => { setScreen('tasks'); setMenuOpen(false); }} />
         <div onClick={() => setPwdModal(true)} title="Сменить пароль" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'Ф' : 'Ф'}</div>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: 'var(--fin-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'Ф' : 'Ф'}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.name ?? 'Фаридун'}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fin-surface)' }}>{user?.name ?? 'Фаридун'}</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{user ? ROLE_LABELS[user.role] : 'Операционный бухгалтер'}</div>
           </div>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
+        <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: 'var(--fin-surface)', borderBottom: '1px solid var(--fin-border)' }}>
           {isMobile && (
             <div
               onClick={() => setMenuOpen(true)}
               title="Меню"
               className="hv-soft"
-              style={{ width: TAP, height: TAP, marginLeft: -6, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3E4643', flex: 'none' }}
+              style={{ width: TAP, height: TAP, marginLeft: -6, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)', flex: 'none' }}
             >
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
             </div>
           )}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{TITLES[screen]}</div>
-            {isMobile && <div style={{ fontSize: 11, color: '#8A918D' }}>Октябрь 2026 · TJS</div>}
+            {isMobile && <div style={{ fontSize: 11, color: 'var(--fin-text-4)' }}>Октябрь 2026 · TJS</div>}
           </div>
-          {!isMobile && <div style={{ fontSize: 12, color: '#8A918D' }}>Октябрь 2026 · суммы в сомони (TJS)</div>}
+          {!isMobile && <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>Октябрь 2026 · суммы в сомони (TJS)</div>}
           <div style={{ flex: 1 }} />
           {!isMobile && (
             <>
-              <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
-                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
-                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#6B7370' }}>Телефон</div>
+              <div style={{ display: 'inline-flex', background: 'var(--fin-bg)', padding: 3, borderRadius: 9, gap: 2 }}>
+                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: 'var(--fin-surface)', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
+                <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: 'var(--fin-text-3)' }}>Телефон</div>
               </div>
-              <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: '#A6ACA8' }}>▾</span>
+              <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: 'var(--fin-text-5)' }}>▾</span>
               </div>
             </>
           )}
           <NotifyBell refreshTick={notifyTick} />
           {onLogout && (
-            <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer', flex: 'none' }}>
+            <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer', flex: 'none' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
               {!isMobile && 'Выйти'}
             </div>
@@ -354,30 +354,30 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
           {/* ── Общая панель периодов и фильтров (прототип, строки 68–80) ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-            <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
+            <div style={{ display: 'inline-flex', background: 'var(--fin-segment)', padding: 3, borderRadius: 9, gap: 2 }}>
               {['День', 'Неделя', 'Месяц', 'Квартал', 'Год'].map(t => {
                 const a = period === t;
                 return (
-                  <div key={t} onClick={() => setPeriod(t)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? '#1B1F1E' : '#6B7370', background: a ? '#FFFFFF' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{t}</div>
+                  <div key={t} onClick={() => setPeriod(t)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? 'var(--fin-text)' : 'var(--fin-text-3)', background: a ? 'var(--fin-surface)' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{t}</div>
                 );
               })}
             </div>
-            <div style={{ width: 1, height: 22, background: '#E0DED8' }} />
-            <div className="hv-soft" style={CHIP}>Проект: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
-            <div className="hv-soft" style={CHIP}>Статус: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
-            <div className="hv-soft" style={CHIP}>Валюта: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>TJS</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
+            <div style={{ width: 1, height: 22, background: 'var(--fin-border)' }} />
+            <div className="hv-soft" style={CHIP}>Проект: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>Все</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
+            <div className="hv-soft" style={CHIP}>Статус: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>Все</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
+            <div className="hv-soft" style={CHIP}>Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
             <div style={{ flex: 1 }} />
             <div style={{ position: 'relative' }}>
-              <input placeholder="Поиск по заявкам" style={{ width: 230, height: 34, border: '1px solid #E0DED8', borderRadius: 8, background: '#fff', padding: '0 12px 0 34px', fontSize: 12.5, outline: 'none' }} />
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" strokeWidth="1.6" style={{ position: 'absolute', left: 11, top: 9 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
+              <input placeholder="Поиск по заявкам" style={{ width: 230, height: 34, border: '1px solid var(--fin-border)', borderRadius: 8, background: 'var(--fin-surface)', padding: '0 12px 0 34px', fontSize: 12.5, outline: 'none' }} />
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="var(--fin-text-5)" strokeWidth="1.6" style={{ position: 'absolute', left: 11, top: 9 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
             </div>
           </div>
           {/* ── Общий KPI-ряд (прототип, строки 81–92; значения считаются из данных) ── */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
             <KpiCard label="ОТПРАВЛЕНО" value={String(nSent)} unit={pluralReq(nSent)} note="За месяц" icon="↗" iconBg="rgba(27,122,60,.1)" iconFg={ACC} b={CB.sent} />
-            <KpiCard label="НА РАССМОТРЕНИИ" value={String(nPend)} unit={pluralReq(nPend)} note="Ждут решения Директора" icon="⏱" iconBg="#FCF1D6" iconFg="#9A6B00" b={CB.pending} />
-            <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="#E4F3E9" iconFg="#1A7A4B" b={CB.approved} />
-            <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="#FAE7E4" iconFg="#B93227" b={CB.rejected} />
+            <KpiCard label="НА РАССМОТРЕНИИ" value={String(nPend)} unit={pluralReq(nPend)} note="Ждут решения Директора" icon="⏱" iconBg="var(--fin-warn-soft)" iconFg="var(--fin-warn)" b={CB.pending} />
+            <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="var(--fin-plus-soft)" iconFg="var(--fin-plus)" b={CB.approved} />
+            <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="var(--fin-minus-soft)" iconFg="var(--fin-minus)" b={CB.rejected} />
           </div>
           {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
           {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
@@ -394,9 +394,9 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
         />
       )}
       {toastMsg && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#1B1F1E', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', animation: 'finFade .18s ease', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#22935B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2"><path d="M1.5 5.2L4 7.5l4.5-5" /></svg>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: 'var(--fin-text)', color: 'var(--fin-surface)', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', animation: 'finFade .18s ease', display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--fin-plus)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--fin-surface)" strokeWidth="2"><path d="M1.5 5.2L4 7.5l4.5-5" /></svg>
           </span>
           {toastMsg}
         </div>

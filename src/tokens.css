@@ -1,0 +1,98 @@
+/* Токены дизайн-системы IT-HONA — перенесены из дизайн-пакета заказчика
+   (design_handoff_it_hona/it-hona/tokens.css) без изменения значений.
+   Это источник истины по цветам, шрифтам, радиусам и плотности:
+   в коде хексов быть не должно, только переменные отсюда.
+
+   Подключается первым — до index.css и до любых стилей приложения. */
+
+:root {
+  /* ——— Бренд ——— */
+  --fin-sidebar: #123A26;        /* тёмно-зелёный сайдбар */
+  --fin-accent: #1B7A3C;         /* основной акцент: кнопки, активный пункт, ссылки */
+  --fin-accent-hover: #156430;
+  --fin-accent-soft: #E6F2EA;    /* подложка активного состояния, иконки-плитки */
+  --fin-logo: #37B15A;           /* только логотип */
+  --fin-logo-dark: #0E3A24;
+
+  /* ——— Поверхности ——— */
+  --fin-bg: #EEF1EE;             /* фон рабочей области */
+  --fin-surface: #FFFFFF;        /* карточки, таблицы, шапка */
+  --fin-surface-alt: #F4F6F4;    /* шапка таблиц, блоки кода */
+  --fin-hover: #F6F5F1;          /* hover строки и пункта меню */
+  --fin-segment: #EBEAE4;        /* подложка сегмент-контрола */
+  --fin-border: #E7E5E0;         /* границы, разделители */
+  --fin-divider: #EFEEE9;        /* слабый разделитель внутри карточки */
+
+  /* ——— Текст ——— */
+  --fin-text: #1B1F1E;
+  --fin-text-2: #5A625E;         /* вторичный */
+  --fin-text-3: #6B7370;         /* подписи в строках карточек */
+  --fin-text-4: #8A918D;         /* шапки таблиц, метки */
+  --fin-text-5: #A6ACA8;         /* самый тихий */
+  --fin-text-invert: #FFFFFF;
+  --fin-text-on-dark: rgba(255, 255, 255, .82);
+  --fin-text-on-dark-dim: rgba(255, 255, 255, .40);
+
+  /* ——— Семантика сумм и статусов ——— */
+  --fin-plus: #1A7A4B;           /* приход, экономия, «в норме» */
+  --fin-plus-soft: #E6F2EA;
+  --fin-minus: #B93227;          /* расход, перерасход, просрочка */
+  --fin-minus-soft: #FAE7E4;
+  --fin-warn: #B25313;           /* «проверить план», отклонение к прошлому периоду */
+  --fin-warn-soft: #FBF0E4;
+  --fin-neutral: #6B7370;        /* «по плану», черновик */
+  --fin-neutral-soft: #EFEEE9;
+
+  /* ——— Шрифты ——— */
+  --fin-font: 'Golos Text', system-ui, sans-serif;
+  --fin-font-num: 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* ——— Геометрия ——— */
+  --fin-r-xs: 7px;               /* внутренний элемент сегмент-контрола */
+  --fin-r-sm: 8px;               /* кнопки, поля, иконки-плитки */
+  --fin-r-md: 9px;               /* пункт сайдбара, сегмент-контрол */
+  --fin-r-lg: 12px;              /* карточки, таблицы, панели */
+  --fin-r-pill: 99px;            /* бейджи, прогресс-бары */
+
+  /* ——— Тени ——— */
+  --fin-shadow-seg: 0 1px 2px rgba(0, 0, 0, .08);       /* активный сегмент */
+  --fin-shadow-pop: 0 8px 24px rgba(25, 28, 27, .12);   /* меню, поповер */
+  --fin-shadow-modal: 0 24px 60px rgba(25, 28, 27, .20);
+
+  /* ——— Каркас ——— */
+  --fin-sidebar-w: 232px;
+  --fin-topbar-h: 60px;
+  --fin-nav-h: 38px;
+
+  /* ——— Плотность: КОМФОРТНАЯ (по умолчанию) ——— */
+  --fin-pad: 18px 20px;          /* внутренние поля карточки */
+  --fin-row-h: 44px;             /* высота строки таблицы */
+  --fin-cell-pad: 11px 14px;
+  --fin-ctrl-h: 40px;            /* высота кнопки и поля */
+  --fin-fs-body: 14px;
+  --fin-fs-table: 14px;
+  --fin-fs-head: 11.5px;         /* шапка таблицы, uppercase */
+  --fin-fs-kpi: 27px;
+  --fin-gap: 16px;
+}
+
+/* ——— Плотность: КОМПАКТНАЯ ——— */
+:root[data-fin-density="compact"] {
+  --fin-pad: 15px 16px;
+  --fin-row-h: 36px;
+  --fin-cell-pad: 7px 12px;
+  --fin-ctrl-h: 34px;
+  --fin-fs-body: 13px;
+  --fin-fs-table: 12.5px;
+  --fin-fs-head: 10.5px;
+  --fin-fs-kpi: 25px;
+  --fin-gap: 12px;
+}
+
+/* ——— Совместимость с кодом приложения ———
+   Экраны написаны на ROW_PAD / CARD_PAD; здесь они выражены через токены
+   плотности, поэтому переключение data-fin-density меняет и их. */
+:root {
+  --row-pad: var(--fin-cell-pad);
+  --card-pad: var(--fin-pad);
+}

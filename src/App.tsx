@@ -62,7 +62,7 @@ export default function App() {
   };
 
   if (phase === 'restoring') {
-    return <div style={{ minHeight: '100vh', background: '#EEF1EE' }} />;
+    return <div style={{ minHeight: '100vh', background: 'var(--fin-bg)' }} />;
   }
   if (phase === 'login' || !session) {
     return <LoginScreen onLogin={handleLogin} />;

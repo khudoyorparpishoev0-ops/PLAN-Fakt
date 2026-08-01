@@ -48,12 +48,12 @@ export interface OperationsScreenProps {
   onError: (msg: string) => void;
 }
 
-const selS: React.CSSProperties = { width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#5A625E', marginBottom: 8, outline: 'none' };
-const inpS: React.CSSProperties = { height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none' };
-const cellS: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 };
+const selS: React.CSSProperties = { width: '100%', height: 34, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: 'var(--fin-surface)', color: 'var(--fin-text-2)', marginBottom: 8, outline: 'none' };
+const inpS: React.CSSProperties = { height: 34, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: 'var(--fin-surface)', outline: 'none' };
+const cellS: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 };
 /** Сумма — самая важная колонка: при горизонтальной прокрутке остаётся на виду. */
 const stickySum: React.CSSProperties = {
-  position: 'sticky', right: 0, background: '#fff',
+  position: 'sticky', right: 0, background: 'var(--fin-surface)',
   boxShadow: '-6px 0 8px -6px rgba(0,0,0,.12)',
 };
 
@@ -65,11 +65,11 @@ function Box({ on, half, onClick }: { on: boolean; half?: boolean; onClick: (e: 
       style={{
         width: 16, height: 16, borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         verticalAlign: 'middle', cursor: 'pointer', flex: 'none',
-        border: `1.5px solid ${on || half ? ACC : '#CFCCC4'}`, background: on || half ? ACC : '#fff', color: '#fff',
+        border: `1.5px solid ${on || half ? ACC : 'var(--fin-border)'}`, background: on || half ? ACC : 'var(--fin-surface)', color: 'var(--fin-surface)',
       }}
     >
       {on && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2.5 6.2l2.4 2.4L9.5 3.8" /></svg>}
-      {!on && half && <span style={{ width: 8, height: 2, background: '#fff', borderRadius: 1 }} />}
+      {!on && half && <span style={{ width: 8, height: 2, background: 'var(--fin-surface)', borderRadius: 1 }} />}
     </span>
   );
 }
@@ -208,7 +208,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
       tag: o.isPlan ? 'План' : o.type === 'in' ? 'Доходы' : 'Расходы',
       sumMain: sign + fmt(whole),
       sumFrac: ',' + String(dirams).padStart(2, '0') + ' TJS',
-      sumFg: o.type === 'in' ? '#1A7A4B' : '#B93227',
+      sumFg: o.type === 'in' ? 'var(--fin-plus)' : 'var(--fin-minus)',
     };
   });
 
@@ -274,22 +274,22 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   return (
     <div data-screen-label="Операции" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
       {filtersOn ? (
-        <div style={{ width: isMobile ? '100%' : 236, flex: 'none', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', alignSelf: 'flex-start' }}>
+        <div style={{ width: isMobile ? '100%' : 236, flex: 'none', background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', alignSelf: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>Фильтры</div>
             <div onClick={() => setFilters(false)} title="Свернуть фильтры" className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: ACC }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3L5 7l4 4" /><path d="M3 2.5v9" /></svg>
             </div>
           </div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', marginBottom: 7 }}>ТИП ОПЕРАЦИИ</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', marginBottom: 7 }}>ТИП ОПЕРАЦИИ</div>
           {opTypeChecks.map(([t, on, fn]) => <CheckRow key={t} on={on} label={t} onClick={fn} />)}
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '14px 0 7px' }}>ДАТА ОПЛАТЫ</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', margin: '14px 0 7px' }}>ДАТА ОПЛАТЫ</div>
           {payChecks.map(([t, on, fn]) => <CheckRow key={t} on={on} label={t} onClick={fn} />)}
           <div style={{ display: 'flex', gap: 8, margin: '9px 0 0' }}>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Период с" style={{ ...inpS, width: '50%', padding: '0 6px' }} />
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Период по" style={{ ...inpS, width: '50%', padding: '0 6px' }} />
           </div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '16px 0 8px' }}>ПАРАМЕТРЫ</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', margin: '16px 0 8px' }}>ПАРАМЕТРЫ</div>
           <select value={fAccount} onChange={e => setFAccount(e.target.value)} style={selS}>
             <option value="">Юрлица и счета: все</option>
             {(dicts?.accounts ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -312,30 +312,30 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           </div>
         </div>
       ) : (
-        <div onClick={() => setFilters(true)} title="Показать фильтры" className="hv-row" style={{ width: 38, flex: 'none', alignSelf: 'flex-start', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '11px 0', display: 'flex', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}>
+        <div onClick={() => setFilters(true)} title="Показать фильтры" className="hv-row" style={{ width: 38, flex: 'none', alignSelf: 'flex-start', background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '11px 0', display: 'flex', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)' }}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h12L9.5 8.5V13l-3-1.5V8.5z" /></svg>
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 12.5, color: '#8A918D' }}>{loading ? 'Загрузка…' : `Всего: ${fmt(total)}`}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)' }}>{loading ? 'Загрузка…' : `Всего: ${fmt(total)}`}</div>
           <div style={{ flex: 1 }} />
           <div style={{ position: 'relative' }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по операциям" style={{ width: isMobile ? '100%' : 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A6ACA8" strokeWidth="1.5" style={{ position: 'absolute', left: 11, top: 10 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по операциям" style={{ width: isMobile ? '100%' : 280, height: 36, border: '1px solid var(--fin-border)', borderRadius: 9, padding: '0 12px 0 34px', fontSize: 12.5, background: 'var(--fin-surface)', outline: 'none' }} />
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="var(--fin-text-5)" strokeWidth="1.5" style={{ position: 'absolute', left: 11, top: 10 }}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
           </div>
-          <div onClick={() => props.openCreate('in')} title="Добавить доход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#1A7A4B', fontSize: 12.5, fontWeight: 600 }}>+ Доход</div>
-          <div onClick={() => props.openCreate('out')} title="Добавить расход" className="hv-soft" style={{ height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: '#B93227', fontSize: 12.5, fontWeight: 600 }}>+ Расход</div>
+          <div onClick={() => props.openCreate('in')} title="Добавить доход" className="hv-soft" style={{ height: 36, border: '1px solid var(--fin-border)', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: 'var(--fin-plus)', fontSize: 12.5, fontWeight: 600 }}>+ Доход</div>
+          <div onClick={() => props.openCreate('out')} title="Добавить расход" className="hv-soft" style={{ height: 36, border: '1px solid var(--fin-border)', borderRadius: 9, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 6, cursor: 'pointer', color: 'var(--fin-minus)', fontSize: 12.5, fontWeight: 600 }}>+ Расход</div>
           <div style={{ position: 'relative' }}>
-            <div onClick={() => setMenu(v => !v)} title="Ещё" data-ops-menu className="hv-soft" style={{ width: 36, height: 36, border: '1px solid #E0DED8', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E', background: menu ? '#F1F0EB' : '#fff' }}>
+            <div onClick={() => setMenu(v => !v)} title="Ещё" data-ops-menu className="hv-soft" style={{ width: 36, height: 36, border: '1px solid var(--fin-border)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)', background: menu ? 'var(--fin-hover)' : 'var(--fin-surface)' }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="2.5" cy="7" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="11.5" cy="7" r="1.2" /></svg>
             </div>
             {menu && (
               <>
                 <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
-                <div data-ops-menu-panel style={{ position: 'absolute', right: 0, top: 42, zIndex: 40, width: 220, background: '#fff', border: '1px solid #E7E5E0', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 6 }}>
+                <div data-ops-menu-panel style={{ position: 'absolute', right: 0, top: 42, zIndex: 40, width: 220, background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 6 }}>
                   <div onClick={exportXlsx} className="hv-soft" style={{ padding: '8px 10px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Экспорт в Excel</div>
-                  <div style={{ borderTop: '1px solid #F0EFEA', margin: '5px 0', padding: '7px 10px 3px', fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', color: '#A6ACA8' }}>КОЛОНКИ</div>
+                  <div style={{ borderTop: '1px solid var(--fin-divider)', margin: '5px 0', padding: '7px 10px 3px', fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', color: 'var(--fin-text-5)' }}>КОЛОНКИ</div>
                   {OPTIONAL_COLUMNS.map(c => (
                     <div key={c.key} onClick={() => toggleColumn(c.key)} className="hv-soft" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer' }}>
                       <Box on={columns[c.key]} onClick={e => { e.stopPropagation(); toggleColumn(c.key); }} />
@@ -349,29 +349,29 @@ export default function OperationsScreen(props: OperationsScreenProps) {
         </div>
 
         {flash && (
-          <div style={{ background: '#E6F4EB', border: '1px solid #BFE3CD', color: '#1A7A4B', borderRadius: 10, padding: '9px 13px', fontSize: 12.5, marginBottom: 10 }}>{flash}</div>
+          <div style={{ background: 'var(--fin-plus-soft)', border: '1px solid var(--fin-plus-soft)', color: 'var(--fin-plus)', borderRadius: 10, padding: '9px 13px', fontSize: 12.5, marginBottom: 10 }}>{flash}</div>
         )}
 
         {sel.size > 0 && (
-          <div data-bulk-bar style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '1px solid ' + ACC, borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+          <div data-bulk-bar style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--fin-surface)', border: '1px solid ' + ACC, borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
             <span style={{ fontSize: 12.5, fontWeight: 600 }}>Выбрано: {sel.size}</span>
-            <div onClick={() => void bulk('confirm')} className="hv-dim" style={{ background: ACC, color: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Подтвердить оплату</div>
-            <select value={bulkProject} onChange={e => setBulkProject(e.target.value)} style={{ height: 32, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff' }}>
+            <div onClick={() => void bulk('confirm')} className="hv-dim" style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Подтвердить оплату</div>
+            <select value={bulkProject} onChange={e => setBulkProject(e.target.value)} style={{ height: 32, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: 'var(--fin-surface)' }}>
               <option value="">Сменить проект…</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <div onClick={() => void bulk('project')} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: bulkProject ? '#3E4643' : '#A6ACA8', cursor: bulkProject ? 'pointer' : 'default' }}>Перенести</div>
-            <div onClick={() => void bulk('delete')} className="hv-soft" style={{ border: '1px solid #F0CFC9', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</div>
+            <div onClick={() => void bulk('project')} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: bulkProject ? 'var(--fin-text-2)' : 'var(--fin-text-5)', cursor: bulkProject ? 'pointer' : 'default' }}>Перенести</div>
+            <div onClick={() => void bulk('delete')} className="hv-soft" style={{ border: '1px solid var(--fin-minus-soft)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-minus)', cursor: 'pointer' }}>Удалить</div>
             <div style={{ flex: 1 }} />
             <span onClick={() => setSel(new Set())} style={{ fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer' }}>Снять выделение</span>
           </div>
         )}
 
-        <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <thead><tr>
-                <th style={{ padding: '9px 10px 9px 16px', width: 20, borderBottom: '1px solid #E7E5E0' }}>
+                <th style={{ padding: '9px 10px 9px 16px', width: 20, borderBottom: '1px solid var(--fin-border)' }}>
                   <Box on={allOnPage} half={!allOnPage && someOnPage} onClick={toggleAll} />
                 </th>
                 <Th style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>Дата ▾</Th>
@@ -380,20 +380,20 @@ export default function OperationsScreen(props: OperationsScreenProps) {
                 {th('party', 'Контрагент')}
                 {th('article', 'Статья')}
                 {th('project', 'Проект')}
-                <Th right style={{ padding: '9px 16px 9px 12px', ...stickySum, background: '#fff', zIndex: 2 }}>Сумма</Th>
+                <Th right style={{ padding: '9px 16px 9px 12px', ...stickySum, background: 'var(--fin-surface)', zIndex: 2 }}>Сумма</Th>
               </tr></thead>
               <tbody>
                 {view.length === 0 && !loading && (
-                  <tr><td colSpan={colCount} style={{ padding: '16px', fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
+                  <tr><td colSpan={colCount} style={{ padding: '16px', fontSize: 12.5, color: 'var(--fin-text-5)', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
                 )}
                 {view.length > 0 && (
                   <>
-                    <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: '#8A918D' }}>
+                    <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: 'var(--fin-surface-alt)', borderBottom: '1px solid var(--fin-divider)', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: 'var(--fin-text-4)' }}>
                       {groups.todayRows.length ? 'СЕГОДНЯ' : 'СЕГОДНЯ НЕТ ОПЕРАЦИЙ'}
                     </td></tr>
                     {groups.todayRows.map(r => opRow(r))}
                     {groups.earlier.length > 0 && (
-                      <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: '#FAFAF8', borderBottom: '1px solid #F3F2ED', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: '#8A918D' }}>ВЧЕРА И РАНЕЕ</td></tr>
+                      <tr><td colSpan={colCount} style={{ padding: '7px 16px', background: 'var(--fin-surface-alt)', borderBottom: '1px solid var(--fin-divider)', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', color: 'var(--fin-text-4)' }}>ВЧЕРА И РАНЕЕ</td></tr>
                     )}
                     {groups.earlier.map(r => opRow(r))}
                   </>
@@ -402,7 +402,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
             </table>
           </div>
           {rows.length < total && (
-            <div onClick={loading ? undefined : () => void load(rows.length)} className="hv-soft" style={{ padding: '11px', textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', borderTop: '1px solid #F0EFEA' }}>
+            <div onClick={loading ? undefined : () => void load(rows.length)} className="hv-soft" style={{ padding: '11px', textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', borderTop: '1px solid var(--fin-divider)' }}>
               {loading ? 'Загрузка…' : `Показать ещё (${fmt(total - rows.length)})`}
             </div>
           )}
@@ -424,35 +424,35 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   /** Строка журнала: клик открывает карточку, чекбокс — выделение. */
   function opRow(r: typeof view[number]) {
     return (
-      <tr key={r.key} onClick={() => setCardId(r.key)} className="hv-row" style={{ cursor: 'pointer', background: sel.has(r.key) ? '#F4F8F5' : undefined }}>
-        <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid #F3F2ED' }}>
+      <tr key={r.key} onClick={() => setCardId(r.key)} className="hv-row" style={{ cursor: 'pointer', background: sel.has(r.key) ? 'var(--fin-surface-alt)' : undefined }}>
+        <td style={{ padding: '10px 10px 10px 16px', borderBottom: '1px solid var(--fin-divider)' }}>
           <Box on={sel.has(r.key)} onClick={e => { e.stopPropagation(); toggleOne(r.key); }} />
         </td>
-        <td style={{ ...cellS, color: '#3E4643', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
-        {columns.account && <td style={{ ...cellS, color: '#3E4643', whiteSpace: 'nowrap' }}>{r.account}</td>}
+        <td style={{ ...cellS, color: 'var(--fin-text-2)', whiteSpace: 'nowrap', fontFamily: PLEX }}>{r.date}</td>
+        {columns.account && <td style={{ ...cellS, color: 'var(--fin-text-2)', whiteSpace: 'nowrap' }}>{r.account}</td>}
         {columns.type && (
           <td style={{ ...cellS, padding: '10px 8px', textAlign: 'center' }}>
             {r.dirIn
-              ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#22935B" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 8H3" /><path d="M6.5 4.5L3 8l3.5 3.5" /></svg>
-              : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C86B5E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10" /><path d="M9.5 4.5L13 8l-3.5 3.5" /></svg>}
+              ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--fin-plus)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 8H3" /><path d="M6.5 4.5L3 8l3.5 3.5" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--fin-minus)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10" /><path d="M9.5 4.5L13 8l-3.5 3.5" /></svg>}
           </td>
         )}
         {columns.party && <td style={{ ...cellS, whiteSpace: 'nowrap' }}>{r.party}</td>}
         {columns.article && (
           <td style={cellS}>
-            <div style={{ fontWeight: 600, color: '#1B1F1E' }}>{r.article} <span style={{ fontWeight: 500, color: '#A6ACA8' }}>[{r.tag}]</span></div>
-            {r.sub && <div style={{ fontSize: 11.5, color: '#A6ACA8', marginTop: 1 }}>{r.sub}</div>}
+            <div style={{ fontWeight: 600, color: 'var(--fin-text)' }}>{r.article} <span style={{ fontWeight: 500, color: 'var(--fin-text-5)' }}>[{r.tag}]</span></div>
+            {r.sub && <div style={{ fontSize: 11.5, color: 'var(--fin-text-5)', marginTop: 1 }}>{r.sub}</div>}
           </td>
         )}
-        {columns.project && <td style={{ ...cellS, color: '#5A625E', whiteSpace: 'nowrap' }}>{r.project}</td>}
-        <td style={{ ...cellS, padding: '10px 16px 10px 12px', textAlign: 'right', whiteSpace: 'nowrap', ...stickySum, background: sel.has(r.key) ? '#F4F8F5' : '#fff' }}>
+        {columns.project && <td style={{ ...cellS, color: 'var(--fin-text-2)', whiteSpace: 'nowrap' }}>{r.project}</td>}
+        <td style={{ ...cellS, padding: '10px 16px 10px 12px', textAlign: 'right', whiteSpace: 'nowrap', ...stickySum, background: sel.has(r.key) ? 'var(--fin-surface-alt)' : 'var(--fin-surface)' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
             {r.sub && (
-              <span title={r.sub} style={{ color: '#A6ACA8', display: 'inline-flex' }}>
+              <span title={r.sub} style={{ color: 'var(--fin-text-5)', display: 'inline-flex' }}>
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" /></svg>
               </span>
             )}
-            <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: '#A6ACA8' }}>{r.sumFrac}</span></span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--fin-text-5)' }}>{r.sumFrac}</span></span>
           </span>
         </td>
       </tr>

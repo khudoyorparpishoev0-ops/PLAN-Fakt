@@ -26,8 +26,8 @@ const REF_BY_TAB: Record<string, RefKind> = {
   contragents: 'counterparty', accounts: 'account', entities: 'entity', goods: 'good', services: 'service',
 };
 
-const inpS: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff', outline: 'none' };
-const lblS: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
+const inpS: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
+const lblS: CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
 
 /** Модалка ввода/правки записи справочника или статьи. */
 function RefModal({ title, initial, withNote, withKind, onClose, onSubmit }: {
@@ -60,7 +60,7 @@ function RefModal({ title, initial, withNote, withKind, onClose, onSubmit }: {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 420, maxWidth: '94vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 420, maxWidth: '94vw', background: 'var(--fin-surface)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 14 }}>{title}</div>
         <div style={{ marginBottom: 12 }}>
           <div style={lblS}>Название</div>
@@ -81,11 +81,11 @@ function RefModal({ title, initial, withNote, withKind, onClose, onSubmit }: {
             </select>
           </div>
         )}
-        {error && <div style={{ fontSize: 12, color: '#B93227', marginBottom: 10 }}>{error}</div>}
+        {error && <div style={{ fontSize: 12, color: 'var(--fin-minus)', marginBottom: 10 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
           <div onClick={valid ? submit : undefined} className={valid ? 'hv-dim' : undefined}
-            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}>
+            style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}>
             {busy ? 'Сохраняем…' : 'Сохранить'}
           </div>
         </div>
@@ -109,18 +109,18 @@ function RowMenu({ onEdit, onDelete, disabled }: { onEdit: () => void; onDelete:
       <div
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         className="hv-chip"
-        style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#A6ACA8' }}
+        style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-5)' }}
       >
         <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="2.5" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="7" cy="11.5" r="1.2" /></svg>
       </div>
       {open && (
-        <div style={{ position: 'absolute', right: 26, top: 0, zIndex: 40, background: '#fff', border: '1px solid #E7E5E0', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 5, minWidth: 160 }}>
+        <div style={{ position: 'absolute', right: 26, top: 0, zIndex: 40, background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 5, minWidth: 160 }}>
           <div onClick={() => { setOpen(false); onEdit(); }} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>Переименовать</div>
           <div
             onClick={disabled ? undefined : () => { setOpen(false); onDelete(); }}
             className={disabled ? undefined : 'hv-red'}
             title={disabled ? 'Системную запись удалить нельзя' : undefined}
-            style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: '#B93227', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1 }}
+            style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: 'var(--fin-minus)', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1 }}
           >
             Удалить
           </div>
@@ -131,7 +131,7 @@ function RowMenu({ onEdit, onDelete, disabled }: { onEdit: () => void; onDelete:
 }
 
 const DOTS = (
-  <div className="hv-chip" style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#A6ACA8', flex: 'none' }}>
+  <div className="hv-chip" style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-5)', flex: 'none' }}>
     <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="2.5" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="7" cy="11.5" r="1.2" /></svg>
   </div>
 );
@@ -187,12 +187,12 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
   artSource.forEach((a, i) => {
     const key = artTab + '|' + i, open = !!artExp[key], has = a.children.length > 0;
     artRows.push({
-      key, id: a.id, padL: '14px', bg: 'transparent', fw: 500, nameFg: '#1B1F1E', name: a.name,
+      key, id: a.id, padL: '14px', bg: 'transparent', fw: 500, nameFg: 'var(--fin-text)', name: a.name,
       hasToggle: has, sign: open ? '−' : '+', locked: a.isSystem,
       toggle: () => setArtExp(st => ({ ...st, [key]: !st[key] })),
     });
     if (has && open) a.children.forEach((c, j) => artRows.push({
-      key: key + '|k' + j, id: c.id, padL: '34px', bg: '#FBFAF8', fw: 400, nameFg: '#5A625E', name: c.name,
+      key: key + '|k' + j, id: c.id, padL: '34px', bg: 'var(--fin-surface-alt)', fw: 400, nameFg: 'var(--fin-text-2)', name: c.name,
       hasToggle: false, sign: '', locked: false, toggle: () => {}, parentId: a.id,
     }));
   });
@@ -211,8 +211,8 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
   const navItem = ([id, t, n]: [string, string, string]) => {
     const on = spravTab === id;
     return (
-      <div key={id} onClick={() => setSpravTab(id)} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: on ? 600 : 400, color: on ? ACC : '#3E4643', background: on ? SOFT : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>{t}</span><span style={{ fontSize: 11, color: '#A6ACA8', fontFamily: PLEX }}>{n}</span>
+      <div key={id} onClick={() => setSpravTab(id)} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: on ? 600 : 400, color: on ? ACC : 'var(--fin-text-2)', background: on ? SOFT : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span>{t}</span><span style={{ fontSize: 11, color: 'var(--fin-text-5)', fontFamily: PLEX }}>{n}</span>
       </div>
     );
   };
@@ -232,10 +232,10 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
 
   return (
     <div data-screen-label="Справочники" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '230px 1fr', gap: 16, alignItems: 'start' }}>
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: 8 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', padding: '8px 10px 6px' }}>СПРАВОЧНИКИ</div>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: 8 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', padding: '8px 10px 6px' }}>СПРАВОЧНИКИ</div>
         {spravNav.map(navItem)}
-        <div style={{ height: 1, background: '#EFEEE9', margin: '6px 8px' }} />
+        <div style={{ height: 1, background: 'var(--fin-divider)', margin: '6px 8px' }} />
         {spravNav2.map(navItem)}
       </div>
       <div style={{ minWidth: 0 }}>
@@ -243,7 +243,7 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 13 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>Учётные статьи</div>
-              <div title="Единый план статей: доходы, расходы, активы, обязательства, капитал" style={{ width: 16, height: 16, borderRadius: '50%', border: '1.3px solid #C6CBC7', color: '#A6ACA8', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help' }}>?</div>
+              <div title="Единый план статей: доходы, расходы, активы, обязательства, капитал" style={{ width: 16, height: 16, borderRadius: '50%', border: '1.3px solid var(--fin-border)', color: 'var(--fin-text-5)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help' }}>?</div>
               <div style={{ flex: 1 }} />
               <AccentBtn
                 style={{ padding: '8px 15px' }}
@@ -252,32 +252,32 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
                 <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Статья
               </AccentBtn>
             </div>
-            <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2, marginBottom: 14 }}>
+            <div style={{ display: 'inline-flex', background: 'var(--fin-segment)', padding: 3, borderRadius: 9, gap: 2, marginBottom: 14 }}>
               {ART_TABS.map(t => {
                 const on = artTab === t;
                 return (
-                  <div key={t} onClick={() => setArtTab(t)} style={{ padding: '6px 16px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: on ? 600 : 500, color: on ? '#1B1F1E' : '#6B7370', background: on ? '#FFFFFF' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{t}</div>
+                  <div key={t} onClick={() => setArtTab(t)} style={{ padding: '6px 16px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: on ? 600 : 500, color: on ? 'var(--fin-text)' : 'var(--fin-text-3)', background: on ? 'var(--fin-surface)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{t}</div>
                 );
               })}
             </div>
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
               {artRows.map(r => (
-                <div key={r.key} className="hv-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', paddingLeft: r.padL, borderBottom: '1px solid #F3F2ED', background: r.bg }}>
+                <div key={r.key} className="hv-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', paddingLeft: r.padL, borderBottom: '1px solid var(--fin-divider)', background: r.bg }}>
                   {r.hasToggle ? (
-                    <div onClick={r.toggle} style={{ width: 20, height: 20, border: '1px solid #DAD7D0', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370', flex: 'none', fontSize: 14, lineHeight: 1 }}>{r.sign}</div>
+                    <div onClick={r.toggle} style={{ width: 20, height: 20, border: '1px solid var(--fin-border)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-3)', flex: 'none', fontSize: 14, lineHeight: 1 }}>{r.sign}</div>
                   ) : (
                     <div style={{ width: 20, flex: 'none' }} />
                   )}
                   <span style={{ flex: 1, fontSize: 13, fontWeight: r.fw, color: r.nameFg }}>{r.name}</span>
                   {r.locked && (
-                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#B0B5B1" strokeWidth="1.4" style={{ flex: 'none' }}><rect x="2.5" y="6" width="9" height="6.3" rx="1.3" /><path d="M4.5 6V4.3A2.5 2.5 0 019.5 4.3V6" /></svg>
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="var(--fin-text-5)" strokeWidth="1.4" style={{ flex: 'none' }}><rect x="2.5" y="6" width="9" height="6.3" rx="1.3" /><path d="M4.5 6V4.3A2.5 2.5 0 019.5 4.3V6" /></svg>
                   )}
                   {!r.parentId && (
                     <div
                       onClick={() => setModal({ mode: 'create', kind: 'article', title: `Подстатья к «${r.name}»`, type: TAB_TYPE[artTab], parentId: r.id })}
                       title="Добавить подстатью"
                       className="hv-chip"
-                      style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#A6ACA8', fontSize: 15, lineHeight: 1, flex: 'none' }}
+                      style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-5)', fontSize: 15, lineHeight: 1, flex: 'none' }}
                     >
                       +
                     </div>
@@ -290,16 +290,16 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>«+» раскрывает подстатьи. Статьи с замком — системные, их нельзя удалить. Статьи используются в формах доходов и расходов и в отчёте «План–Факт».</div>
+            <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 10, lineHeight: 1.5 }}>«+» раскрывает подстатьи. Статьи с замком — системные, их нельзя удалить. Статьи используются в формах доходов и расходов и в отчёте «План–Факт».</div>
           </div>
         )}
         {spravTab !== 'art' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 13 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{genList ? genList.title : ''}</div>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#66706C', background: '#EFEEEA', borderRadius: 99, padding: '2px 9px', fontFamily: PLEX }}>{genList ? String(genList.rows.length) : '0'}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fin-text-3)', background: 'var(--fin-divider)', borderRadius: 99, padding: '2px 9px', fontFamily: PLEX }}>{genList ? String(genList.rows.length) : '0'}</span>
               <div style={{ flex: 1 }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск" style={{ height: 34, width: 200, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск" style={{ height: 34, width: 200, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: 'var(--fin-surface)', outline: 'none' }} />
               <AccentBtn
                 style={{ padding: '8px 15px' }}
                 onClick={() => setModal({ mode: 'create', kind: REF_BY_TAB[spravTab], title: `Новая запись · ${genList?.title ?? ''}` })}
@@ -307,13 +307,13 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
                 <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> {genList ? genList.add : ''}
               </AccentBtn>
             </div>
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
               {genRows.map((r) => (
-                <div key={r.id} className="hv-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderBottom: '1px solid #F3F2ED' }}>
+                <div key={r.id} className="hv-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderBottom: '1px solid var(--fin-divider)' }}>
                   <div style={{ width: 30, height: 30, borderRadius: 8, background: SOFT, color: ACC, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flex: 'none' }}>{r.init}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{r.p}</div>
-                    <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{r.sec}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>{r.sec}</div>
                   </div>
                   <RowMenu
                     onEdit={() => setModal({ mode: 'edit', kind: REF_BY_TAB[spravTab], title: 'Изменить запись', id: r.id, name: r.p, note: r.sec })}
@@ -322,7 +322,7 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
                 </div>
               ))}
               {genRows.length === 0 && (
-                <div style={{ padding: '18px', textAlign: 'center', fontSize: 12.5, color: '#A6ACA8' }}>
+                <div style={{ padding: '18px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-5)' }}>
                   {search ? 'Ничего не найдено' : 'Записей пока нет'}
                 </div>
               )}
@@ -358,7 +358,7 @@ export default function SpravScreen({ dicts, onChanged }: SpravScreenProps) {
       {notice && (
         <div
           onClick={() => setNotice(null)}
-          style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#1B1F1E', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer', maxWidth: '70vw' }}
+          style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: 'var(--fin-text)', color: 'var(--fin-surface)', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer', maxWidth: '70vw' }}
         >
           {notice}
         </div>

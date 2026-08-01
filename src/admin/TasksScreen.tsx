@@ -26,10 +26,10 @@ const statusB = (s: TaskStatus): BadgeData =>
   : badge('Новая', 'blue');
 
 const PRIORITY_LABEL: Record<string, string> = { low: 'Низкий', normal: 'Обычный', high: 'Высокий' };
-const priorityColor = (p: string) => (p === 'high' ? '#B93227' : p === 'low' ? '#8A918D' : '#3E4643');
+const priorityColor = (p: string) => (p === 'high' ? 'var(--fin-minus)' : p === 'low' ? 'var(--fin-text-4)' : 'var(--fin-text-2)');
 
-const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff', outline: 'none' };
-const lbl: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
+const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
+const lbl: CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
 
 /** Форма задачи (создание и правка). */
 function TaskModal({ initial, projects, users, onClose, onSubmit }: {
@@ -72,7 +72,7 @@ function TaskModal({ initial, projects, users, onClose, onSubmit }: {
   return (
     <div data-task-modal style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 460, maxWidth: '94vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 460, maxWidth: '94vw', background: 'var(--fin-surface)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 14 }}>{initial ? 'Изменить задачу' : 'Новая задача'}</div>
         <div style={{ marginBottom: 12 }}>
           <div style={lbl}>Что нужно сделать</div>
@@ -111,11 +111,11 @@ function TaskModal({ initial, projects, users, onClose, onSubmit }: {
             <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ ...inp, fontFamily: PLEX }} />
           </div>
         </div>
-        {error && <div style={{ fontSize: 12, color: '#B93227', marginBottom: 10 }}>{error}</div>}
+        {error && <div style={{ fontSize: 12, color: 'var(--fin-minus)', marginBottom: 10 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
           <div onClick={valid ? submit : undefined} className={valid ? 'hv-dim' : undefined}
-            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}>
+            style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}>
             {busy ? 'Сохраняем…' : 'Сохранить'}
           </div>
         </div>
@@ -195,18 +195,18 @@ export default function TasksScreen({ projects, users, role, onError }: TasksScr
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
         {([
           ['НОВЫЕ', counts.open, ACC],
-          ['В РАБОТЕ', counts.in_progress, '#B25313'],
-          ['ВЫПОЛНЕНО', counts.done, '#1A7A4B'],
-          ['ПРОСРОЧЕНО', counts.overdue, '#B93227'],
+          ['В РАБОТЕ', counts.in_progress, 'var(--fin-warn)'],
+          ['ВЫПОЛНЕНО', counts.done, 'var(--fin-plus)'],
+          ['ПРОСРОЧЕНО', counts.overdue, 'var(--fin-minus)'],
         ] as [string, number, string][]).map(([label, value, color]) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#8A918D', marginBottom: 8 }}>{label}</div>
+          <div key={label} style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--fin-text-4)', marginBottom: 8 }}>{label}</div>
             <div style={{ fontSize: 24, fontWeight: 700, color, ...num }}>{value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -223,33 +223,33 @@ export default function TasksScreen({ projects, users, role, onError }: TasksScr
                 const overdue = t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'canceled';
                 return (
                   <tr key={t.id} className="hv-row">
-                    <td style={{ padding: '10px 12px 10px 16px', borderBottom: '1px solid #F3F2ED' }}>
+                    <td style={{ padding: '10px 12px 10px 16px', borderBottom: '1px solid var(--fin-divider)' }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{t.title}</div>
-                      {t.description && <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{t.description}</div>}
+                      {t.description && <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>{t.description}</div>}
                     </td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{t.assignee ?? '—'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{t.project ?? '—'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: PLEX, color: overdue ? '#B93227' : '#6B7370', fontWeight: overdue ? 600 : 400 }}>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>{t.assignee ?? '—'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{t.project ?? '—'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: PLEX, color: overdue ? 'var(--fin-minus)' : 'var(--fin-text-3)', fontWeight: overdue ? 600 : 400 }}>
                       {fmtD(t.dueDate)}
                     </td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: priorityColor(t.priority), fontWeight: t.priority === 'high' ? 600 : 400 }}>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: priorityColor(t.priority), fontWeight: t.priority === 'high' ? 600 : 400 }}>
                       {PRIORITY_LABEL[t.priority]}
                     </td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED' }}><Badge b={statusB(t.status)} /></td>
-                    <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid #F3F2ED' }}>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)' }}><Badge b={statusB(t.status)} /></td>
+                    <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {t.status !== 'done' && (
                           <span onClick={() => void setStatus(t, t.status === 'open' ? 'in_progress' : 'done')} className="hv-soft"
-                            style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            style={{ border: '1px solid var(--fin-border)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                             {t.status === 'open' ? 'В работу' : 'Выполнена'}
                           </span>
                         )}
                         {canManage && (
                           <>
                             <span onClick={() => setModal({ task: t })} className="hv-soft"
-                              style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Изменить</span>
+                              style={{ border: '1px solid var(--fin-border)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Изменить</span>
                             <span onClick={() => void remove(t)} className="hv-red"
-                              style={{ border: '1px solid #F0CFC9', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</span>
+                              style={{ border: '1px solid var(--fin-minus-soft)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: 'var(--fin-minus)', cursor: 'pointer' }}>Удалить</span>
                           </>
                         )}
                       </div>
@@ -258,7 +258,7 @@ export default function TasksScreen({ projects, users, role, onError }: TasksScr
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 18, textAlign: 'center', fontSize: 12.5, color: '#A6ACA8' }}>
+                <tr><td colSpan={7} style={{ padding: 18, textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-5)' }}>
                   {loading ? 'Загрузка…' : 'Задач нет'}
                 </td></tr>
               )}
@@ -266,7 +266,7 @@ export default function TasksScreen({ projects, users, role, onError }: TasksScr
           </table>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 10, lineHeight: 1.5 }}>
         Статусы: Новая → В работе → Выполнена. Исполнитель может двигать статус своей задачи;
         создание, назначение и удаление — у руководителя и директора.
       </div>

@@ -11,9 +11,9 @@ export interface ClientsScreenProps {
   onError: (msg: string) => void;
 }
 
-const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff', outline: 'none' };
-const lbl: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
-const cell: CSSProperties = { padding: '11px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 };
+const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
+const lbl: CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
+const cell: CSSProperties = { padding: '11px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 };
 
 type Kind = ApiClient['kind'];
 
@@ -53,7 +53,7 @@ function ClientDrawer({ item, onClose, onSaved, onError }: {
 
   const money = (label: string, value: number, color: string) => (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 11, color: '#8A918D', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'var(--fin-text-4)', marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 17, fontWeight: 700, color, ...num, whiteSpace: 'nowrap' }}>{fmt(value)}</div>
     </div>
   );
@@ -61,25 +61,25 @@ function ClientDrawer({ item, onClose, onSaved, onError }: {
   return (
     <div data-client-drawer style={{ position: 'fixed', inset: 0, zIndex: 65 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 460, maxWidth: '96vw', background: '#FBFAF7', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,.16)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 460, maxWidth: '96vw', background: 'var(--fin-surface-alt)', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,.16)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: 'var(--fin-surface)', borderBottom: '1px solid var(--fin-border)' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
-            <div style={{ fontSize: 11.5, color: '#8A918D' }}>{KIND_LABEL[item.kind]} · сделок: {item.deals}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{KIND_LABEL[item.kind]} · сделок: {item.deals}</div>
           </div>
-          <div onClick={onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}>
+          <div onClick={onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-4)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
           </div>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14, display: 'flex', gap: 14 }}>
-            {money('Поступления, TJS', item.income, '#1A7A4B')}
-            {money('Выплаты, TJS', item.expense, '#B93227')}
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14, display: 'flex', gap: 14 }}>
+            {money('Поступления, TJS', item.income, 'var(--fin-plus)')}
+            {money('Выплаты, TJS', item.expense, 'var(--fin-minus)')}
           </div>
 
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 10 }}>РЕКВИЗИТЫ</div>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)', marginBottom: 10 }}>РЕКВИЗИТЫ</div>
             <div style={{ marginBottom: 12 }}>
               <div style={lbl}>Тип контрагента</div>
               <select value={kind} onChange={e => setKind(e.target.value as Kind)} style={inp}>
@@ -96,7 +96,7 @@ function ClientDrawer({ item, onClose, onSaved, onError }: {
             <div style={{ marginBottom: 12 }}><div style={lbl}>Контактное лицо</div><input value={contact} onChange={e => setContact(e.target.value)} placeholder="—" style={inp} /></div>
             <div style={{ marginBottom: 12 }}><div style={lbl}>Адрес</div><input value={address} onChange={e => setAddress(e.target.value)} placeholder="—" style={inp} /></div>
             <div style={{ marginBottom: 14 }}><div style={lbl}>Комментарий</div><input value={note} onChange={e => setNote(e.target.value)} placeholder="—" style={inp} /></div>
-            <div onClick={busy ? undefined : save} className="hv-dim" style={{ display: 'inline-block', background: busy ? '#B9C2BC' : ACC, color: '#fff', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>Сохранить</div>
+            <div onClick={busy ? undefined : save} className="hv-dim" style={{ display: 'inline-block', background: busy ? 'var(--fin-border)' : ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>Сохранить</div>
           </div>
         </div>
       </div>
@@ -140,7 +140,7 @@ export default function ClientsScreen({ onError }: ClientsScreenProps) {
       onClick={() => setKind(k)}
       style={{
         padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-        background: kind === k ? '#fff' : 'transparent', color: kind === k ? '#1B1F1E' : '#6B7370',
+        background: kind === k ? 'var(--fin-surface)' : 'transparent', color: kind === k ? 'var(--fin-text)' : 'var(--fin-text-3)',
         boxShadow: kind === k ? '0 1px 2px rgba(0,0,0,.08)' : 'none',
       }}
     >
@@ -151,23 +151,23 @@ export default function ClientsScreen({ onError }: ClientsScreenProps) {
   return (
     <div data-screen-label="Клиенты">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 12.5, color: '#8A918D' }}>Обороты по контрагентам и карточки реквизитов</div>
+        <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)' }}>Обороты по контрагентам и карточки реквизитов</div>
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--fin-bg)', padding: 3, borderRadius: 9, gap: 2 }}>
           {tab('all', 'Все')}{tab('client', 'Клиенты')}{tab('supplier', 'Поставщики')}
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию или ИНН"
-          style={{ width: isMobile ? '100%' : 280, height: 36, border: '1px solid #E0DED8', borderRadius: 9, padding: '0 12px', fontSize: 12.5, outline: 'none', background: '#fff' }} />
+          style={{ width: isMobile ? '100%' : 280, height: 36, border: '1px solid var(--fin-border)', borderRadius: 9, padding: '0 12px', fontSize: 12.5, outline: 'none', background: 'var(--fin-surface)' }} />
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12, color: '#8A918D' }}>
-          Поступления: <b style={{ color: '#1A7A4B', fontFamily: PLEX }}>{fmt(totalIn)}</b> · Выплаты: <b style={{ color: '#B93227', fontFamily: PLEX }}>{fmt(totalOut)}</b> TJS
+        <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>
+          Поступления: <b style={{ color: 'var(--fin-plus)', fontFamily: PLEX }}>{fmt(totalIn)}</b> · Выплаты: <b style={{ color: 'var(--fin-minus)', fontFamily: PLEX }}>{fmt(totalOut)}</b> TJS
         </div>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -184,22 +184,22 @@ export default function ClientsScreen({ onError }: ClientsScreenProps) {
                 <tr key={c.id} onClick={() => setSel(c.id)} className="hv-row" style={{ cursor: 'pointer' }}>
                   <td style={{ ...cell, padding: '11px 16px', fontSize: 13, fontWeight: 600 }}>{c.name}</td>
                   <td style={cell}><Badge b={kindB(c.kind)} /></td>
-                  <td style={{ ...cell, color: '#6B7370', fontFamily: PLEX }}>{c.inn || '—'}</td>
-                  <td style={{ ...cell, color: '#6B7370', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{c.phone || '—'}</td>
-                  <td style={{ ...cell, textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.income ? '#1A7A4B' : '#9AA29E', ...num, whiteSpace: 'nowrap' }}>{c.income ? fmt(c.income) : '—'}</td>
-                  <td style={{ ...cell, textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.expense ? '#B93227' : '#9AA29E', ...num, whiteSpace: 'nowrap' }}>{c.expense ? fmt(c.expense) : '—'}</td>
-                  <td style={{ ...cell, padding: '11px 16px 11px 12px', textAlign: 'right', color: '#6B7370', ...num }}>{c.deals}</td>
+                  <td style={{ ...cell, color: 'var(--fin-text-3)', fontFamily: PLEX }}>{c.inn || '—'}</td>
+                  <td style={{ ...cell, color: 'var(--fin-text-3)', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{c.phone || '—'}</td>
+                  <td style={{ ...cell, textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.income ? 'var(--fin-plus)' : 'var(--fin-text-5)', ...num, whiteSpace: 'nowrap' }}>{c.income ? fmt(c.income) : '—'}</td>
+                  <td style={{ ...cell, textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.expense ? 'var(--fin-minus)' : 'var(--fin-text-5)', ...num, whiteSpace: 'nowrap' }}>{c.expense ? fmt(c.expense) : '—'}</td>
+                  <td style={{ ...cell, padding: '11px 16px 11px 12px', textAlign: 'right', color: 'var(--fin-text-3)', ...num }}>{c.deals}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '26px 16px', textAlign: 'center', fontSize: 12.5, color: '#8A918D' }}>Ничего не найдено.</td></tr>
+                <tr><td colSpan={7} style={{ padding: '26px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Ничего не найдено.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 10, lineHeight: 1.5 }}>
         Список контрагентов ведётся в «Справочниках»; здесь видны обороты по подтверждённым операциям и число сделок закупки. Нажмите строку — откроется карточка реквизитов.
       </div>
 

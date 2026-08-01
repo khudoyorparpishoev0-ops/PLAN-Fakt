@@ -19,11 +19,11 @@ export interface SettingsScreenProps {
   onChangePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
-const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff', outline: 'none' };
-const lbl: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
-const secHead: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', marginBottom: 10 };
-const cardS: CSSProperties = { background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '20px 22px', maxWidth: 620 };
-const primaryBtn: CSSProperties = { background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
+const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
+const lbl: CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
+const secHead: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', marginBottom: 10 };
+const cardS: CSSProperties = { background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '20px 22px', maxWidth: 620 };
+const primaryBtn: CSSProperties = { background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
 
 /** Текст «Доступ» по роли (колонка экрана «Пользователи»). */
 const ACCESS_BY_ROLE: Record<string, string> = {
@@ -71,7 +71,7 @@ function CreateUserModal({ onClose, onCreated }: {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)', animation: 'finFade .15s ease' }} />
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 420, maxWidth: '94vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 420, maxWidth: '94vw', background: 'var(--fin-surface)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.24)', padding: '22px 24px', animation: 'finFade .18s ease' }}>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 14 }}>Новый пользователь</div>
         <div style={{ marginBottom: 10 }}><div style={lbl}>Имя</div><input value={name} onChange={e => setName(e.target.value)} placeholder="Фамилия Имя" style={inp} /></div>
         <div style={{ marginBottom: 10 }}><div style={lbl}>Email (логин)</div><input value={email} onChange={e => setEmail(e.target.value)} placeholder="name@it-hona.tj" style={inp} /></div>
@@ -84,9 +84,9 @@ function CreateUserModal({ onClose, onCreated }: {
             <option value="admin">Руководитель / админ</option>
           </select>
         </div>
-        {error && <div style={{ fontSize: 12, color: '#B93227', marginBottom: 10 }}>{error}</div>}
+        {error && <div style={{ fontSize: 12, color: 'var(--fin-minus)', marginBottom: 10 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+          <div onClick={onClose} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
           <div onClick={valid ? submit : undefined} className={valid ? 'hv-dim' : undefined}
             style={{ ...primaryBtn, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}>
             {busy ? 'Создаём…' : 'Создать'}
@@ -106,7 +106,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
   const setNav = navItems.map(([id, t]) => ({
     id, t,
     fw: setTab === id ? 600 : 400,
-    fg: id === 'delete' ? '#B93227' : setTab === id ? ACC : '#3E4643',
+    fg: id === 'delete' ? 'var(--fin-minus)' : setTab === id ? ACC : 'var(--fin-text-2)',
     bg: setTab === id ? SOFT : 'transparent',
   }));
   const setOtherTitle = (navItems.find(x => x[0] === setTab) || ['', ''])[1];
@@ -239,8 +239,8 @@ export default function SettingsScreen(props: SettingsScreenProps) {
 
   return (
     <div data-screen-label="Настройки" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '232px 1fr', gap: 16, alignItems: 'start' }}>
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: 8 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', padding: '8px 10px 6px' }}>НАСТРОЙКИ</div>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: 8 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', padding: '8px 10px 6px' }}>НАСТРОЙКИ</div>
         {setNav.map(n => (
           <div key={n.id} onClick={() => setSetTab(n.id)} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: n.fw, color: n.fg, background: n.bg }}>{n.t}</div>
         ))}
@@ -248,11 +248,11 @@ export default function SettingsScreen(props: SettingsScreenProps) {
       <div style={{ minWidth: 0 }}>
         {setTab === 'profile' && (
           <div style={cardS}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid #F3F2ED', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid var(--fin-divider)', marginBottom: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: SOFT, color: ACC, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>{user ? initials(user.name) : 'РР'}</div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{user?.name ?? '—'}</div>
-                <div style={{ fontSize: 12, color: '#8A918D' }}>{user ? ROLE_LABELS[user.role] : ''} · {user?.email}</div>
+                <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>{user ? ROLE_LABELS[user.role] : ''} · {user?.email}</div>
               </div>
               <div style={{ flex: 1 }} />
               <Badge b={badge('Активен', 'green')} />
@@ -263,7 +263,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                 <div style={lbl}>Телефон</div>
                 <input defaultValue="+992 93 505-40-10" style={{ ...inp, fontFamily: PLEX }} />
               </div>
-              <div style={{ fontSize: 11.5, color: '#8A918D', lineHeight: 1.5, paddingTop: 21 }}>Номер используется для привязки Телеграм-бота — быстрое внесение доходов и расходов из чата (этап 2).</div>
+              <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', lineHeight: 1.5, paddingTop: 21 }}>Номер используется для привязки Телеграм-бота — быстрое внесение доходов и расходов из чата (этап 2).</div>
             </div>
             <div style={secHead}>СМЕНА ПАРОЛЯ</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 320 }}>
@@ -271,7 +271,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
               <div><div style={lbl}>Новый пароль</div><input type="password" value={pwdNew} onChange={e => setPwdNew(e.target.value)} placeholder="Минимум 8 символов" style={inp} /></div>
               <div>
                 <div style={lbl}>Повторите пароль</div><input type="password" value={pwdRep} onChange={e => setPwdRep(e.target.value)} placeholder="Ещё раз новый пароль" style={inp} />
-                {pwdRep.length > 0 && pwdRep !== pwdNew && <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>Пароли не совпадают</div>}
+                {pwdRep.length > 0 && pwdRep !== pwdNew && <div style={{ fontSize: 11.5, color: 'var(--fin-minus)', marginTop: 4 }}>Пароли не совпадают</div>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
@@ -279,21 +279,21 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                 style={{ ...primaryBtn, cursor: pwdValid ? 'pointer' : 'default', ...(pwdValid ? {} : { opacity: 0.45 }) }}>
                 {pwdBusy ? 'Сохраняем…' : 'Сохранить изменения'}
               </div>
-              <div onClick={() => { setPwdCur(''); setPwdNew(''); setPwdRep(''); }} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+              <div onClick={() => { setPwdCur(''); setPwdNew(''); setPwdRep(''); }} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
             </div>
           </div>
         )}
         {setTab === 'general' && (
           <div style={cardS}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Общие настройки</div>
-            <div style={{ fontSize: 12.5, color: '#8A918D', marginBottom: 18 }}>Валюта учёта — сомони (TJS). Часовой пояс — Asia/Dushanbe.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', marginBottom: 18 }}>Валюта учёта — сомони (TJS). Часовой пояс — Asia/Dushanbe.</div>
             <div style={secHead}>КОМПЕНСАЦИЯ ПОЕЗДОК</div>
             <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 14, alignItems: 'start' }}>
               <div>
                 <div style={lbl}>Ставка, TJS за км</div>
                 <input value={kmRateStr} onChange={e => setKmRateStr(e.target.value)} placeholder="0" style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} />
               </div>
-              <div style={{ fontSize: 11.5, color: '#8A918D', lineHeight: 1.5, paddingTop: 21 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', lineHeight: 1.5, paddingTop: 21 }}>
                 Пока ставка равна 0, поездки показываются в километрах, а не в деньгах
                 (решение заказчика). Ставка применяется к НОВЫМ одобрениям поездок.
               </div>
@@ -306,18 +306,18 @@ export default function SettingsScreen(props: SettingsScreenProps) {
         {setTab === 'users' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 13, color: '#5A625E' }}>Учётная запись создаётся для каждого сотрудника. Роли и права назначает администратор.</div>
+              <div style={{ fontSize: 13, color: 'var(--fin-text-2)' }}>Учётная запись создаётся для каждого сотрудника. Роли и права назначает администратор.</div>
               <div style={{ flex: 1 }} />
               <AccentBtn style={{ padding: '8px 15px' }} onClick={() => setCreateOpen(true)}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Пользователь</AccentBtn>
             </div>
             {tempPwd && (
-              <div style={{ background: '#E4F3E9', border: '1px solid #BFE3CC', borderRadius: 10, padding: '11px 14px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.6 }}>
+              <div style={{ background: 'var(--fin-plus-soft)', border: '1px solid var(--fin-plus-soft)', borderRadius: 10, padding: '11px 14px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.6 }}>
                 Пользователь <b>{tempPwd.email}</b> создан. Временный пароль (показывается один раз, при входе потребуется смена):
                 {' '}<b style={{ fontFamily: "'IBM Plex Sans',monospace" }}>{tempPwd.password}</b>
-                <span onClick={() => setTempPwd(null)} style={{ float: 'right', cursor: 'pointer', color: '#1A7A4B', fontWeight: 700 }}>✕</span>
+                <span onClick={() => setTempPwd(null)} style={{ float: 'right', cursor: 'pointer', color: 'var(--fin-plus)', fontWeight: 700 }}>✕</span>
               </div>
             )}
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr>
                   <Th style={{ padding: '8px 12px 8px 16px' }}>Пользователь</Th>
@@ -329,18 +329,18 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                 <tbody>
                   {usersRows.map(u => (
                     <tr key={u.id} className="hv-row">
-                      <td style={{ padding: '10px 12px 10px 16px', borderBottom: '1px solid #F3F2ED' }}><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 30, height: 30, borderRadius: '50%', background: SOFT, color: ACC, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flex: 'none' }}>{u.init}</div><div><div style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 11.5, color: '#8A918D', fontFamily: PLEX }}>{u.email} · {u.phone}</div></div></div></td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, fontWeight: 600 }}>{u.role}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{u.access}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F2ED' }}>
+                      <td style={{ padding: '10px 12px 10px 16px', borderBottom: '1px solid var(--fin-divider)' }}><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 30, height: 30, borderRadius: '50%', background: SOFT, color: ACC, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flex: 'none' }}>{u.init}</div><div><div style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', fontFamily: PLEX }}>{u.email} · {u.phone}</div></div></div></td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, fontWeight: 600 }}>{u.role}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{u.access}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
                         <Badge b={u.b} />
-                        {u.temp && <div style={{ fontSize: 10.5, color: '#8A6A00', marginTop: 3 }}>временный пароль</div>}
+                        {u.temp && <div style={{ fontSize: 10.5, color: 'var(--fin-warn)', marginTop: 3 }}>временный пароль</div>}
                       </td>
-                      <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid #F3F2ED' }}>
+                      <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
                         <span
                           onClick={() => void toggleActive(users.find(x => x.id === u.id)!)}
                           className={u.active ? 'hv-red' : 'hv-soft'}
-                          style={{ display: 'inline-block', border: u.active ? '1px solid #F0CFC9' : '1px solid #E0DED8', color: u.active ? '#B93227' : '#3E4643', borderRadius: 8, padding: '5px 11px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ display: 'inline-block', border: u.active ? '1px solid var(--fin-minus-soft)' : '1px solid var(--fin-border)', color: u.active ? 'var(--fin-minus)' : 'var(--fin-text-2)', borderRadius: 8, padding: '5px 11px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                         >
                           {u.active ? 'Заблокировать' : 'Разблокировать'}
                         </span>
@@ -355,7 +355,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
         {setTab === 'rates' && !SINGLE_CURRENCY && (
           <div style={{ ...cardS, maxWidth: 720 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Курсы валют</div>
-            <div style={{ fontSize: 12.5, color: '#8A918D', marginBottom: 16 }}>Курс к сомони на дату. Используется при одобрении валютных заявок и вводе операций.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', marginBottom: 16 }}>Курс к сомони на дату. Используется при одобрении валютных заявок и вводе операций.</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 18 }}>
               <thead><tr>
                 <Th style={{ padding: '8px 12px 8px 0' }}>Валюта</Th>
@@ -365,9 +365,9 @@ export default function SettingsScreen(props: SettingsScreenProps) {
               <tbody>
                 {rates.map(r => (
                   <tr key={r.code}>
-                    <td style={{ padding: '8px 12px 8px 0', borderBottom: '1px solid #F3F2ED', fontSize: 13 }}><b>{r.code}</b> · {r.name}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontFamily: PLEX }}>{r.rate != null ? fmt(r.rate) : '—'}</td>
-                    <td style={{ padding: '8px 0 8px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', color: '#6B7370', fontFamily: PLEX }}>{r.rateDate ?? '—'}</td>
+                    <td style={{ padding: '8px 12px 8px 0', borderBottom: '1px solid var(--fin-divider)', fontSize: 13 }}><b>{r.code}</b> · {r.name}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontFamily: PLEX }}>{r.rate != null ? fmt(r.rate) : '—'}</td>
+                    <td style={{ padding: '8px 0 8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', color: 'var(--fin-text-3)', fontFamily: PLEX }}>{r.rateDate ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -386,8 +386,8 @@ export default function SettingsScreen(props: SettingsScreenProps) {
           </div>
         )}
         {setTab === 'history' && (
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>История действий <span style={{ fontWeight: 500, color: '#8A918D', fontSize: 12 }}>· аудит-лог (кто, что, когда)</span></div>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>История действий <span style={{ fontWeight: 500, color: 'var(--fin-text-4)', fontSize: 12 }}>· аудит-лог (кто, что, когда)</span></div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr>
                 <Th style={{ padding: '8px 12px 8px 16px' }}>Когда</Th>
@@ -398,22 +398,22 @@ export default function SettingsScreen(props: SettingsScreenProps) {
               <tbody>
                 {audit.map(a => (
                   <tr key={a.id} className="hv-row">
-                    <td style={{ padding: '8px 12px 8px 16px', borderBottom: '1px solid #F3F2ED', fontSize: 12, color: '#5A625E', whiteSpace: 'nowrap', fontFamily: PLEX }}>{a.at.slice(0, 16).replace('T', ' ')}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{a.user}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{ENTITY_RU[a.entity] ?? a.entity} <span style={{ color: '#A6ACA8', fontFamily: PLEX }}>#{a.entityId}</span></td>
-                    <td style={{ padding: '8px 16px 8px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{ACTION_RU[a.action] ?? a.action}</td>
+                    <td style={{ padding: '8px 12px 8px 16px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12, color: 'var(--fin-text-2)', whiteSpace: 'nowrap', fontFamily: PLEX }}>{a.at.slice(0, 16).replace('T', ' ')}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>{a.user}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>{ENTITY_RU[a.entity] ?? a.entity} <span style={{ color: 'var(--fin-text-5)', fontFamily: PLEX }}>#{a.entityId}</span></td>
+                    <td style={{ padding: '8px 16px 8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{ACTION_RU[a.action] ?? a.action}</td>
                   </tr>
                 ))}
-                {audit.length === 0 && <tr><td colSpan={4} style={{ padding: 16, fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>Записей пока нет</td></tr>}
+                {audit.length === 0 && <tr><td colSpan={4} style={{ padding: 16, fontSize: 12.5, color: 'var(--fin-text-5)', textAlign: 'center' }}>Записей пока нет</td></tr>}
               </tbody>
             </table>
           </div>
         )}
         {setTab === 'exports' && (
           <div data-exports-tab style={{ maxWidth: 860 }}>
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Регулярные выгрузки</div>
-              <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5, marginBottom: 14 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.5, marginBottom: 14 }}>
                 Отчёт формируется по расписанию и остаётся здесь для скачивания.{' '}
                 {sched?.mailConfigured
                   ? 'Почтовый сервер настроен — файл уходит письмом на указанный адрес.'
@@ -452,15 +452,15 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                     'Расписание добавлено',
                   )}
                   className="hv-dim"
-                  style={{ background: schedBusy ? '#B9C2BC' : ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: schedBusy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ background: schedBusy ? 'var(--fin-border)' : ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: schedBusy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Добавить
                 </div>
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>Расписания</div>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>Расписания</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse' }}>
                   <thead><tr>
@@ -474,66 +474,66 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                   <tbody>
                     {(sched?.items ?? []).map(it => (
                       <tr key={it.id} className="hv-row">
-                        <td style={{ padding: '9px 12px 9px 16px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, fontWeight: 600 }}>
+                        <td style={{ padding: '9px 12px 9px 16px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, fontWeight: 600 }}>
                           {it.kindName}
-                          {!it.enabled && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: '#66706C', background: '#EFEEEA', borderRadius: 99, padding: '1px 8px' }}>выключено</span>}
-                          {it.lastError && <div style={{ fontSize: 11, color: '#B93227', marginTop: 2 }}>{it.lastError}</div>}
+                          {!it.enabled && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--fin-text-3)', background: 'var(--fin-divider)', borderRadius: 99, padding: '1px 8px' }}>выключено</span>}
+                          {it.lastError && <div style={{ fontSize: 11, color: 'var(--fin-minus)', marginTop: 2 }}>{it.lastError}</div>}
                         </td>
-                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{it.frequencyName}, {String(it.hourUtc).padStart(2, '0')}:00 UTC</td>
-                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{it.email ?? '—'}</td>
-                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12, color: '#5A625E', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.lastRunAt)}</td>
-                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12, color: '#5A625E', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.nextRunAt)}</td>
-                        <td style={{ padding: '9px 16px 9px 12px', borderBottom: '1px solid #F3F2ED' }}>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>{it.frequencyName}, {String(it.hourUtc).padStart(2, '0')}:00 UTC</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{it.email ?? '—'}</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12, color: 'var(--fin-text-2)', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.lastRunAt)}</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12, color: 'var(--fin-text-2)', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.nextRunAt)}</td>
+                        <td style={{ padding: '9px 16px 9px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             <span data-sched-run onClick={schedBusy ? undefined : () => void schedAct(() => api.runSchedule(it.id), 'Выгрузка сформирована')} className="hv-soft"
-                              style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', whiteSpace: 'nowrap' }}>Сформировать</span>
+                              style={{ border: '1px solid var(--fin-border)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', whiteSpace: 'nowrap' }}>Сформировать</span>
                             <span onClick={schedBusy ? undefined : () => void schedAct(() => api.updateSchedule(it.id, { enabled: !it.enabled }), it.enabled ? 'Расписание выключено' : 'Расписание включено')} className="hv-soft"
-                              style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#3E4643', cursor: 'pointer', whiteSpace: 'nowrap' }}>{it.enabled ? 'Выключить' : 'Включить'}</span>
+                              style={{ border: '1px solid var(--fin-border)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>{it.enabled ? 'Выключить' : 'Включить'}</span>
                             <span onClick={schedBusy ? undefined : () => void schedAct(() => api.removeSchedule(it.id), 'Расписание удалено')} className="hv-red"
-                              style={{ border: '1px solid #F0CFC9', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</span>
+                              style={{ border: '1px solid var(--fin-minus-soft)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: 'var(--fin-minus)', cursor: 'pointer' }}>Удалить</span>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {(sched?.items ?? []).length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 16, fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>Расписаний нет — добавьте первое сверху</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 16, fontSize: 12.5, color: 'var(--fin-text-5)', textAlign: 'center' }}>Расписаний нет — добавьте первое сверху</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>Готовые файлы</div>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>Готовые файлы</div>
               {(sched?.files ?? []).length === 0 && (
-                <div style={{ padding: 16, fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>Файлов пока нет</div>
+                <div style={{ padding: 16, fontSize: 12.5, color: 'var(--fin-text-5)', textAlign: 'center' }}>Файлов пока нет</div>
               )}
               {(sched?.files ?? []).map(f => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid #F3F2ED' }}>
-                  <span style={{ width: 28, height: 32, borderRadius: 5, background: '#E6F4EB', color: '#1A7A4B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, flex: 'none' }}>XLSX</span>
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--fin-divider)' }}>
+                  <span style={{ width: 28, height: 32, borderRadius: 5, background: 'var(--fin-plus-soft)', color: 'var(--fin-plus)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, flex: 'none' }}>XLSX</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div data-export-file onClick={() => void api.downloadExportFile(f.id, f.fileName)} style={{ fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</div>
-                    <div style={{ fontSize: 10.5, color: '#A6ACA8' }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--fin-text-5)' }}>
                       {f.kindName} · {kb(f.size)}
                       {f.mailStatus === 'sent' ? ' · отправлено письмом' : f.mailStatus === 'error' ? ' · письмо не ушло' : ''}
                     </div>
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#6B7370', fontFamily: PLEX, flex: 'none' }}>{stamp(f.createdAt)}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--fin-text-3)', fontFamily: PLEX, flex: 'none' }}>{stamp(f.createdAt)}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 10, lineHeight: 1.5 }}>
               Час указывается по UTC — в Душанбе на 5 часов больше. Почта включается переменными
               SMTP_HOST, SMTP_FROM (и при необходимости SMTP_PORT, SMTP_USER, SMTP_PASSWORD) в .env сервера.
             </div>
           </div>
         )}
         {!['profile', 'users', 'general', 'rates', 'history', 'exports'].includes(setTab) && (
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '48px 30px', textAlign: 'center', maxWidth: 620 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#EFEEE9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 13px' }}><svg width="21" height="21" viewBox="0 0 16 16" fill="none" stroke="#8A918D" strokeWidth="1.5"><circle cx="8" cy="8" r="2.1" /><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.35 1.35M11.05 11.05l1.35 1.35M12.4 3.6l-1.35 1.35M4.95 11.05L3.6 12.4" /></svg></div>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '48px 30px', textAlign: 'center', maxWidth: 620 }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--fin-divider)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 13px' }}><svg width="21" height="21" viewBox="0 0 16 16" fill="none" stroke="var(--fin-text-4)" strokeWidth="1.5"><circle cx="8" cy="8" r="2.1" /><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.35 1.35M11.05 11.05l1.35 1.35M12.4 3.6l-1.35 1.35M4.95 11.05L3.6 12.4" /></svg></div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{setOtherTitle}</div>
-            <div style={{ fontSize: 12.5, color: '#8A918D', marginTop: 5, lineHeight: 1.5 }}>Раздел в разработке — появится на этапе 2.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', marginTop: 5, lineHeight: 1.5 }}>Раздел в разработке — появится на этапе 2.</div>
           </div>
         )}
       </div>
@@ -544,7 +544,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
         />
       )}
       {notice && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#1B1F1E', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', animation: 'finFade .18s ease' }}>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: 'var(--fin-text)', color: 'var(--fin-surface)', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', animation: 'finFade .18s ease' }}>
           {notice}
         </div>
       )}

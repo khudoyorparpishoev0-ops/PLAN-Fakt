@@ -18,13 +18,13 @@ export interface IncomeDrawerProps {
 }
 
 /** Подпись поля формы. */
-const lbl: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
+const lbl: CSSProperties = { fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 };
 /** Текстовый инпут формы. */
-const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff', outline: 'none' };
+const inp: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
 /** Селект формы. */
-const sel: CSSProperties = { width: '100%', height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 13, background: '#fff' };
+const sel: CSSProperties = { width: '100%', height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 8px', fontSize: 13, background: 'var(--fin-surface)' };
 /** Заголовок секции формы. */
-const sec: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '0 0 10px' };
+const sec: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)', margin: '0 0 10px' };
 
 const parseAmount = (s: string): number =>
   parseFloat(s.trim().replace(/\s/g, '').replace(',', '.'));
@@ -88,16 +88,16 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
       <div onClick={props.onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.38)', animation: 'finFade .15s ease' }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '94vw', background: '#fff', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 22px', borderBottom: '1px solid #EFEEE9' }}>
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '94vw', background: 'var(--fin-surface)', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 22px', borderBottom: '1px solid var(--fin-divider)' }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{income ? 'Новый доход' : 'Новый расход'}</div>
-            <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>
               {isPlan ? 'плановая операция — факт не оплачен' : 'фактическая операция'}
             </div>
           </div>
           <div style={{ flex: 1 }} />
-          <div onClick={props.onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370' }}>
+          <div onClick={props.onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-3)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
           </div>
         </div>
@@ -129,9 +129,9 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
               ни пересчёта в сомони в форме нет — введённая сумма и есть итог. */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
             <div><div style={lbl}>Плановая сумма</div><input value={planStr} onChange={e => setPlanStr(e.target.value)} placeholder="0" style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} /></div>
-            <div><div style={lbl}>Фактическая сумма</div><input value={factStr} onChange={e => setFactStr(e.target.value)} placeholder="Заполняется при оплате" style={{ ...inp, background: '#FAF9F6', textAlign: 'right', fontFamily: PLEX }} /></div>
+            <div><div style={lbl}>Фактическая сумма</div><input value={factStr} onChange={e => setFactStr(e.target.value)} placeholder="Заполняется при оплате" style={{ ...inp, background: 'var(--fin-surface-alt)', textAlign: 'right', fontFamily: PLEX }} /></div>
           </div>
-          <div style={{ fontSize: 12, color: '#8A918D', marginBottom: 14 }}>Суммы в сомони (TJS)</div>
+          <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginBottom: 14 }}>Суммы в сомони (TJS)</div>
           <div style={sec}>ОПЛАТА</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <div><div style={lbl}>Дата операции</div><input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, fontFamily: PLEX }} /></div>
@@ -143,15 +143,15 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
               </select>
             </div>
           </div>
-          <div><div style={lbl}>Комментарий</div><textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Необязательно" style={{ width: '100%', height: 64, border: '1px solid #DFDCD6', borderRadius: 8, padding: '8px 10px', fontSize: 13, background: '#fff', outline: 'none', resize: 'none' }} /></div>
-          {error && <div style={{ fontSize: 12, color: '#B93227', marginTop: 10 }}>{error}</div>}
+          <div><div style={lbl}>Комментарий</div><textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Необязательно" style={{ width: '100%', height: 64, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none', resize: 'none' }} /></div>
+          {error && <div style={{ fontSize: 12, color: 'var(--fin-minus)', marginTop: 10 }}>{error}</div>}
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid #EFEEE9' }}>
-          <div onClick={props.onClose} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', padding: '14px 22px', borderTop: '1px solid var(--fin-divider)' }}>
+          <div onClick={props.onClose} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
           <div
             onClick={valid ? submit : undefined}
             className={valid ? 'hv-dim' : undefined}
-            style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+            style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
           >
             {busy ? 'Сохраняем…' : 'Сохранить'}
           </div>

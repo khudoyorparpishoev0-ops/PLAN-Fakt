@@ -24,8 +24,8 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   return (
     <div onClick={onClick} className="hv-tabbar" style={{
       flex: 1, textAlign: 'center', padding: 16, fontSize: 13.5, cursor: 'pointer', minWidth: 0,
-      fontWeight: active ? 700 : 500, color: active ? ACC : '#8A918D',
-      boxShadow: active ? `inset 0 -3px 0 ${'var(--fin-accent,#1B7A3C)'}` : 'none',
+      fontWeight: active ? 700 : 500, color: active ? ACC : 'var(--fin-text-4)',
+      boxShadow: active ? `inset 0 -3px 0 ${'var(--fin-accent)'}` : 'none',
     }}>{label}</div>
   );
 }
@@ -83,14 +83,14 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
   return (
     <div data-screen-label="Заявки на машину" style={{ maxWidth: 1120, animation: 'cabFade .2s ease' }}>
       {/* ── Вкладки (прототип, строки 152–155) ── */}
-      <div style={{ display: 'flex', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+      <div style={{ display: 'flex', background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
         <SectionTab active={tab === 'trip'} label="ЗАЯВКА НА ПОЕЗДКУ" onClick={() => setTab('trip')} />
         <SectionTab active={tab === 'expense'} label="РАСХОДЫ НА АВТО" onClick={() => setTab('expense')} />
       </div>
 
       {tab === 'trip' && (
         <div>
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>СОЗДАТЬ ЗАЯВКУ НА ПОЕЗДКУ</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
               <div>
@@ -120,8 +120,8 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!tripValid} onClick={submitTrip} />
           </div>
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>МОИ ЗАЯВКИ НА МАШИНУ</div>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>МОИ ЗАЯВКИ НА МАШИНУ</div>
             <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
               <thead><tr>
@@ -134,7 +134,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
               <tbody>
                 {trips.map((r) => (
                   <tr key={r.id} className="hv-row">
-                    <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: '#3E4643', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
+                    <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: 'var(--fin-text-2)', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.goal}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.km)} км</td>
                     <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>
@@ -150,7 +150,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
 
       {tab === 'expense' && (
         <div>
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>ДОБАВИТЬ РАСХОД НА АВТО</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
               <div>
@@ -174,8 +174,8 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
                     style={{ ...INPUT44, flex: 1, width: 'auto', ...num }} />
                   <span style={{
                     width: 92, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 8, border: '1px solid #E7E5E0', background: '#FAF9F6',
-                    color: '#8A918D', fontWeight: 600, fontSize: 14, ...num,
+                    borderRadius: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface-alt)',
+                    color: 'var(--fin-text-4)', fontWeight: 600, fontSize: 14, ...num,
                   }}>TJS</span>
                 </div>
               </div>
@@ -183,14 +183,14 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
                 <label style={FORM_LABEL}>4) Чек / документ</label>
                 <DropZone height={44} label="Загрузить чек" icon={<ReceiptIcon />} value={receipt} onChange={setReceipt} toast={toast} />
                 {receiptNeeded && receipt == null && (
-                  <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 6 }}>Для суммы от 100 TJS чек обязателен</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--fin-minus)', marginTop: 6 }}>Для суммы от 100 TJS чек обязателен</div>
                 )}
               </div>
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!autoValid} onClick={submitAuto} />
           </div>
-          <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>МОИ РАСХОДЫ НА АВТО</div>
+          <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>МОИ РАСХОДЫ НА АВТО</div>
             <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
               <thead><tr>
@@ -203,7 +203,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
               <tbody>
                 {cars.map((r) => (
                   <tr key={r.id} className="hv-row">
-                    <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: '#3E4643', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
+                    <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: 'var(--fin-text-2)', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.category}</td>
                     <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.amount)} {r.currency}</td>
                     <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>

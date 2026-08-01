@@ -61,9 +61,9 @@ export interface DevInfo { devF: string; devPctF: string; devFg: string }
 
 /** Отклонение факт−план: форматированные значение, процент и цвет. */
 export function devInfo(type: 'inc' | 'exp', plan: number, fact: number, pending?: boolean): DevInfo {
-  if (!plan || (pending && !fact)) return { devF: '—', devPctF: '—', devFg: '#9AA29E' };
+  if (!plan || (pending && !fact)) return { devF: '—', devPctF: '—', devFg: 'var(--fin-text-5)' };
   const d = fact - plan, p = (d / plan) * 100;
-  let fg = '#6B7370';
-  if (d !== 0) fg = (type === 'inc' ? d > 0 : d < 0) ? '#1A7A4B' : '#B93227';
+  let fg = 'var(--fin-text-3)';
+  if (d !== 0) fg = (type === 'inc' ? d > 0 : d < 0) ? 'var(--fin-plus)' : 'var(--fin-minus)';
   return { devF: sgn(d), devPctF: (d > 0 ? '+' : d < 0 ? '−' : '') + pct1(Math.abs(p)) + '%', devFg: fg };
 }

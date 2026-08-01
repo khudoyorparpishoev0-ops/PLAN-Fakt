@@ -35,7 +35,7 @@ interface RepRow {
   detail?: DetailTarget;
 }
 
-const expBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' };
+const expBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' };
 
 /** Категория отчёта: агрегат строк план-факта по учётной статье. */
 interface CatAgg {
@@ -87,8 +87,8 @@ export default function ReportScreen(props: ReportScreenProps) {
 
   const rows: RepRow[] = [];
   const push = (o: Partial<RepRow> & Pick<RepRow, 'name' | 'planF' | 'factF' | 'devF' | 'devPctF' | 'devFg' | 'b'>) =>
-    rows.push({ chev: '', cur: 'default', rowBg: 'transparent', fw: 500, fwF: 600, nameFg: '#1B1F1E', padL: '16px', resp: '', toggle: undefined, ...o });
-  const grp = (name: string, plan: number, fact: number, b: BadgeData) => push({ name, planF: fmt(plan), factF: fmt(fact), devF: sgn(fact - plan), devPctF: plan > 0 ? (fact - plan > 0 ? '+' : '−') + pct1(Math.abs((fact - plan) / plan * 100)) + '%' : '—', devFg: '#1B1F1E', b, rowBg: '#F3F2EE', fw: 700, fwF: 700 });
+    rows.push({ chev: '', cur: 'default', rowBg: 'transparent', fw: 500, fwF: 600, nameFg: 'var(--fin-text)', padL: '16px', resp: '', toggle: undefined, ...o });
+  const grp = (name: string, plan: number, fact: number, b: BadgeData) => push({ name, planF: fmt(plan), factF: fmt(fact), devF: sgn(fact - plan), devPctF: plan > 0 ? (fact - plan > 0 ? '+' : '−') + pct1(Math.abs((fact - plan) / plan * 100)) + '%' : '—', devFg: 'var(--fin-text)', b, rowBg: 'var(--fin-divider)', fw: 700, fwF: 700 });
 
   /** Категория с раскрытием по проектам (если строк больше одной). */
   const pushCat = (type: 'inc' | 'exp', c: CatAgg) => {
@@ -111,9 +111,9 @@ export default function ReportScreen(props: ReportScreenProps) {
           planF: fmt(ch.plan),
           factF: ch.pending && !ch.fact ? '—' : fmt(ch.fact),
           ...(ch.pending && !ch.fact
-            ? { devF: '—', devPctF: '—', devFg: '#9AA29E', b: badge('Ожидается', 'gray') }
+            ? { devF: '—', devPctF: '—', devFg: 'var(--fin-text-5)', b: badge('Ожидается', 'gray') }
             : { ...devInfo(type, ch.plan, ch.fact), b: type === 'inc' ? incDevB(ch.plan, ch.fact) : expDevB(ch.plan, ch.fact) }),
-          padL: '38px', fw: 400, fwF: 500, nameFg: '#5A625E', rowBg: '#FBFAF8',
+          padL: '38px', fw: 400, fwF: 500, nameFg: 'var(--fin-text-2)', rowBg: 'var(--fin-surface-alt)',
           cur: 'pointer' as const,
           detail: { article: c.name, articleId: articleIds.get(c.name), project: ch.name, projectId: projectIds.get(ch.name) },
         });
@@ -125,12 +125,12 @@ export default function ReportScreen(props: ReportScreenProps) {
   for (const c of aggregate(props.incomes)) pushCat('inc', c);
   grp('Расходы — всего', expPlan, expFact, expDevB(expPlan, expFact));
   for (const c of aggregate(props.expenses)) pushCat('exp', c);
-  push({ name: 'ПРИБЫЛЬ', planF: fmt(profPlan), factF: fmt(profFact), devF: sgn(profFact - profPlan), devPctF: profPlan > 0 ? (profFact - profPlan >= 0 ? '+' : '−') + pct1(Math.abs((profFact - profPlan) / profPlan * 100)) + '%' : '—', devFg: profFact - profPlan >= 0 ? '#1A7A4B' : '#B93227', b: profDevB(profPlan, profFact), rowBg: SOFT, fw: 700, fwF: 700 });
+  push({ name: 'ПРИБЫЛЬ', planF: fmt(profPlan), factF: fmt(profFact), devF: sgn(profFact - profPlan), devPctF: profPlan > 0 ? (profFact - profPlan >= 0 ? '+' : '−') + pct1(Math.abs((profFact - profPlan) / profPlan * 100)) + '%' : '—', devFg: profFact - profPlan >= 0 ? 'var(--fin-plus)' : 'var(--fin-minus)', b: profDevB(profPlan, profFact), rowBg: SOFT, fw: 700, fwF: 700 });
 
   return (
     <div data-screen-label="Сводный План-Факт">
       <div data-print-hide style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>{props.periodLabel}</b> · все проекты · в сомони</div>
+        <div style={{ fontSize: 13, color: 'var(--fin-text-2)' }}>Сводный отчёт за <b>{props.periodLabel}</b> · все проекты · в сомони</div>
         <div style={{ flex: 1 }} />
         <div onClick={() => void api.downloadExport('report')} title="Скачать план-факт.xlsx" className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
         <div onClick={() => window.print()} title="Открывает диалог печати — там выберите «Сохранить как PDF»" data-print-pdf className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>
@@ -140,9 +140,9 @@ export default function ReportScreen(props: ReportScreenProps) {
       {/* Шапка печатной версии — на экране не видна */}
       <div style={{ display: 'none', marginBottom: 12 }} data-print-header className="print-only">
         <div style={{ fontSize: 16, fontWeight: 700 }}>IT-HONA LLC · Отчёт «План–Факт»</div>
-        <div style={{ fontSize: 12, color: '#5A625E' }}>За {props.periodLabel} · все проекты · суммы в сомони (TJS)</div>
+        <div style={{ fontSize: 12, color: 'var(--fin-text-2)' }}>За {props.periodLabel} · все проекты · суммы в сомони (TJS)</div>
       </div>
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
             <Th style={{ padding: '8px 12px 8px 16px' }}>Категория</Th>
@@ -156,26 +156,26 @@ export default function ReportScreen(props: ReportScreenProps) {
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} onClick={r.detail ? () => setDetail(r.detail!) : r.toggle} className={r.cur === 'pointer' ? 'hv-row' : undefined} style={{ cursor: r.cur, background: r.rowBg }}>
-                <td style={{ padding: ROW_PAD, paddingLeft: r.padL, borderBottom: '1px solid #F3F2ED', fontSize: 13, fontWeight: r.fw, color: r.nameFg }}>
+                <td style={{ padding: ROW_PAD, paddingLeft: r.padL, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, fontWeight: r.fw, color: r.nameFg }}>
                   <span
                     onClick={r.toggle ? e => { e.stopPropagation(); r.toggle!(); } : undefined}
                     title={r.toggle ? 'Показать по проектам' : undefined}
-                    style={{ display: 'inline-block', width: 14, color: '#A6ACA8', fontSize: 10, cursor: r.toggle ? 'pointer' : 'inherit' }}
+                    style={{ display: 'inline-block', width: 14, color: 'var(--fin-text-5)', fontSize: 10, cursor: r.toggle ? 'pointer' : 'inherit' }}
                   >{r.chev}</span>
                   {r.name}
                 </td>
-                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fw, ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
-                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: r.fwF, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
-                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
-                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devPctF}</td>
-                <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED' }}><Badge b={r.b} /></td>
-                <td style={{ padding: ROW_PAD, paddingRight: 16, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{r.resp}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontWeight: r.fw, ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontWeight: r.fwF, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devPctF}</td>
+                <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)' }}><Badge b={r.b} /></td>
+                <td style={{ padding: ROW_PAD, paddingRight: 16, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.resp}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div data-print-hide style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Клик по строке — операции статьи за период, «▸» — разбивка по проектам. Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
+      <div data-print-hide style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 10, lineHeight: 1.5 }}>Клик по строке — операции статьи за период, «▸» — разбивка по проектам. Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
 
       {detail && (
         <ArticleOpsDrawer

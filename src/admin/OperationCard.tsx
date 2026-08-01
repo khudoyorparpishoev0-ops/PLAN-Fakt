@@ -35,13 +35,13 @@ const fileSize = (n: number | null) => (n == null ? '' : n < 1024 * 1024 ? `${Ma
 
 /** Значок типа файла. */
 const fileTag = (mime: string | null) =>
-  mime === 'application/pdf' ? { t: 'PDF', bg: '#FAE7E4', fg: '#B93227' }
-  : mime?.startsWith('image/') ? { t: 'IMG', bg: '#E7EEF9', fg: '#3D62B3' }
-  : { t: 'ФАЙЛ', bg: '#EFEEEA', fg: '#5A625E' };
+  mime === 'application/pdf' ? { t: 'PDF', bg: 'var(--fin-minus-soft)', fg: 'var(--fin-minus)' }
+  : mime?.startsWith('image/') ? { t: 'IMG', bg: 'var(--fin-accent-soft)', fg: 'var(--fin-accent)' }
+  : { t: 'ФАЙЛ', bg: 'var(--fin-divider)', fg: 'var(--fin-text-2)' };
 
 const row = (label: string, value: React.ReactNode) => (
-  <div style={{ display: 'flex', gap: 10, padding: '7px 0', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>
-    <span style={{ color: '#8A918D', width: 118, flex: 'none' }}>{label}</span>
+  <div style={{ display: 'flex', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>
+    <span style={{ color: 'var(--fin-text-4)', width: 118, flex: 'none' }}>{label}</span>
     <span style={{ minWidth: 0, flex: 1 }}>{value}</span>
   </div>
 );
@@ -108,39 +108,39 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
   };
 
   const sign = op ? (op.type === 'in' ? '+' : '−') : '';
-  const color = op?.type === 'in' ? '#1A7A4B' : '#B93227';
+  const color = op?.type === 'in' ? 'var(--fin-plus)' : 'var(--fin-minus)';
 
   return (
     <div data-operation-card style={{ position: 'fixed', inset: 0, zIndex: 68 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.42)' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 460, maxWidth: '96vw', background: '#FBFAF7', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,.16)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: '#fff', borderBottom: '1px solid #E7E5E0' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 460, maxWidth: '96vw', background: 'var(--fin-surface-alt)', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,.16)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: 'var(--fin-surface)', borderBottom: '1px solid var(--fin-border)' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>Операция</div>
-            <div style={{ fontSize: 11.5, color: '#8A918D' }}>{op ? `${TYPE_LABEL[op.type] ?? op.type} · ${fmtD(op.date)}` : 'Загрузка…'}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{op ? `${TYPE_LABEL[op.type] ?? op.type} · ${fmtD(op.date)}` : 'Загрузка…'}</div>
           </div>
-          <div onClick={onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}>
+          <div onClick={onClose} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-4)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
           </div>
         </div>
 
         {op && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', color, ...num }}>{sign}{fmt(Math.abs(op.amount))}</div>
-                <div style={{ fontSize: 12, color: '#A6ACA8' }}>TJS</div>
+                <div style={{ fontSize: 12, color: 'var(--fin-text-5)' }}>TJS</div>
                 <Badge b={op.confirmed ? badge('Оплата подтверждена', 'green') : badge('Не подтверждена', 'yellow')} />
                 {op.isPlan && <Badge b={badge('План', 'blue')} />}
               </div>
               {op.currency !== 'TJS' && (
-                <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 4, fontFamily: PLEX }}>
+                <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 4, fontFamily: PLEX }}>
                   {fmt(op.amountOriginal)} {op.currency} · курс {op.rate}{op.rateDate ? ` на ${fmtD(op.rateDate)}` : ''}
                 </div>
               )}
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '4px 16px 12px', marginBottom: 14 }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '4px 16px 12px', marginBottom: 14 }}>
               {row('Дата', <span style={{ fontFamily: PLEX }}>{fmtD(op.date)}</span>)}
               {row('Счёт', op.account ?? '—')}
               {row('Контрагент', op.party ?? '—')}
@@ -150,11 +150,11 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
               {op.externalRef && row('Источник', <span style={{ fontFamily: PLEX }}>{op.externalRef}</span>)}
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D' }}>ДОКУМЕНТЫ</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)' }}>ДОКУМЕНТЫ</span>
                 <span onClick={uploading ? undefined : () => fileInput.current?.click()} data-attach-btn
-                  style={{ fontSize: 12, fontWeight: 700, color: uploading ? '#A6ACA8' : ACC, cursor: uploading ? 'default' : 'pointer' }}>
+                  style={{ fontSize: 12, fontWeight: 700, color: uploading ? 'var(--fin-text-5)' : ACC, cursor: uploading ? 'default' : 'pointer' }}>
                   {uploading ? 'ЗАГРУЖАЕМ…' : 'ПРИКРЕПИТЬ'}
                 </span>
               </div>
@@ -166,22 +166,22 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
                 onChange={e => { const f = e.target.files?.[0]; if (f) void attach(f); }}
               />
               {op.attachments.length === 0 && (
-                <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.5 }}>
                   Документов нет. Прикрепите счёт, акт или чек — JPG, PNG или PDF до 10 МБ.
                 </div>
               )}
               {op.attachments.map(a => {
                 const tag = fileTag(a.mime);
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderTop: '1px solid #F3F2ED' }}>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderTop: '1px solid var(--fin-divider)' }}>
                     <span style={{ width: 28, height: 32, borderRadius: 5, background: tag.bg, color: tag.fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, flex: 'none' }}>{tag.t}</span>
                     <div onClick={() => a.hasFile && setPreview({ id: a.id, fileName: a.fileName, mime: a.mime })}
                       style={{ minWidth: 0, flex: 1, cursor: a.hasFile ? 'pointer' : 'default' }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: a.hasFile ? ACC : '#8A918D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
-                      <div style={{ fontSize: 10.5, color: '#A6ACA8' }}>{a.hasFile ? fileSize(a.size) || 'файл' : 'демо-имя, файла нет'}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: a.hasFile ? ACC : 'var(--fin-text-4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--fin-text-5)' }}>{a.hasFile ? fileSize(a.size) || 'файл' : 'демо-имя, файла нет'}</div>
                     </div>
                     <div onClick={() => void detach(a.id, a.fileName)} title="Открепить" className="hv-cream"
-                      style={{ width: 26, height: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D', flex: 'none' }}>
+                      style={{ width: 26, height: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-4)', flex: 'none' }}>
                       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
                     </div>
                   </div>
@@ -189,10 +189,10 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
               })}
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 10 }}>ДЕЙСТВИЯ</div>
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)', marginBottom: 10 }}>ДЕЙСТВИЯ</div>
               {op.locked ? (
-                <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.5 }}>
                   Операция создана одобренной заявкой и не изменяется — по ТЗ её можно только сторнировать
                   (кнопка «Сторнировать» в карточке строки на экране «Расходы»).
                 </div>
@@ -201,33 +201,33 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                     {!op.confirmed && (
                       <div onClick={busy ? undefined : () => void act('confirm')} className="hv-dim"
-                        style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Подтвердить оплату</div>
+                        style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Подтвердить оплату</div>
                     )}
                     <div onClick={busy ? undefined : () => void act('delete')} className="hv-soft"
-                      style={{ border: '1px solid #F0CFC9', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</div>
+                      style={{ border: '1px solid var(--fin-minus-soft)', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-minus)', cursor: 'pointer' }}>Удалить</div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B7370', marginBottom: 4 }}>Перенести в проект</div>
+                  <div style={{ fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4 }}>Перенести в проект</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <select value={moveTo} onChange={e => setMoveTo(e.target.value)}
-                      style={{ flex: 1, height: 36, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 13, background: '#fff' }}>
+                      style={{ flex: 1, height: 36, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 8px', fontSize: 13, background: 'var(--fin-surface)' }}>
                       <option value="">— выберите —</option>
                       {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                     <div onClick={busy || !moveTo ? undefined : () => void act('project', Number(moveTo))} className="hv-soft"
-                      style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, color: moveTo ? '#3E4643' : '#A6ACA8', cursor: moveTo ? 'pointer' : 'default' }}>Перенести</div>
+                      style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, color: moveTo ? 'var(--fin-text-2)' : 'var(--fin-text-5)', cursor: moveTo ? 'pointer' : 'default' }}>Перенести</div>
                   </div>
                 </>
               )}
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 10 }}>ИСТОРИЯ</div>
-              {op.history.length === 0 && <div style={{ fontSize: 12.5, color: '#8A918D' }}>Изменений не было.</div>}
+            <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)', marginBottom: 10 }}>ИСТОРИЯ</div>
+              {op.history.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)' }}>Изменений не было.</div>}
               {op.history.map((h, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 12 }}>
-                  <span style={{ color: '#A6ACA8', fontFamily: PLEX, flex: 'none' }}>{new Date(h.at).toLocaleDateString('ru-RU')}</span>
+                  <span style={{ color: 'var(--fin-text-5)', fontFamily: PLEX, flex: 'none' }}>{new Date(h.at).toLocaleDateString('ru-RU')}</span>
                   <span style={{ flex: 1 }}>{ACTION_LABEL[h.action] ?? h.action}</span>
-                  <span style={{ color: '#8A918D' }}>{h.user}</span>
+                  <span style={{ color: 'var(--fin-text-4)' }}>{h.user}</span>
                 </div>
               ))}
             </div>

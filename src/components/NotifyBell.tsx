@@ -6,12 +6,12 @@ import { TAP, useIsMobile } from '../lib/responsive';
 
 /** Цвет метки уведомления по его типу. */
 const KIND_COLOR: Record<string, { bg: string; fg: string }> = {
-  request: { bg: '#E7EEF9', fg: '#3D62B3' },
-  approved: { bg: '#E6F4EB', fg: '#1A7A4B' },
-  rejected: { bg: '#FAE7E4', fg: '#B93227' },
-  overdue: { bg: '#FAE7E4', fg: '#B93227' },
-  stock: { bg: '#FBF0DC', fg: '#8A6410' },
-  task: { bg: '#EFEEEA', fg: '#5A625E' },
+  request: { bg: 'var(--fin-accent-soft)', fg: 'var(--fin-accent)' },
+  approved: { bg: 'var(--fin-plus-soft)', fg: 'var(--fin-plus)' },
+  rejected: { bg: 'var(--fin-minus-soft)', fg: 'var(--fin-minus)' },
+  overdue: { bg: 'var(--fin-minus-soft)', fg: 'var(--fin-minus)' },
+  stock: { bg: 'var(--fin-warn-soft)', fg: 'var(--fin-warn)' },
+  task: { bg: 'var(--fin-divider)', fg: 'var(--fin-text-2)' },
 };
 
 const KIND_ICON: Record<string, string> = {
@@ -61,37 +61,37 @@ export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
         title="Уведомления"
         data-notify-bell
         className="hv-soft"
-        style={{ position: 'relative', width: size, height: size, borderRadius: 9, border: '1px solid #E7E5E0', background: open ? '#F1F0EB' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#5A625E' }}
+        style={{ position: 'relative', width: size, height: size, borderRadius: 9, border: '1px solid var(--fin-border)', background: open ? 'var(--fin-hover)' : 'var(--fin-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)' }}
       >
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
         {items.length > 0 && (
-          <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: '#D24A3D', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{items.length}</span>
+          <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: 'var(--fin-minus)', color: 'var(--fin-surface)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{items.length}</span>
         )}
       </div>
 
       {open && (
-        <div data-notify-panel style={{ position: 'absolute', top: size + 8, right: 0, zIndex: 60, width: 340, maxWidth: 'calc(100vw - 24px)', maxHeight: 420, overflowY: 'auto', background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, boxShadow: '0 14px 36px rgba(0,0,0,.16)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid #F0EFEA' }}>
+        <div data-notify-panel style={{ position: 'absolute', top: size + 8, right: 0, zIndex: 60, width: 340, maxWidth: 'calc(100vw - 24px)', maxHeight: 420, overflowY: 'auto', background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, boxShadow: '0 14px 36px rgba(0,0,0,.16)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--fin-divider)' }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>Уведомления</span>
-            <span style={{ fontSize: 11.5, color: '#8A918D' }}>{items.length ? `${items.length} шт.` : 'нет новых'}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{items.length ? `${items.length} шт.` : 'нет новых'}</span>
           </div>
           {items.length === 0 && (
-            <div style={{ padding: '22px 16px', textAlign: 'center', fontSize: 12.5, color: '#8A918D' }}>Всё спокойно — новых событий нет.</div>
+            <div style={{ padding: '22px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Всё спокойно — новых событий нет.</div>
           )}
           {items.map(n => {
             const c = KIND_COLOR[n.kind] ?? KIND_COLOR.task;
             return (
-              <div key={n.id} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid #F6F5F1' }}>
+              <div key={n.id} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--fin-hover)' }}>
                 <span style={{ width: 26, height: 26, borderRadius: 8, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: c.bg, color: c.fg, fontSize: 13, fontWeight: 700 }}>{KIND_ICON[n.kind] ?? '•'}</span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.35 }}>{n.title}</div>
-                  <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 2 }}>{n.note}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 2 }}>{n.note}</div>
                 </div>
-                {n.date && <div style={{ fontSize: 11, color: '#A6ACA8', fontFamily: PLEX, flex: 'none' }}>{fmtD(n.date)}</div>}
+                {n.date && <div style={{ fontSize: 11, color: 'var(--fin-text-5)', fontFamily: PLEX, flex: 'none' }}>{fmtD(n.date)}</div>}
               </div>
             );
           })}
-          <div style={{ padding: '10px 14px', fontSize: 11.5, color: '#8A918D' }}>
+          <div style={{ padding: '10px 14px', fontSize: 11.5, color: 'var(--fin-text-4)' }}>
             Список формируется по вашей роли: <span style={{ color: ACC, fontWeight: 600 }}>заявки, просрочки, склад и задачи</span>.
           </div>
         </div>

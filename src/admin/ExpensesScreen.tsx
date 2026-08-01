@@ -17,10 +17,10 @@ export interface ExpensesScreenProps {
   openCreate: () => void;
 }
 
-const card: CSSProperties = { background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '15px 18px', display: 'flex', flexDirection: 'column', minHeight: 116 };
-const lab: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#8A918D', marginBottom: 7 };
+const card: CSSProperties = { background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '15px 18px', display: 'flex', flexDirection: 'column', minHeight: 116 };
+const lab: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--fin-text-4)', marginBottom: 7 };
 const val: CSSProperties = { fontSize: 25, fontWeight: 700, letterSpacing: '-.02em', ...num };
-const tjs: CSSProperties = { fontSize: 12, fontWeight: 500, color: '#8A918D', fontFamily: GOLOS };
+const tjs: CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--fin-text-4)', fontFamily: GOLOS };
 const ico: CSSProperties = { width: 30, height: 30, borderRadius: 9, background: SOFT, color: ACC, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
 export default function ExpensesScreen(props: ExpensesScreenProps) {
@@ -29,9 +29,9 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
   const rows = props.expenses.map(expRow);
   return (
     <div data-screen-label="Расходы">
-      <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2, marginBottom: 14 }}>
-        <div onClick={props.goIncomes} style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: '#6B7370', cursor: 'pointer' }}>Доходы</div>
-        <div style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)', cursor: 'pointer' }}>Расходы</div>
+      <div style={{ display: 'inline-flex', background: 'var(--fin-segment)', padding: 3, borderRadius: 9, gap: 2, marginBottom: 14 }}>
+        <div onClick={props.goIncomes} style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, color: 'var(--fin-text-3)', cursor: 'pointer' }}>Доходы</div>
+        <div style={{ padding: '5px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, background: 'var(--fin-surface)', boxShadow: '0 1px 2px rgba(0,0,0,.08)', cursor: 'pointer' }}>Расходы</div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 16 }}>
         <div style={card}>
@@ -47,25 +47,25 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
         <div style={card}>
           <div style={lab}>БЮДЖЕТ ИСПОЛЬЗОВАН</div>
           <div style={val}>{t.expPctT}</div>
-          <div style={{ marginTop: 'auto', paddingTop: 14 }}><div style={{ height: 7, background: '#EEF1EE', borderRadius: 99, overflow: 'hidden' }}><div style={{ height: '100%', background: t.expB.dot, width: t.expPctW }} /></div></div>
+          <div style={{ marginTop: 'auto', paddingTop: 14 }}><div style={{ height: 7, background: 'var(--fin-bg)', borderRadius: 99, overflow: 'hidden' }}><div style={{ height: '100%', background: t.expB.dot, width: t.expPctW }} /></div></div>
         </div>
         <div style={card}>
           <div style={lab}>К ОПЛАТЕ ДО КОНЦА МЕСЯЦА</div>
-          <div style={{ ...val, color: '#B93227' }}>{t.cashOutAbs} <span style={tjs}>TJS</span></div>
-          <div style={{ marginTop: 'auto', paddingTop: 12 }}><span style={{ ...ico, background: '#FAE7E4', color: '#B93227' }}><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3.5" width="12" height="9" rx="1.8" /><path d="M2 6.5h12" /></svg></span></div>
+          <div style={{ ...val, color: 'var(--fin-minus)' }}>{t.cashOutAbs} <span style={tjs}>TJS</span></div>
+          <div style={{ marginTop: 'auto', paddingTop: 12 }}><span style={{ ...ico, background: 'var(--fin-minus-soft)', color: 'var(--fin-minus)' }}><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3.5" width="12" height="9" rx="1.8" /><path d="M2 6.5h12" /></svg></span></div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-        <input placeholder="Поиск: категория, получатель, №…" style={{ width: 260, height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: '#fff', outline: 'none' }} />
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer' }}>Статус: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>Все</b> <span style={{ color: '#A6ACA8' }}>▾</span></div>
+        <input placeholder="Поиск: категория, получатель, №…" style={{ width: 260, height: 34, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 12px', fontSize: 12.5, background: 'var(--fin-surface)', outline: 'none' }} />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Статус: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>Все</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
         {props.pendingCount > 0 && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, color: '#8A6A00', background: '#FAF2D8', cursor: 'pointer' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A227' }} />На согласовании: {props.pendingCount}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, color: 'var(--fin-warn)', background: 'var(--fin-warn-soft)', cursor: 'pointer' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fin-warn)' }} />На согласовании: {props.pendingCount}</span>
         )}
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12, color: '#8A918D' }}>Нажмите строку — карточка заявки</div>
+        <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>Нажмите строку — карточка заявки</div>
         <AccentBtn style={{ padding: '8px 15px' }} onClick={props.openCreate}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Расход</AccentBtn>
       </div>
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
             <Th style={{ padding: '8px 12px 8px 16px' }}>№ / Категория</Th>
@@ -81,15 +81,15 @@ export default function ExpensesScreen(props: ExpensesScreenProps) {
           <tbody>
           {rows.map((r, i) => (
             <tr key={r.n} onClick={() => props.openExpense(i)} className="hv-row" style={{ cursor: 'pointer' }}>
-              <td style={{ padding: ROW_PAD, paddingLeft: 16, borderBottom: '1px solid #F3F2ED' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{r.cat}</div><div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{r.n} · {r.proj}</div></td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{r.payee}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', color: '#6B7370', fontFamily: PLEX }}>{r.pdate}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, textAlign: 'right', color: '#6B7370', fontFamily: PLEX }}>{r.fdate}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
-              <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED' }}><Badge b={r.b} /></td>
-              <td style={{ padding: ROW_PAD, paddingRight: 16, borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{r.resp}</td>
+              <td style={{ padding: ROW_PAD, paddingLeft: 16, borderBottom: '1px solid var(--fin-divider)' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{r.cat}</div><div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>{r.n} · {r.proj}</div></td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5 }}>{r.payee}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', color: 'var(--fin-text-3)', fontFamily: PLEX }}>{r.pdate}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', color: 'var(--fin-text-3)', fontFamily: PLEX }}>{r.fdate}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' }}>{r.planF}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{r.factF}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontWeight: 600, color: r.devFg, ...num, whiteSpace: 'nowrap' }}>{r.devF}</td>
+              <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)' }}><Badge b={r.b} /></td>
+              <td style={{ padding: ROW_PAD, paddingRight: 16, borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.resp}</td>
             </tr>
           ))}
           </tbody>

@@ -27,8 +27,8 @@ export interface HistoryScreenProps {
   toast?: (msg: string) => void;
 }
 
-const EDIT_INP: CSSProperties = { width: '100%', height: 38, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 11px', fontSize: 13, background: '#fff', outline: 'none' };
-const EDIT_LAB: CSSProperties = { fontSize: 11.5, color: '#6B7370', marginBottom: 4 };
+const EDIT_INP: CSSProperties = { width: '100%', height: 38, border: '1px solid var(--fin-border)', borderRadius: 8, padding: '0 11px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none' };
+const EDIT_LAB: CSSProperties = { fontSize: 11.5, color: 'var(--fin-text-3)', marginBottom: 4 };
 const CAR_CATEGORIES = ['Бензин', 'Ремонт', 'Мойка', 'Штраф', 'Запчасти'];
 
 /** Правка заявки прямо в шторке: доступна автору в статусах
@@ -64,8 +64,8 @@ function EditRequestForm({ dv, projects, onCancel, onSubmit }: {
   };
 
   return (
-    <div data-edit-request style={{ background: '#FAF9F6', border: '1px solid #EFEDE8', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 12 }}>ИСПРАВИТЬ ЗАЯВКУ</div>
+    <div data-edit-request style={{ background: 'var(--fin-surface-alt)', border: '1px solid var(--fin-divider)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)', marginBottom: 12 }}>ИСПРАВИТЬ ЗАЯВКУ</div>
       <div style={{ marginBottom: 10 }}>
         <div style={EDIT_LAB}>Проект</div>
         <select value={project} onChange={(e) => setProject(e.target.value)} style={{ ...EDIT_INP, padding: '0 8px' }}>
@@ -88,18 +88,18 @@ function EditRequestForm({ dv, projects, onCancel, onSubmit }: {
         <input value={value} onChange={(e) => setValue(e.target.value)} style={{ ...EDIT_INP, textAlign: 'right', fontFamily: "'IBM Plex Sans',sans-serif" }} />
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        <div onClick={onCancel} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>Отмена</div>
+        <div onClick={onCancel} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>Отмена</div>
         <div
           onClick={valid ? () => void send(false) : undefined}
           className={valid ? 'hv-soft' : undefined}
-          style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: '#3E4643', cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+          style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
         >
           Сохранить
         </div>
         <div
           onClick={valid ? () => void send(true) : undefined}
           className={valid ? 'hv-dim' : undefined}
-          style={{ background: ACC, color: '#fff', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
+          style={{ background: ACC, color: 'var(--fin-surface)', borderRadius: 9, padding: '8px 16px', fontSize: 12.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }) }}
         >
           {busy ? 'Отправляем…' : 'Отправить снова'}
         </div>
@@ -108,8 +108,8 @@ function EditRequestForm({ dv, projects, onCancel, onSubmit }: {
   );
 }
 
-const SUM_LAB: CSSProperties = { fontSize: 10.5, color: '#A6ACA8', fontWeight: 600 };
-const SECTION_LAB: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8' };
+const SUM_LAB: CSSProperties = { fontSize: 10.5, color: 'var(--fin-text-5)', fontWeight: 600 };
+const SECTION_LAB: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: 'var(--fin-text-5)' };
 
 /* ── Иконки действий (прототип, строки 364–367) ── */
 const CamIcon = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="4" width="13" height="9.5" rx="1.8" /><circle cx="8" cy="8.7" r="2.4" /><path d="M5.5 4l1-1.6h3L10.5 4" /></svg>;
@@ -117,8 +117,8 @@ const DocIcon = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="none
 const EyeIcon = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" /><circle cx="8" cy="8" r="1.8" /></svg>;
 const TrashIcon = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 4h10M6.5 4V2.8h3V4M4.5 4l.6 9h5.8l.6-9" /></svg>;
 const CloseIcon = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>;
-const FileChipIcon = () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /></svg>;
-const ImageChipIcon = () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#8A918D" strokeWidth="1.5"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" /><path d="M1.5 9l3-3 3 3 2-2 3 3" /></svg>;
+const FileChipIcon = () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="var(--fin-text-4)" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /></svg>;
+const ImageChipIcon = () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="var(--fin-text-4)" strokeWidth="1.5"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" /><path d="M1.5 9l3-3 3 3 2-2 3 3" /></svg>;
 
 /** Кнопка действия в реестре — 32×32 с рамкой (прототип, строки 364–367). */
 function ActionBtn({ children, title, danger, onClick }: {
@@ -127,10 +127,10 @@ function ActionBtn({ children, title, danger, onClick }: {
   return (
     <div onClick={onClick} title={title} className={danger ? 'hv-red' : 'hv-soft'} style={{
       width: 32, height: 32, borderRadius: 8,
-      border: danger ? '1px solid #F0CFC9' : '1px solid #E7E5E0',
-      background: danger ? '#FCEBE8' : '#fff',
+      border: danger ? '1px solid var(--fin-minus-soft)' : '1px solid var(--fin-border)',
+      background: danger ? 'var(--fin-minus-soft)' : 'var(--fin-surface)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-      color: danger ? '#D24A3D' : '#6B7370', flex: 'none',
+      color: danger ? 'var(--fin-minus)' : 'var(--fin-text-3)', flex: 'none',
     }}>{children}</div>
   );
 }
@@ -140,14 +140,14 @@ function HistTab({ active, label, onClick }: { active: boolean; label: string; o
   return (
     <div onClick={onClick} style={{
       padding: '0 2px 12px', fontSize: 13, cursor: 'pointer',
-      fontWeight: active ? 700 : 500, color: active ? ACC : '#8A918D',
-      boxShadow: active ? 'inset 0 -3px 0 var(--fin-accent,#1B7A3C)' : 'none',
+      fontWeight: active ? 700 : 500, color: active ? ACC : 'var(--fin-text-4)',
+      boxShadow: active ? 'inset 0 -3px 0 var(--fin-accent)' : 'none',
     }}>{label}</div>
   );
 }
 
 /** Компактный пончик 60×60 в шапке реестра (прототип, строки 320–330).
- *  Цвета категорий — из прототипа: Оплаты #22935B, Поездки #E5A400, Авто #D24A3D.
+ *  Цвета категорий — из прототипа: Оплаты var(--fin-plus), Поездки var(--fin-warn), Авто var(--fin-minus).
  *  ringValue — денежная доля в кольце; legendText — подпись в легенде
  *  (для поездок без заданной ставки компенсации — километры, а не сумма). */
 function MiniDonut({ items }: { items: { label: string; ringValue: number; legendText: string; color: string }[] }) {
@@ -160,19 +160,19 @@ function MiniDonut({ items }: { items: { label: string; ringValue: number; legen
     return seg;
   });
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #EDEBE6', borderRadius: 12, padding: '10px 14px', background: '#FBFBF9' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--fin-divider)', borderRadius: 12, padding: '10px 14px', background: 'var(--fin-surface-alt)' }}>
       <svg width="60" height="60" viewBox="0 0 42 42">
-        <circle cx="21" cy="21" r="15.915" fill="none" stroke="#EFEEE9" strokeWidth="7" />
+        <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--fin-divider)" strokeWidth="7" />
         {total > 0 && segs.filter((s) => s.dash > 0).map((s, i) => (
           <circle key={i} cx="21" cy="21" r="15.915" fill="none" stroke={s.color} strokeWidth="7"
             pathLength={100} strokeDasharray={`${s.dash} ${100 - s.dash}`} strokeDashoffset={s.offset} />
         ))}
       </svg>
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#5A625E', marginBottom: 6 }}>Расходы по категориям</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fin-text-2)', marginBottom: 6 }}>Расходы по категориям</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {items.map((it) => (
-            <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7370' }}>
+            <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--fin-text-3)' }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: it.color }} />{it.label} · {it.legendText}
             </div>
           ))}
@@ -192,14 +192,14 @@ function MiniSparkline({ data }: { data: { m: string; sum: number }[] }) {
     : [];
   const last = pts.length ? pts[pts.length - 1].split(',').map(Number) : null;
   return (
-    <div style={{ border: '1px solid #EDEBE6', borderRadius: 12, padding: '10px 14px', background: '#FBFBF9' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#5A625E', marginBottom: 8 }}>Статистика по месяцам</div>
+    <div style={{ border: '1px solid var(--fin-divider)', borderRadius: 12, padding: '10px 14px', background: 'var(--fin-surface-alt)' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fin-text-2)', marginBottom: 8 }}>Статистика по месяцам</div>
       <svg width="150" height="46" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <polyline fill="none" stroke="#EFEEE9" strokeWidth="1" points={`2,${H - 4} ${W - 2},${H - 4}`} />
+        <polyline fill="none" stroke="var(--fin-divider)" strokeWidth="1" points={`2,${H - 4} ${W - 2},${H - 4}`} />
         {pts.length > 1 && (
-          <polyline fill="none" stroke="var(--fin-accent,#1B7A3C)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts.join(' ')} />
+          <polyline fill="none" stroke="var(--fin-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts.join(' ')} />
         )}
-        {last && <circle cx={last[0]} cy={last[1]} r="2.6" fill="var(--fin-accent,#1B7A3C)" />}
+        {last && <circle cx={last[0]} cy={last[1]} r="2.6" fill="var(--fin-accent)" />}
       </svg>
     </div>
   );
@@ -210,14 +210,14 @@ function FilterCard({ label, value, options, onChange }: {
   label: string; value: string; options: { v: string; t: string }[]; onChange: (v: string) => void;
 }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '13px 15px' }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 9 }}>{label}</div>
+    <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '13px 15px' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)', marginBottom: 9 }}>{label}</div>
       <div style={{ position: 'relative' }}>
         <select value={value} onChange={(e) => onChange(e.target.value)}
-          style={{ width: '100%', height: 40, border: '1px solid #DFDCD6', borderRadius: 9, padding: '0 30px 0 12px', fontSize: 13, background: '#fff', outline: 'none', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}>
+          style={{ width: '100%', height: 40, border: '1px solid var(--fin-border)', borderRadius: 9, padding: '0 30px 0 12px', fontSize: 13, background: 'var(--fin-surface)', outline: 'none', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}>
           {options.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
         </select>
-        <span style={{ position: 'absolute', right: 12, top: 13, pointerEvents: 'none', color: '#A6ACA8' }}>▾</span>
+        <span style={{ position: 'absolute', right: 12, top: 13, pointerEvents: 'none', color: 'var(--fin-text-5)' }}>▾</span>
       </div>
     </div>
   );
@@ -226,8 +226,8 @@ function FilterCard({ label, value, options, onChange }: {
 /** Строка «метка — значение» в блоке ДЕТАЛИ шторки. */
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, borderBottom: '1px dashed #EFEDE8', padding: '5px 0' }}>
-      <span style={{ color: '#8A918D' }}>{label}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, borderBottom: '1px dashed var(--fin-divider)', padding: '5px 0' }}>
+      <span style={{ color: 'var(--fin-text-4)' }}>{label}</span>
       <span style={{ fontWeight: 500 }}>{value}</span>
     </div>
   );
@@ -263,11 +263,11 @@ function StatusTimeline({ status }: { status: ReqStatus }) {
         const state = stateAt(i);
         const isLast = i === steps.length - 1;
         const nextState = !isLast ? stateAt(i + 1) : null;
-        const circleBg = state === 'done' ? ACC : state === 'rejected' ? '#D24A3D' : '#fff';
-        const circleColor = state === 'done' || state === 'rejected' ? '#fff' : state === 'current' ? ACC : '#A6ACA8';
-        const circleBorder = state === 'current' ? `2px solid ${ACC}` : state === 'future' ? '2px solid #E5E3DD' : 'none';
+        const circleBg = state === 'done' ? ACC : state === 'rejected' ? 'var(--fin-minus)' : 'var(--fin-surface)';
+        const circleColor = state === 'done' || state === 'rejected' ? 'var(--fin-surface)' : state === 'current' ? ACC : 'var(--fin-text-5)';
+        const circleBorder = state === 'current' ? `2px solid ${ACC}` : state === 'future' ? '2px solid var(--fin-border)' : 'none';
         const content = state === 'done' ? '✓' : state === 'rejected' ? '✕' : String(i + 1);
-        const lineColor = nextState === 'done' ? ACC : '#E9E7E1';
+        const lineColor = nextState === 'done' ? ACC : 'var(--fin-border)';
         return (
           <div key={i} style={{ display: 'flex', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -278,7 +278,7 @@ function StatusTimeline({ status }: { status: ReqStatus }) {
             </div>
             <div style={{ paddingBottom: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{st.label}</div>
-              <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{st.sub}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>{st.sub}</div>
             </div>
           </div>
         );
@@ -368,11 +368,11 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   const ringTotal = sumPays + sumCars + tripsMoney;
   const pctOf = (v: number) => (ringTotal > 0 ? Math.round((v / ringTotal) * 100) : 0) + '%';
   const donutItems = [
-    { label: 'Оплаты', ringValue: sumPays, legendText: pctOf(sumPays), color: '#22935B' },
+    { label: 'Оплаты', ringValue: sumPays, legendText: pctOf(sumPays), color: 'var(--fin-plus)' },
     kmRateSet()
-      ? { label: 'Поездки', ringValue: tripsMoney, legendText: pctOf(tripsMoney), color: '#E5A400' }
-      : { label: 'Поездки', ringValue: 0, legendText: `${fmt(tripsKm)} км`, color: '#E5A400' },
-    { label: 'Авто', ringValue: sumCars, legendText: pctOf(sumCars), color: '#D24A3D' },
+      ? { label: 'Поездки', ringValue: tripsMoney, legendText: pctOf(tripsMoney), color: 'var(--fin-warn)' }
+      : { label: 'Поездки', ringValue: 0, legendText: `${fmt(tripsKm)} км`, color: 'var(--fin-warn)' },
+    { label: 'Авто', ringValue: sumCars, legendText: pctOf(sumCars), color: 'var(--fin-minus)' },
   ];
 
   const rows: HistRow[] =
@@ -406,7 +406,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
       </div>
 
       {/* ── Главный реестр (прототип, строки 315–374) ── */}
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '18px 20px 14px', flexWrap: 'wrap' }}>
           <div style={{ fontSize: 15, fontWeight: 700, paddingTop: 6 }}>ГЛАВНЫЙ РЕЕСТР ЗАЯВОК</div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -414,7 +414,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
             <MiniSparkline data={monthly} />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 26, padding: '0 20px', borderBottom: '1px solid #E7E5E0' }}>
+        <div style={{ display: 'flex', gap: 26, padding: '0 20px', borderBottom: '1px solid var(--fin-border)' }}>
           <HistTab active={kind === 'payment'} label="Все Заявки на Оплату" onClick={() => setKind('payment')} />
           <HistTab active={kind === 'trip'} label="Все Заявки на Поездки" onClick={() => setKind('trip')} />
           <HistTab active={kind === 'auto'} label="Все Расходы на Авто" onClick={() => setKind('auto')} />
@@ -435,8 +435,8 @@ export default function HistoryScreen(props: HistoryScreenProps) {
               <tr key={r.id} className="hv-row">
                 <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, fontWeight: 600, color: ACC, fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap', cursor: 'pointer' }}
                   onClick={() => setSelReq({ kind: r.kind, id: r.id })}>{r.id}</td>
-                <td style={{ ...TD_CAB, fontSize: 12.5, color: '#3E4643', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
-                <td style={{ ...TD_CAB, fontSize: 12.5, color: '#5A625E' }}>{r.project}</td>
+                <td style={{ ...TD_CAB, fontSize: 12.5, color: 'var(--fin-text-2)', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
+                <td style={{ ...TD_CAB, fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.project}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.name}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{r.amount}</td>
                 <td style={TD_CAB}><CabBadge b={dirB(r.status, r.storno)} /></td>
@@ -461,21 +461,21 @@ export default function HistoryScreen(props: HistoryScreenProps) {
       {dv && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
           <div onClick={() => setSelReq(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(21,24,23,.38)', animation: 'finFade .15s ease' }} />
-          <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '100vw', background: '#fff', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 22px', borderBottom: '1px solid #EFEEE9' }}>
+          <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 480, maxWidth: '100vw', background: 'var(--fin-surface)', boxShadow: '-18px 0 44px rgba(0,0,0,.14)', animation: 'finSlide .22s ease', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 22px', borderBottom: '1px solid var(--fin-divider)' }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{dv.title}</div>
-                <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>Заявка {dv.id} · {dv.project}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>Заявка {dv.id} · {dv.project}</div>
               </div>
               <div style={{ flex: 1 }} />
               <span style={{ marginTop: 2 }}><CabBadge b={dirB(dv.status, dv.storno)} /></span>
-              <span onClick={() => setSelReq(null)} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7370' }}>
+              <span onClick={() => setSelReq(null)} className="hv-cream" style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-3)' }}>
                 <CloseIcon />
               </span>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, background: '#FAF9F6', border: '1px solid #EFEDE8', borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, background: 'var(--fin-surface-alt)', border: '1px solid var(--fin-divider)', borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
                 <div><div style={SUM_LAB}>ДАТА</div><div style={{ ...num, fontSize: 15, fontWeight: 600 }}>{dv.date}</div></div>
                 <div><div style={SUM_LAB}>{dv.metricLabel}</div><div style={{ ...num, fontSize: 15, fontWeight: 600 }}>{dv.metricValue}</div></div>
                 <div><div style={SUM_LAB}>ВАЛЮТА</div><div style={{ ...num, fontSize: 15, fontWeight: 600 }}>{dv.currencyValue}</div></div>
@@ -496,7 +496,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
                 <div
                   onClick={() => setEditing(true)}
                   className="hv-soft"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid #E0DED8', borderRadius: 10, padding: 11, marginBottom: 18, fontSize: 13, fontWeight: 600, color: ACC, cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid var(--fin-border)', borderRadius: 10, padding: 11, marginBottom: 18, fontSize: 13, fontWeight: 600, color: ACC, cursor: 'pointer' }}
                 >
                   Исправить и отправить снова
                 </div>
@@ -517,7 +517,7 @@ export default function HistoryScreen(props: HistoryScreenProps) {
 
               {dv.attachValue !== '—' && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <div onClick={() => openFile(dv.attId, dv.attachValue)} className="hv-row" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
+                  <div onClick={() => openFile(dv.attId, dv.attachValue)} className="hv-row" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid var(--fin-border)', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
                     {dv.kind === 'trip' ? <ImageChipIcon /> : <FileChipIcon />}
                     {dv.attachValue}
                   </div>
@@ -525,8 +525,8 @@ export default function HistoryScreen(props: HistoryScreenProps) {
               )}
             </div>
 
-            <div style={{ borderTop: '1px solid #EFEEE9', padding: '14px 22px', display: 'flex', justifyContent: 'flex-end' }}>
-              <div onClick={() => setSelReq(null)} className="hv-soft" style={{ border: '1px solid #E0DED8', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#3E4643', cursor: 'pointer' }}>
+            <div style={{ borderTop: '1px solid var(--fin-divider)', padding: '14px 22px', display: 'flex', justifyContent: 'flex-end' }}>
+              <div onClick={() => setSelReq(null)} className="hv-soft" style={{ border: '1px solid var(--fin-border)', borderRadius: 9, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}>
                 Закрыть
               </div>
             </div>

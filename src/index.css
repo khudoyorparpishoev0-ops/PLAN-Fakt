@@ -1,15 +1,15 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: #F3F5F3;
-  font-family: 'Golos Text', system-ui, sans-serif;
-  color: #1B1F1E;
+  background: var(--fin-bg);
+  font-family: var(--fin-font);
+  color: var(--fin-text);
   -webkit-font-smoothing: antialiased;
 }
-a { color: #1B7A3C; }
-a:hover { color: #156430; }
-input, select, textarea { font-family: inherit; color: #1B1F1E; }
-::placeholder { color: #A9AFAB; }
+a { color: var(--fin-accent); }
+a:hover { color: var(--fin-accent-hover); }
+input, select, textarea { font-family: inherit; color: var(--fin-text); }
+::placeholder { color: var(--fin-text-5); }
 
 @keyframes finFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes finSlide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -17,24 +17,24 @@ input, select, textarea { font-family: inherit; color: #1B1F1E; }
 
 /* Hover utilities — replacements for the prototype's style-hover attributes.
    !important lets a hover win over an inline background (e.g. striped rows). */
-.hv-row:hover { background: #F8F7F4 !important; }
-.hv-soft:hover { background: #F6F5F1 !important; }
-.hv-cream:hover { background: #F1F0EB !important; }
-.hv-red:hover { background: #FAE7E4 !important; }
-.hv-paper:hover { background: #FAF9F6 !important; }
-.hv-chip:hover { background: #EFEEE9 !important; }
-.hv-acc:hover { background: #E6F2EA !important; }
+.hv-row:hover { background: var(--fin-hover) !important; }
+.hv-soft:hover { background: var(--fin-hover) !important; }
+.hv-cream:hover { background: var(--fin-hover) !important; }
+.hv-red:hover { background: var(--fin-minus-soft) !important; }
+.hv-paper:hover { background: var(--fin-surface-alt) !important; }
+.hv-chip:hover { background: var(--fin-divider) !important; }
+.hv-acc:hover { background: var(--fin-accent-soft) !important; }
 .hv-dim:hover { filter: brightness(0.94); }
 .hv-side:hover { background: rgba(255, 255, 255, 0.07); }
-.hv-drop:hover { border-color: var(--fin-accent, #1B7A3C) !important; color: var(--fin-accent, #1B7A3C) !important; }
-.hv-tabbar:hover { background: #FAFAF8 !important; }
+.hv-drop:hover { border-color: var(--fin-accent) !important; color: var(--fin-accent) !important; }
+.hv-tabbar:hover { background: var(--fin-surface-alt) !important; }
 
 /* Печать отчёта (ТЗ, п. 3.1 — кнопки «Печать» и «PDF»).
    Приложение живёт в раскладке 100vh с внутренней прокруткой, поэтому для
    печати каркас распрямляется в обычный поток, а сайдбар, шапка и панели
    действий скрываются пометкой data-print-hide. */
 @media print {
-  html, body { height: auto !important; overflow: visible !important; background: #fff; }
+  html, body { height: auto !important; overflow: visible !important; background: var(--fin-surface); }
   [data-print-hide] { display: none !important; }
   [data-app-shell] { display: block !important; height: auto !important; overflow: visible !important; }
   [data-app-main] { display: block !important; min-width: 0 !important; }

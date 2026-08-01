@@ -3,8 +3,8 @@ import { ACC } from '../theme';
 import { Logo } from '../components/ui';
 import { api, ApiError, type Session } from '../lib/api';
 
-const LAB: CSSProperties = { fontSize: 12.5, color: '#5A625E', fontWeight: 500, marginBottom: 7, display: 'block' };
-const INP: CSSProperties = { width: '100%', height: 44, border: '1px solid #DFDCD6', borderRadius: 10, padding: '0 13px', fontSize: 13.5, background: '#fff', outline: 'none' };
+const LAB: CSSProperties = { fontSize: 12.5, color: 'var(--fin-text-2)', fontWeight: 500, marginBottom: 7, display: 'block' };
+const INP: CSSProperties = { width: '100%', height: 44, border: '1px solid var(--fin-border)', borderRadius: 10, padding: '0 13px', fontSize: 13.5, background: 'var(--fin-surface)', outline: 'none' };
 
 export interface ChangePasswordGateProps {
   session: Session;
@@ -41,18 +41,18 @@ export default function ChangePasswordGate({ session, initialCurrent, onChanged,
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF1EE', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontSize: 14 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--fin-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontSize: 14 }}>
       <div style={{ width: 420, maxWidth: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 22 }}>
           <Logo size={40} />
           <div>
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '.03em' }}>IT-HONA</div>
-            <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>Финансы · План-Факт</div>
+            <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>Финансы · План-Факт</div>
           </div>
         </div>
-        <form onSubmit={submit} style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, padding: '26px 28px' }}>
+        <form onSubmit={submit} style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '26px 28px' }}>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Смените временный пароль</div>
-          <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.55, marginBottom: 18 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.55, marginBottom: 18 }}>
             {session.user.name}, ваш пароль задан администратором и является временным.
             Задайте собственный пароль, чтобы продолжить.
           </div>
@@ -67,14 +67,14 @@ export default function ChangePasswordGate({ session, initialCurrent, onChanged,
           <div style={{ marginBottom: 6 }}>
             <label style={LAB}>Повторите новый пароль</label>
             <input type="password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Ещё раз новый пароль" autoComplete="new-password" style={INP} />
-            {mismatch && <div style={{ fontSize: 11.5, color: '#B93227', marginTop: 4 }}>Пароли не совпадают</div>}
+            {mismatch && <div style={{ fontSize: 11.5, color: 'var(--fin-minus)', marginTop: 4 }}>Пароли не совпадают</div>}
           </div>
-          {error && <div style={{ fontSize: 12.5, color: '#B93227', marginTop: 8 }}>{error}</div>}
+          {error && <div style={{ fontSize: 12.5, color: 'var(--fin-minus)', marginTop: 8 }}>{error}</div>}
           <button
             type="submit" disabled={!valid}
             style={{
               width: '100%', height: 48, borderRadius: 11, border: 'none', marginTop: 18,
-              background: ACC, color: '#fff', fontSize: 14.5, fontWeight: 600, fontFamily: 'inherit',
+              background: ACC, color: 'var(--fin-surface)', fontSize: 14.5, fontWeight: 600, fontFamily: 'inherit',
               cursor: valid ? 'pointer' : 'default', ...(valid ? {} : { opacity: 0.45 }),
             }}
             className={valid ? 'hv-dim' : undefined}
@@ -82,7 +82,7 @@ export default function ChangePasswordGate({ session, initialCurrent, onChanged,
             {busy ? 'Сохраняем…' : 'Сменить пароль и продолжить'}
           </button>
         </form>
-        <div onClick={onLogout} style={{ fontSize: 12.5, fontWeight: 600, color: '#5A625E', textAlign: 'center', marginTop: 14, cursor: 'pointer' }}>
+        <div onClick={onLogout} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', textAlign: 'center', marginTop: 14, cursor: 'pointer' }}>
           ← Выйти и войти другой учётной записью
         </div>
       </div>

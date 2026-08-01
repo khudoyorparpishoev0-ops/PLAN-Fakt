@@ -28,19 +28,19 @@ export interface PanelScreenProps {
 const KIND_LABEL: Record<ApiRequest['kind'], string> = { payment: 'Оплата', trip: 'Поездка', auto: 'Авто' };
 
 const chipS: CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #E0DED8', background: '#fff',
-  borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#5A625E', cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)',
+  borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: 'var(--fin-text-2)', cursor: 'pointer',
 };
-const cardS: CSSProperties = { background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: CARD_PAD };
+const cardS: CSSProperties = { background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: CARD_PAD };
 const headS: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 };
-const labS: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#8A918D' };
+const labS: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: 'var(--fin-text-4)' };
 const bigS: CSSProperties = { fontSize: 25, fontWeight: 700, letterSpacing: '-.02em', ...num };
-const tjsS: CSSProperties = { fontSize: 11.5, fontWeight: 500, color: '#8A918D', fontFamily: GOLOS };
-const tjs12S: CSSProperties = { fontSize: 12, fontWeight: 500, color: '#8A918D', fontFamily: GOLOS };
-const v500: CSSProperties = { color: '#1B1F1E', fontWeight: 500, ...num };
-const v600: CSSProperties = { color: '#1B1F1E', fontWeight: 600, ...num };
-const red6: CSSProperties = { fontWeight: 600, color: '#B93227', ...num };
-const grn6: CSSProperties = { fontWeight: 600, color: '#1A7A4B', ...num };
+const tjsS: CSSProperties = { fontSize: 11.5, fontWeight: 500, color: 'var(--fin-text-4)', fontFamily: GOLOS };
+const tjs12S: CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--fin-text-4)', fontFamily: GOLOS };
+const v500: CSSProperties = { color: 'var(--fin-text)', fontWeight: 500, ...num };
+const v600: CSSProperties = { color: 'var(--fin-text)', fontWeight: 600, ...num };
+const red6: CSSProperties = { fontWeight: 600, color: 'var(--fin-minus)', ...num };
+const grn6: CSSProperties = { fontWeight: 600, color: 'var(--fin-plus)', ...num };
 
 /** Чип-фильтр со скрытым select: вид из прототипа, поведение — настоящий выбор. */
 function FilterChip({ label, value, options, onChange }: {
@@ -53,8 +53,8 @@ function FilterChip({ label, value, options, onChange }: {
       style={{ ...chipS, position: 'relative', ...(active ? { borderColor: ACC, color: ACC } : {}) }}
       title={`${label}: ${value}`}
     >
-      {label}: <b style={{ color: active ? ACC : '#1B1F1E', fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</b>
-      <span style={{ color: '#A6ACA8' }}>▾</span>
+      {label}: <b style={{ color: active ? ACC : 'var(--fin-text)', fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</b>
+      <span style={{ color: 'var(--fin-text-5)' }}>▾</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -79,7 +79,7 @@ function KpiChip({ children }: { children: ReactNode }) {
 /** Строка «подпись — значение» внутри KPI-карточки. */
 function KV({ l, v, vs, ls, style }: { l: ReactNode; v: ReactNode; vs: CSSProperties; ls?: CSSProperties; style?: CSSProperties }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7370', marginBottom: 4, ...style }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--fin-text-3)', marginBottom: 4, ...style }}>
       <span style={ls}>{l}</span><span style={vs}>{v}</span>
     </div>
   );
@@ -89,7 +89,7 @@ function KV({ l, v, vs, ls, style }: { l: ReactNode; v: ReactNode; vs: CSSProper
 function Prog({ dot, w, t }: { dot: string; w: string; t: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 11px' }}>
-      <div style={{ flex: 1, height: 6, background: '#EEF1EE', borderRadius: 99, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 6, background: 'var(--fin-bg)', borderRadius: 99, overflow: 'hidden' }}>
         <div style={{ height: '100%', borderRadius: 99, background: dot, width: w }} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color: dot, ...num }}>{t}</span>
@@ -129,8 +129,8 @@ interface AttnItem {
 }
 
 const btnS: CSSProperties = { borderRadius: 8, padding: '6px 13px', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-const thTop: CSSProperties = { borderTop: '1px solid #F0EFEA' };
-const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' };
+const thTop: CSSProperties = { borderTop: '1px solid var(--fin-divider)' };
+const tdNum: CSSProperties = { padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', ...num, whiteSpace: 'nowrap' };
 
 export default function PanelScreen(props: PanelScreenProps) {
   const { totals: t, pendingReqs, decideRequest, period, setPeriod, projects, goReport, goExpenses } = props;
@@ -205,33 +205,33 @@ export default function PanelScreen(props: PanelScreenProps) {
 
   const attnItems: AttnItem[] = [
     ...overdueRows.map(({ r, kind, party }): AttnItem => ({
-      ic: 'clock', chipBg: '#FAE7E4', chipFg: '#B93227',
+      ic: 'clock', chipBg: 'var(--fin-minus-soft)', chipFg: 'var(--fin-minus)',
       t: kind === 'inc' ? 'Просроченное поступление' : 'Просроченный платёж',
       m: `${party} · ${r.cat} · просрочка ${plural(daysBetween(r.pIso!, today), 'день', 'дня', 'дней')}`,
-      sum: fmt(r.plan - r.fact), sumFg: '#B93227',
+      sum: fmt(r.plan - r.fact), sumFg: 'var(--fin-minus)',
       tag: kind === 'inc' ? 'дебиторка' : 'кредиторка',
     })),
     ...overRows.map((r): AttnItem => ({
-      ic: 'cart', chipBg: '#FAE7E4', chipFg: '#B93227',
+      ic: 'cart', chipBg: 'var(--fin-minus-soft)', chipFg: 'var(--fin-minus)',
       t: `Перерасход: ${r.cat.toLowerCase()}`,
       m: `${r.payee}${r.reason ? ` · причина: ${r.reason}` : ''}`,
-      sum: '+' + fmt(r.fact - r.plan), sumFg: '#B93227',
+      sum: '+' + fmt(r.fact - r.plan), sumFg: 'var(--fin-minus)',
       tag: `+${pct1(((r.fact - r.plan) / r.plan) * 100)}% к плану`,
     })),
     ...soonRows.map((r): AttnItem => ({
-      ic: 'percent', chipBg: '#FBECDE', chipFg: '#B25313',
+      ic: 'percent', chipBg: 'var(--fin-warn-soft)', chipFg: 'var(--fin-warn)',
       t: `Предстоящий платёж: ${r.cat.toLowerCase()}`,
       m: `Оплатить до ${r.pdate}`,
-      sum: fmt(r.plan - r.fact), sumFg: '#1B1F1E',
+      sum: fmt(r.plan - r.fact), sumFg: 'var(--fin-text)',
       tag: plural(daysBetween(today, r.pIso!), 'день', 'дня', 'дней'),
     })),
     // Заявки кабинета, ждущие решения директора
     ...pendingReqs.map((r): AttnItem => ({
-      ic: 'bell', chipBg: '#FAF2D8', chipFg: '#8A6A00',
+      ic: 'bell', chipBg: 'var(--fin-warn-soft)', chipFg: 'var(--fin-warn)',
       t: 'Ждёт вашего согласования',
       m: `${KIND_LABEL[r.kind]} · ${r.name} · заявка ${r.number}`,
       sum: r.kind === 'trip' ? `${fmt(r.km ?? 0)} км` : fmt(r.amount ?? 0),
-      sumFg: '#1B1F1E',
+      sumFg: 'var(--fin-text)',
       tag: `от ${r.author}`,
       reqId: r.id,
     })),
@@ -240,25 +240,25 @@ export default function PanelScreen(props: PanelScreenProps) {
   return (
     <div data-screen-label="Финансовая панель">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-        <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--fin-segment)', padding: 3, borderRadius: 9, gap: 2 }}>
           {PERIOD_KINDS.map(p => {
             const a = period === p;
             return (
-              <div key={p} onClick={() => setPeriod(p)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? '#1B1F1E' : '#6B7370', background: a ? '#FFFFFF' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{p}</div>
+              <div key={p} onClick={() => setPeriod(p)} style={{ padding: '5px 13px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer', fontWeight: a ? 600 : 500, color: a ? 'var(--fin-text)' : 'var(--fin-text-3)', background: a ? 'var(--fin-surface)' : 'transparent', boxShadow: a ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>{p}</div>
             );
           })}
         </div>
-        <div style={{ width: 1, height: 22, background: '#E0DED8' }} />
+        <div style={{ width: 1, height: 22, background: 'var(--fin-border)' }} />
         <FilterChip label="Проект" value={fProject} options={projectOptions} onChange={setFProject} />
         <FilterChip label="Категория" value={fCat} options={catOptions} onChange={setFCat} />
         <FilterChip label="Контрагент" value={fParty} options={partyOptions} onChange={setFParty} />
-        <div style={chipS}>Валюта: <b style={{ color: '#1B1F1E', fontWeight: 600 }}>TJS</b></div>
+        <div style={chipS}>Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b></div>
         <FilterChip label="Статус" value={fStatus} options={statusOptions} onChange={setFStatus} />
         {(fProject !== 'Все' || fCat !== 'Все' || fParty !== 'Все' || fStatus !== 'Все') && (
           <div
             onClick={() => { setFProject('Все'); setFCat('Все'); setFParty('Все'); setFStatus('Все'); }}
             className="hv-cream"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #CFCCC4', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: '#6B7370', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed var(--fin-border)', borderRadius: 8, padding: '6px 11px', fontSize: 12.5, color: 'var(--fin-text-3)', cursor: 'pointer' }}
           >
             Сбросить фильтры ✕
           </div>
@@ -308,7 +308,7 @@ export default function PanelScreen(props: PanelScreenProps) {
           <KV l="План" v={t.profPlanF} vs={v500} />
           <KV l="Отклонение" v={t.profDevF} vs={red6} />
           <KV l="Рентабельность" v={t.rentT} vs={v600} />
-          <KV l="К прошлому периоду" vs={{ fontWeight: 600, color: '#B25313', ...num }} style={{ marginBottom: 0 }} v={<><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ verticalAlign: -1, marginRight: 2 }}><path d="M2 2l6 6M8 3.5V8H3.5" /></svg>{t.prevT}</>} />
+          <KV l="К прошлому периоду" vs={{ fontWeight: 600, color: 'var(--fin-warn)', ...num }} style={{ marginBottom: 0 }} v={<><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ verticalAlign: -1, marginRight: 2 }}><path d="M2 2l6 6M8 3.5V8H3.5" /></svg>{t.prevT}</>} />
         </div>
         <div style={cardS}>
           <div style={headS}>
@@ -318,17 +318,17 @@ export default function PanelScreen(props: PanelScreenProps) {
             </span>
           </div>
           <div style={bigS}>{t.cashTotal} <span style={tjs12S}>TJS</span></div>
-          <div style={{ fontSize: 12, color: '#8A918D', margin: '5px 0 11px' }}>Остаток на счетах</div>
+          <div style={{ fontSize: 12, color: 'var(--fin-text-4)', margin: '5px 0 11px' }}>Остаток на счетах</div>
           <KV l="Касса" v={t.cashBox} vs={v500} />
           <KV l="Банковские счета" v={t.cashBank} vs={v500} />
           <KV l="Ожидаемые поступления" v={t.cashIn} vs={grn6} />
           <KV l="Предстоящие выплаты" v={t.cashOut} vs={red6} />
-          <KV l="Свободный остаток" ls={{ fontWeight: 600, color: '#1B1F1E' }} v={t.cashFree} vs={{ color: '#1B1F1E', fontWeight: 700, ...num }} style={{ borderTop: '1px dashed #E7E5E0', paddingTop: 6, marginTop: 6, marginBottom: 0 }} />
+          <KV l="Свободный остаток" ls={{ fontWeight: 600, color: 'var(--fin-text)' }} v={t.cashFree} vs={{ color: 'var(--fin-text)', fontWeight: 700, ...num }} style={{ borderTop: '1px dashed var(--fin-border)', paddingTop: 6, marginTop: 6, marginBottom: 0 }} />
           <KV
             l="Кассовый разрыв"
-            vs={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, color: t.cashGap ? '#B93227' : '#1A7A4B' }}
+            vs={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, color: t.cashGap ? 'var(--fin-minus)' : 'var(--fin-plus)' }}
             style={{ marginTop: 5, marginBottom: 0 }}
-            v={<><span style={{ width: 6, height: 6, borderRadius: '50%', background: t.cashGap ? '#D24A3D' : '#22935B' }} />{t.cashGap ? 'ожидается' : 'не ожидается'}</>}
+            v={<><span style={{ width: 6, height: 6, borderRadius: '50%', background: t.cashGap ? 'var(--fin-minus)' : 'var(--fin-plus)' }} />{t.cashGap ? 'ожидается' : 'не ожидается'}</>}
           />
         </div>
         <div style={cardS}>
@@ -337,17 +337,17 @@ export default function PanelScreen(props: PanelScreenProps) {
               <KpiChip><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="2.3" /><path d="M1.8 13a4.2 4.2 0 018.4 0" /><path d="M10.5 4.2a2.3 2.3 0 010 4.3" /></svg></KpiChip>
               <span style={labS}>ЗАДОЛЖЕННОСТИ</span>
             </span>
-            <Badge b={{ t: 'Просрочка', fg: '#B93227', bg: '#FAE7E4', dot: '#D24A3D' }} fs={11} pad="2px 8px" />
+            <Badge b={{ t: 'Просрочка', fg: 'var(--fin-minus)', bg: 'var(--fin-minus-soft)', dot: 'var(--fin-minus)' }} fs={11} pad="2px 8px" />
           </div>
           <div style={bigS}>{t.debR} <span style={tjs12S}>TJS</span></div>
-          <div style={{ fontSize: 12, color: '#8A918D', margin: '5px 0 11px' }}>Общая задолженность</div>
+          <div style={{ fontSize: 12, color: 'var(--fin-text-4)', margin: '5px 0 11px' }}>Общая задолженность</div>
           <KV l="Из них просрочено" v={t.debROver} vs={red6} />
           <KV l="Кредиторская" v={t.credit} vs={v500} />
           <KV l="Из них просрочено" v={t.creditOver} vs={red6} style={{ marginBottom: 0 }} />
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit,minmax(430px,1fr))', gap: 16, alignItems: 'start' }}>
-        <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px' }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>План–факт по категориям</div>
             <div onClick={goReport} style={{ fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer' }}>Открыть отчёт →</div>
@@ -365,7 +365,7 @@ export default function PanelScreen(props: PanelScreenProps) {
               <tbody>
                 {dashRows.map(r => (
                   <tr key={r.cat}>
-                    <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED', fontSize: 13 }}>
+                    <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)', fontSize: 13 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ width: 28, height: 28, borderRadius: 8, background: SOFT, color: ACC, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><Ico ic={r.ic} s={14} /></span>
                         <span>{r.cat}</span>
@@ -375,48 +375,48 @@ export default function PanelScreen(props: PanelScreenProps) {
                     <td style={{ ...tdNum, fontWeight: 600 }}>{r.factF}</td>
                     <td style={{ ...tdNum, fontWeight: 600, color: r.devFg }}>{r.devF}</td>
                     <td style={{ ...tdNum, fontSize: 12.5, color: r.devFg }}>{r.devPctF}</td>
-                    <td style={{ padding: ROW_PAD, borderBottom: '1px solid #F3F2ED' }}><Badge b={r.b} /></td>
+                    <td style={{ padding: ROW_PAD, borderBottom: '1px solid var(--fin-divider)' }}><Badge b={r.b} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-        <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>Требует внимания</div>
-            <span style={{ background: '#FAE7E4', color: '#B93227', fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '1px 8px' }}>{attnItems.length}</span>
+            <span style={{ background: 'var(--fin-minus-soft)', color: 'var(--fin-minus)', fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '1px 8px' }}>{attnItems.length}</span>
           </div>
           {attnItems.map((a, i) => (
-            <div key={i} style={{ padding: '11px 0', borderBottom: '1px solid #F3F2ED' }}>
+            <div key={i} style={{ padding: '11px 0', borderBottom: '1px solid var(--fin-divider)' }}>
               <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: a.chipBg, color: a.chipFg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><Ico ic={a.ic} s={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{a.t}</div>
-                  <div style={{ fontSize: 12, color: '#8A918D', marginTop: 1 }}>{a.m}</div>
+                  <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginTop: 1 }}>{a.m}</div>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: a.sumFg, ...num }}>{a.sum}</div>
-                  <div style={{ fontSize: 11, color: '#A6ACA8' }}>{a.tag}</div>
+                  <div style={{ fontSize: 11, color: 'var(--fin-text-5)' }}>{a.tag}</div>
                 </div>
               </div>
               {a.reqId != null && (
                 <div style={{ display: 'flex', gap: 8, margin: '9px 0 2px 18px' }}>
-                  <div onClick={() => decideRequest(a.reqId!, 'approved')} className="hv-dim" style={{ background: ACC, color: '#fff', ...btnS }}>Согласовать</div>
-                  <div onClick={() => decideRequest(a.reqId!, 'rejected')} className="hv-red" style={{ border: '1px solid #F0CFC9', color: '#B93227', ...btnS }}>Отклонить</div>
-                  <div onClick={goReport} className="hv-soft" style={{ border: '1px solid #E0DED8', color: '#3E4643', ...btnS }}>Открыть</div>
+                  <div onClick={() => decideRequest(a.reqId!, 'approved')} className="hv-dim" style={{ background: ACC, color: 'var(--fin-surface)', ...btnS }}>Согласовать</div>
+                  <div onClick={() => decideRequest(a.reqId!, 'rejected')} className="hv-red" style={{ border: '1px solid var(--fin-minus-soft)', color: 'var(--fin-minus)', ...btnS }}>Отклонить</div>
+                  <div onClick={goReport} className="hv-soft" style={{ border: '1px solid var(--fin-border)', color: 'var(--fin-text-2)', ...btnS }}>Открыть</div>
                 </div>
               )}
             </div>
           ))}
           {attnItems.length === 0 && (
-            <div style={{ padding: '26px 0', textAlign: 'center', color: '#8A918D', fontSize: 12.5 }}>Всё в порядке — просрочек и критических отклонений нет</div>
+            <div style={{ padding: '26px 0', textAlign: 'center', color: 'var(--fin-text-4)', fontSize: 12.5 }}>Всё в порядке — просрочек и критических отклонений нет</div>
           )}
-          <div onClick={goExpenses} className="hv-soft" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid #E0DED8', borderRadius: 10, padding: 11, marginTop: 12, fontSize: 13, fontWeight: 600, color: ACC, cursor: 'pointer' }}>
+          <div onClick={goExpenses} className="hv-soft" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid var(--fin-border)', borderRadius: 10, padding: 11, marginTop: 12, fontSize: 13, fontWeight: 600, color: ACC, cursor: 'pointer' }}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>Показать все события →
           </div>
-          <div style={{ background: '#F6F7F6', borderRadius: 10, padding: '11px 13px', marginTop: 12, fontSize: 12, color: '#8A918D', lineHeight: 1.5 }}>
-            Статусы: <span style={{ color: '#1A7A4B', fontWeight: 600 }}>зелёный</span> — в норме, <span style={{ color: '#8A6A00', fontWeight: 600 }}>жёлтый</span> — внимание, <span style={{ color: '#B25313', fontWeight: 600 }}>оранжевый</span> — риск, <span style={{ color: '#B93227', fontWeight: 600 }}>красный</span> — критично, <span style={{ fontWeight: 600 }}>серый</span> — нет данных.
+          <div style={{ background: 'var(--fin-surface-alt)', borderRadius: 10, padding: '11px 13px', marginTop: 12, fontSize: 12, color: 'var(--fin-text-4)', lineHeight: 1.5 }}>
+            Статусы: <span style={{ color: 'var(--fin-plus)', fontWeight: 600 }}>зелёный</span> — в норме, <span style={{ color: 'var(--fin-warn)', fontWeight: 600 }}>жёлтый</span> — внимание, <span style={{ color: 'var(--fin-warn)', fontWeight: 600 }}>оранжевый</span> — риск, <span style={{ color: 'var(--fin-minus)', fontWeight: 600 }}>красный</span> — критично, <span style={{ fontWeight: 600 }}>серый</span> — нет данных.
           </div>
         </div>
       </div>

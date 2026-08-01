@@ -54,7 +54,7 @@ function NavItem({ label, icon, active, disabled, onClick }: {
         display: 'flex', alignItems: 'center', gap: 11, height: 38, margin: '1px 10px', padding: '0 12px',
         borderRadius: 9, cursor: disabled ? 'default' : 'pointer',
         background: active ? ACC : 'transparent',
-        color: disabled ? 'rgba(255,255,255,.4)' : active ? '#FFFFFF' : 'rgba(255,255,255,.82)',
+        color: disabled ? 'rgba(255,255,255,.4)' : active ? 'var(--fin-surface)' : 'rgba(255,255,255,.82)',
       }}
     >
       {icon}
@@ -234,13 +234,13 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
   const sidebarStyle: React.CSSProperties = isMobile
     ? {
         position: 'fixed', top: 0, bottom: 0, left: 0, width: 260, zIndex: 80,
-        background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto',
+        background: 'var(--fin-sidebar)', display: 'flex', flexDirection: 'column', overflowY: 'auto',
         transform: menuOpen ? 'none' : 'translateX(-100%)', transition: 'transform .2s ease',
         // Свёрнутое меню не должно ловить нажатия и попадать в скринридер
         visibility: menuOpen ? 'visible' : 'hidden',
         boxShadow: menuOpen ? '4px 0 28px rgba(0,0,0,.3)' : 'none',
       }
-    : { width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' };
+    : { width: 238, flex: 'none', background: 'var(--fin-sidebar)', display: 'flex', flexDirection: 'column', overflowY: 'auto' };
 
   return (
     <div data-app-shell style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
@@ -253,7 +253,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '18px 16px 2px' }}>
               <Logo />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.03em', color: '#fff' }}>IT-HONA</div>
+                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.03em', color: 'var(--fin-surface)' }}>IT-HONA</div>
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', lineHeight: 1.35, marginTop: 2 }}>Интегрируем технологии.<br />Создаём надёжную инфраструктуру.</div>
               </div>
             </div>
@@ -273,46 +273,46 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
             <NavItem label="Пользователи" icon={I.users} active={screen === 'settings' && setTab === 'users'} onClick={go(goUsers)} />
             <NavItem label="Настройки" icon={I.set} active={screen === 'settings' && setTab !== 'users'} onClick={go(goSettings)} />
             <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'РР' : 'РР'}</div>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.16)', color: 'var(--fin-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flex: 'none' }}>{user ? initials(user.name) || 'РР' : 'РР'}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.name ?? 'Руслан Рахмонов'}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fin-surface)' }}>{user?.name ?? 'Руслан Рахмонов'}</div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{user ? ROLE_LABELS[user.role] : 'Руководитель'}</div>
               </div>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
             </div>
           </div>
           <div data-app-main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div data-print-hide style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: '#FFFFFF', borderBottom: '1px solid #E7E5E0' }}>
+            <div data-print-hide style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: 'var(--fin-surface)', borderBottom: '1px solid var(--fin-border)' }}>
               {isMobile && (
                 <div
                   onClick={() => setMenuOpen(true)}
                   title="Меню"
                   className="hv-soft"
-                  style={{ width: TAP, height: TAP, marginLeft: -6, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3E4643', flex: 'none' }}
+                  style={{ width: TAP, height: TAP, marginLeft: -6, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)', flex: 'none' }}
                 >
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
                 </div>
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{TITLES[screen]}</div>
-                {isMobile && <div style={{ fontSize: 11, color: '#8A918D' }}>{range.label} · TJS</div>}
+                {isMobile && <div style={{ fontSize: 11, color: 'var(--fin-text-4)' }}>{range.label} · TJS</div>}
               </div>
-              {!isMobile && <div style={{ fontSize: 12, color: '#8A918D' }}>{range.label} · суммы в сомони (TJS)</div>}
+              {!isMobile && <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>{range.label} · суммы в сомони (TJS)</div>}
               <div style={{ flex: 1 }} />
               {!isMobile && (
                 <>
-                  <div style={{ display: 'inline-flex', background: '#EEF1EE', padding: 3, borderRadius: 9, gap: 2 }}>
-                    <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
-                    <div onClick={() => setDevice('mobile')} style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#6B7370' }}>Телефон</div>
+                  <div style={{ display: 'inline-flex', background: 'var(--fin-bg)', padding: 3, borderRadius: 9, gap: 2 }}>
+                    <div style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, background: 'var(--fin-surface)', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>Компьютер</div>
+                    <div onClick={() => setDevice('mobile')} style={{ padding: '4px 11px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: 'var(--fin-text-3)' }}>Телефон</div>
                   </div>
-                  <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: '#A6ACA8' }}>▾</span>
+                  <div className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: '7px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACC }} />IT-HONA LLC <span style={{ color: 'var(--fin-text-5)' }}>▾</span>
                   </div>
                 </>
               )}
               <NotifyBell refreshTick={notifyTick} />
               {onLogout && (
-                <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid #E0DED8', background: '#fff', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: '#5A625E', cursor: 'pointer', flex: 'none' }}>
+                <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer', flex: 'none' }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
                   {!isMobile && 'Выйти'}
                 </div>
@@ -338,7 +338,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
         <MobileView goDesktop={() => setDevice('desktop')} totals={totals} incomes={incomesRaw} expenses={expenses} />
       )}
       {loadError && (
-        <div data-print-hide style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#B93227', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
+        <div data-print-hide style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: 'var(--fin-minus)', color: 'var(--fin-surface)', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
           onClick={() => setLoadError(null)} title="Скрыть">
           {loadError}
         </div>

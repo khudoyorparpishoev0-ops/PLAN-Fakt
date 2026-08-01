@@ -41,18 +41,18 @@ export default function CabinetProjectsScreen({ pays, trips, cars, projects }: C
   const SumCell = ({ v }: { v: { sum: number; km: number } }) => (
     <>
       <div>{fmt(v.sum)} TJS</div>
-      {v.km > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: '#A6ACA8' }}>+ {fmt(v.km)} км</div>}
+      {v.km > 0 && <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--fin-text-5)' }}>+ {fmt(v.km)} км</div>}
     </>
   );
 
   return (
     <div data-screen-label="Проекты" style={{ animation: 'cabFade .2s ease' }}>
-      <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid #F0EFEA' }}>
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid var(--fin-divider)' }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>МОИ ПРОЕКТЫ</div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#66706C', background: '#EFEEEA', borderRadius: 99, padding: '2px 9px', fontFamily: "'IBM Plex Sans',sans-serif" }}>{rows.length}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fin-text-3)', background: 'var(--fin-divider)', borderRadius: 99, padding: '2px 9px', fontFamily: "'IBM Plex Sans',sans-serif" }}>{rows.length}</span>
           <div style={{ flex: 1 }} />
-          <div style={{ fontSize: 12, color: '#8A918D' }}>Бухгалтер видит только суммы своих заявок по проекту</div>
+          <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>Бухгалтер видит только суммы своих заявок по проекту</div>
         </div>
         <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse' }}>
@@ -69,12 +69,12 @@ export default function CabinetProjectsScreen({ pays, trips, cars, projects }: C
               <tr key={r.name} className="hv-row" style={{ cursor: 'pointer' }}>
                 <td style={{ ...TD_CAB, padding: '13px 20px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{r.name}</div>
-                  <div style={{ fontSize: 11.5, color: '#8A918D', marginTop: 1 }}>{r.group}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 1 }}>{r.group}</div>
                 </td>
-                <td style={{ ...TD_CAB, fontSize: 12.5, color: '#5A625E' }}>{r.resp}</td>
+                <td style={{ ...TD_CAB, fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.resp}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', ...num }}>{r.cnt}</td>
-                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#1A7A4B', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.ok} /></td>
-                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: '#9A6B00', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.wait} /></td>
+                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: 'var(--fin-plus)', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.ok} /></td>
+                <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, color: 'var(--fin-warn)', ...num, whiteSpace: 'nowrap' }}><SumCell v={r.wait} /></td>
                 <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={r.b} /></td>
               </tr>
             ))}
