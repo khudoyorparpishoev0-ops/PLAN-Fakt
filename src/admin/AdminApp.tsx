@@ -28,6 +28,7 @@ import ClientsScreen from './ClientsScreen';
 import MobileView from './MobileView';
 import IncomeDrawer from './IncomeDrawer';
 import ApprovalsScreen from './ApprovalsScreen';
+import { ErrorState } from '../components/states';
 import NotificationsScreen, { type NotifyTarget } from './NotificationsScreen';
 import ExpenseDrawer from './ExpenseDrawer';
 import ProjectDrawer from './ProjectDrawer';
@@ -366,10 +367,21 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
       ) : (
         <MobileView goDesktop={() => setDevice('desktop')} totals={totals} incomes={incomesRaw} expenses={expenses} />
       )}
+      {/* Ошибка не закрывает экран: остальные цифры человеку ещё нужны.
+          Техника — под «Подробности», с копированием для поддержки. */}
       {loadError && (
-        <div data-print-hide style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: 'var(--fin-minus)', color: 'var(--fin-surface)', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
-          onClick={() => setLoadError(null)} title="Скрыть">
-          {loadError}
+        <div data-print-hide style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, width: 460, maxWidth: 'calc(100vw - 24px)', boxShadow: 'var(--fin-shadow-pop)', borderRadius: 12 }}>
+          <ErrorState
+            title="Данные не загрузились"
+            reassure="Введённое сохранено — не отобразилась только часть цифр."
+            detail={loadError}
+            onRetry={() => { setLoadError(null); void loadData(); }}
+            compact
+          />
+          <div
+            onClick={() => setLoadError(null)} title="Скрыть"
+            style={{ position: 'absolute', top: 8, right: 10, cursor: 'pointer', color: 'var(--fin-minus)', fontSize: 15, fontWeight: 700, lineHeight: 1 }}
+          >×</div>
         </div>
       )}
       {opDrawer && (

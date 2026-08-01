@@ -6,6 +6,7 @@ import { api, ApiError, type ApiProject, type ApiStockItem, type ApiStockMove } 
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import { useEscapeClose } from '../lib/escape';
+import { EmptyState } from '../components/states';
 
 export interface StockScreenProps {
   projects: ApiProject[];
@@ -317,7 +318,14 @@ export default function StockScreen({ projects, onError }: StockScreenProps) {
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: '26px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Ничего не найдено.</td></tr>
+                <tr><td colSpan={6} style={{ padding: 0 }}>
+                  {q.trim()
+                    ? <EmptyState tone="neutral" title="По запросу ничего не нашлось"
+                        text={`Номенклатура с «${q.trim()}» в названии или артикуле не заведена. Проверьте написание или очистите поиск.`}
+                        action="Очистить поиск" onAction={() => setQ('')} />
+                    : <EmptyState title="На складе пока пусто"
+                        text="Позиции появятся после первой поставки по сделке закупки или ручного прихода." />}
+                </td></tr>
               )}
             </tbody>
           </table>

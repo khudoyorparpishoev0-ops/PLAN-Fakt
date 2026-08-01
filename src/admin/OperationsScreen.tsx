@@ -7,6 +7,7 @@ import { CheckRow, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import OperationCard from './OperationCard';
 import ExportDialog from './ExportDialog';
+import { EmptyState, ErrorState, SkeletonTable } from '../components/states';
 
 const PAGE = 50;
 
@@ -104,6 +105,8 @@ export default function OperationsScreen(props: OperationsScreenProps) {
   const [bulkProject, setBulkProject] = useState('');
   const [cardId, setCardId] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  /** Ошибка загрузки журнала — гасим таблицу, а не весь экран. */
+  const [failure, setFailure] = useState<string | null>(null);
   const seq = useRef(0);
 
   const toggleType = (k: keyof typeof opType) => setOpType(st => ({ ...st, [k]: !st[k] }));
@@ -134,6 +137,23 @@ export default function OperationsScreen(props: OperationsScreenProps) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [menu]);
+
+  /* Пустой результат под фильтрами и пустая база — разные состояния:
+     в первом случае предлагаем сбросить фильтры, во втором — завести
+     первую операцию. */
+  const filtersApplied =
+    !(opType.in && opType.out && opType.move && opType.accr)
+    || payConf.conf !== payConf.unconf
+    || !!dateFrom || !!dateTo || !!fAccount || !!fParty || !!fArticle || !!fProject
+    || !!sumMin.trim() || !!sumMax.trim() || !!q;
+
+  const resetFilters = () => {
+    setOpType({ in: true, out: true, move: true, accr: true });
+    setPayConf({ conf: true, unconf: true });
+    setDateFrom(''); setDateTo('');
+    setFAccount(''); setFParty(''); setFArticle(''); setFProject('');
+    setSumMin(''); setSumMax(''); setSearch('');
+  };
 
   const buildQuery = (offset: number): OperationQuery => {
     const types: ('in' | 'out' | 'move' | 'accrual')[] = [];
@@ -166,8 +186,10 @@ export default function OperationsScreen(props: OperationsScreenProps) {
       if (my !== seq.current) return; // пришёл более свежий запрос
       setRows(r => (offset === 0 ? res.rows : [...r, ...res.rows]));
       setTotal(res.total);
+      setFailure(null);
     } catch (e) {
-      props.onError(e instanceof ApiError ? e.message : 'Не удалось загрузить операции');
+      // Гасим только таблицу: фильтры и кнопки человеку ещё нужны
+      if (my === seq.current) setFailure(e instanceof ApiError ? e.message : String(e));
     } finally {
       if (my === seq.current) setLoading(false);
     }
@@ -352,6 +374,18 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           <div style={{ background: 'var(--fin-plus-soft)', border: '1px solid var(--fin-plus-soft)', color: 'var(--fin-plus)', borderRadius: 10, padding: '9px 13px', fontSize: 12.5, marginBottom: 10 }}>{flash}</div>
         )}
 
+        {/* Ошибка гасит только список: фильтры и кнопки человеку ещё нужны */}
+        {failure && (
+          <div style={{ marginBottom: 10 }}>
+            <ErrorState
+              title="Журнал не загрузился"
+              reassure="Данные на месте — не отобразился только список. Фильтры и настройки сохранены."
+              detail={failure}
+              onRetry={() => { setFailure(null); void load(0); }}
+            />
+          </div>
+        )}
+
         {sel.size > 0 && (
           <div data-bulk-bar style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--fin-surface)', border: '1px solid ' + ACC, borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
             <span style={{ fontSize: 12.5, fontWeight: 600 }}>Выбрано: {sel.size}</span>
@@ -367,6 +401,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
           </div>
         )}
 
+        {rows.length === 0 && loading && !failure ? <SkeletonTable rows={7} cols={6} /> : (
         <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
@@ -384,7 +419,21 @@ export default function OperationsScreen(props: OperationsScreenProps) {
               </tr></thead>
               <tbody>
                 {view.length === 0 && !loading && (
-                  <tr><td colSpan={colCount} style={{ padding: '16px', fontSize: 12.5, color: 'var(--fin-text-5)', textAlign: 'center' }}>По выбранным фильтрам операций нет</td></tr>
+                  <tr><td colSpan={colCount} style={{ padding: 0 }}>
+                    {filtersApplied
+                      ? <EmptyState
+                          tone="neutral"
+                          title="Под фильтры ничего не подошло"
+                          text="Данные есть, но не в этой выборке. Снимите часть условий или расширьте период."
+                          action="Сбросить фильтры" onAction={resetFilters}
+                          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M3 5h18M6 12h12M10 19h4" /></svg>}
+                        />
+                      : <EmptyState
+                          title="Операций пока нет"
+                          text="Первая операция появится здесь, как только её проведут. Можно завести вручную."
+                          action="Добавить расход" onAction={() => props.openCreate('out')}
+                        />}
+                  </td></tr>
                 )}
                 {view.length > 0 && (
                   <>
@@ -407,6 +456,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {cardId != null && (

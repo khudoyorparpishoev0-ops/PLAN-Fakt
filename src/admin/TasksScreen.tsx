@@ -9,6 +9,7 @@ import {
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import { useEscapeClose } from '../lib/escape';
+import { EmptyState } from '../components/states';
 
 export interface TasksScreenProps {
   projects: ApiProject[];
@@ -258,8 +259,12 @@ export default function TasksScreen({ projects, users, role, onError }: TasksScr
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 18, textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-5)' }}>
-                  {loading ? 'Загрузка…' : 'Задач нет'}
+                <tr><td colSpan={7} style={{ padding: 0 }}>
+                  {loading
+                    ? <div style={{ padding: 18, textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-5)' }}>Загрузка…</div>
+                    : <EmptyState tone="plus" title="Задач нет"
+                        text="Ничего не назначено и не просрочено. Новые появятся здесь, как только их поставят."
+                        icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>} />}
                 </td></tr>
               )}
             </tbody>

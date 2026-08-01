@@ -10,6 +10,7 @@ import {
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import { useEscapeClose } from '../lib/escape';
+import { EmptyState } from '../components/states';
 
 export interface DealsScreenProps {
   dicts: ApiDictionaries | null;
@@ -191,10 +192,8 @@ function PayModal({ dealId, onClose, onDone, onError }: {
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 22px' }}>
           {loading && <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', padding: '10px 0' }}>Загрузка…</div>}
           {!loading && view.length === 0 && (
-            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', padding: '16px 0', lineHeight: 1.5 }}>
-              Свободных выплат нет. Прикрепить можно расходную операцию журнала, ещё не привязанную к другой сделке;
-              если поставщик у сделки указан — показываются операции по нему.
-            </div>
+            <EmptyState tone="neutral" title="Свободных выплат нет"
+              text="Прикрепить можно расходную операцию журнала, ещё не привязанную к другой сделке. Если у сделки указан поставщик — показываются операции по нему." />
           )}
           {view.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -621,7 +620,10 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: '26px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Позиций пока нет.</td></tr>
+                <tr><td colSpan={8} style={{ padding: 0 }}>
+                  <EmptyState title="Сделок пока нет"
+                    text="Сделка закупки собирает позиции, выплаты и поставки в одном месте. Заведите первую — кнопкой выше." />
+                </td></tr>
               )}
             </tbody>
           </table>

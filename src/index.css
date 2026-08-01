@@ -14,6 +14,9 @@ input, select, textarea { font-family: inherit; color: var(--fin-text); }
 @keyframes finFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes finSlide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes cabFade { from { opacity: 0; } to { opacity: 1; } }
+/* Пульсация скелетонов загрузки: заглушка держит раскладку, поэтому при
+   появлении данных страница не прыгает. */
+@keyframes finPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 
 /* Hover utilities — replacements for the prototype's style-hover attributes.
    !important lets a hover win over an inline background (e.g. striped rows). */

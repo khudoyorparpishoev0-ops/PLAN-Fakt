@@ -6,6 +6,7 @@ import { api, ApiError, type ApiClient } from '../lib/api';
 import { Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 import { useEscapeClose } from '../lib/escape';
+import { EmptyState } from '../components/states';
 
 export interface ClientsScreenProps {
   onError: (msg: string) => void;
@@ -192,7 +193,14 @@ export default function ClientsScreen({ onError }: ClientsScreenProps) {
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '26px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Ничего не найдено.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 0 }}>
+                  {q.trim()
+                    ? <EmptyState tone="neutral" title="По запросу ничего не нашлось"
+                        text={`Контрагент с «${q.trim()}» в названии или ИНН не заведён. Проверьте написание или очистите поиск.`}
+                        action="Очистить поиск" onAction={() => setQ('')} />
+                    : <EmptyState title="Контрагентов пока нет"
+                        text="Клиенты и поставщики попадают сюда из справочника — заведите первого в разделе «Справочники»." />}
+                </td></tr>
               )}
             </tbody>
           </table>
