@@ -1,73 +1,75 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Body, Controller, Delete, Get, HttpCode, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post,
+  Query, Req, Res, UseGuards,
+} from '@nestjs/common';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import type { Response } from 'express';
-import * as ExcelJS from 'exceljs';
+import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
-import { DataService } from '../data/data.service';
 import type { OperationFilters } from '../data/operations.dto';
+import { PrismaService } from '../prisma.service';
+import { StorageService } from '../storage.service';
+import { EXPORT_LABEL, ExportService, type ExportKind } from './export.service';
+import { EXPORT_KINDS, ExportScheduleService, FREQUENCIES, FREQUENCY_LABEL, nextRun } from './schedule.service';
 
 /** Число из query-строки: пустое и нечисловое → undefined. */
 const num = (v?: string) => (v && Number.isFinite(Number(v)) ? Number(v) : undefined);
 
-/** Экспорт в Excel (ТЗ, п. 9 и критерии приёмки п. 11):
- *  отчёт «План-Факт» и список проектов. Только админ/директор. */
+export class ScheduleDto {
+  @IsIn(EXPORT_KINDS, { message: 'kind: report | projects | operations' })
+  kind!: ExportKind;
+
+  @IsIn(FREQUENCIES, { message: 'frequency: daily | weekly | monthly' })
+  frequency!: string;
+
+  @IsOptional() @IsInt() @Min(0) @Max(23)
+  hourUtc?: number;
+
+  @IsOptional() @IsEmail({}, { message: 'Неверный email получателя' })
+  email?: string;
+
+  @IsOptional() @IsBoolean()
+  enabled?: boolean;
+}
+
+export class UpdateScheduleDto {
+  @IsOptional() @IsIn(FREQUENCIES) frequency?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(23) hourUtc?: number;
+  @IsOptional() @IsEmail({}, { message: 'Неверный email получателя' }) email?: string;
+  @IsOptional() @IsBoolean() enabled?: boolean;
+}
+
+/** Экспорт в Excel (ТЗ, п. 9 и критерии приёмки п. 11): отчёт «План-Факт»,
+ *  проекты, журнал операций — по кнопке и по расписанию. Только админ/директор. */
 @Controller('export')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, RolesGuard)
 export class ExportController {
-  constructor(private readonly data: DataService) {}
+  constructor(
+    private readonly exports: ExportService,
+    private readonly schedule: ExportScheduleService,
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
-  private async send(res: Response, wb: ExcelJS.Workbook, fileName: string) {
-    const buf = await wb.xlsx.writeBuffer();
+  private async send(res: Response, buf: Buffer, fileName: string) {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    res.send(Buffer.from(buf));
-  }
-
-  private headerRow(ws: ExcelJS.Worksheet, titles: string[]) {
-    const row = ws.addRow(titles);
-    row.font = { bold: true };
-    row.eachCell((c) => {
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF1EE' } };
-      c.border = { bottom: { style: 'thin', color: { argb: 'FFC8CCC8' } } };
-    });
+    res.send(buf);
   }
 
   @Get('report.xlsx')
   @Roles('admin', 'director')
   async report(@Res() res: Response) {
-    const pf = await this.data.planFact();
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('План-Факт');
-    ws.columns = [
-      { width: 10 }, { width: 36 }, { width: 28 }, { width: 26 },
-      { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 }, { width: 18 },
-    ];
-    ws.addRow(['Сводный отчёт «План-Факт» · суммы в сомони (TJS)']).font = { bold: true, size: 13 };
-    ws.addRow([]);
-    const numFmt = '#,##0.00';
-    const section = (title: string, rows: typeof pf.incomes) => {
-      ws.addRow([title]).font = { bold: true, size: 12 };
-      this.headerRow(ws, ['№', 'Категория', 'Проект', 'Контрагент', 'План', 'Факт', 'Отклонение', 'Статус', 'Ответственный']);
-      let plan = 0, fact = 0;
-      for (const r of rows) {
-        const row = ws.addRow([r.n, r.cat, r.proj, r.party, r.plan, r.fact, r.fact - r.plan, r.status, r.resp]);
-        [5, 6, 7].forEach((i) => { row.getCell(i).numFmt = numFmt; });
-        plan += r.plan; fact += r.fact;
-      }
-      const total = ws.addRow(['', 'Итого', '', '', plan, fact, fact - plan, '', '']);
-      total.font = { bold: true };
-      [5, 6, 7].forEach((i) => { total.getCell(i).numFmt = numFmt; });
-      ws.addRow([]);
-      return { plan, fact };
-    };
-    const inc = section('ДОХОДЫ', pf.incomes);
-    const exp = section('РАСХОДЫ', pf.expenses);
-    const profit = ws.addRow(['', 'ПРИБЫЛЬ', '', '', inc.plan - exp.plan, inc.fact - exp.fact, '', '', '']);
-    profit.font = { bold: true, size: 12 };
-    [5, 6].forEach((i) => { profit.getCell(i).numFmt = numFmt; });
-    await this.send(res, wb, 'план-факт.xlsx');
+    await this.send(res, await this.exports.buildBuffer('report'), this.exports.fileName('report'));
   }
 
-  /** Журнал операций с теми же фильтрами, что и на экране (ТЗ, п. 3.2 — «⋯ → экспорт»). */
+  @Get('projects.xlsx')
+  @Roles('admin', 'director')
+  async projects(@Res() res: Response) {
+    await this.send(res, await this.exports.buildBuffer('projects'), this.exports.fileName('projects'));
+  }
+
+  /** Журнал операций с теми же фильтрами, что и на экране (ТЗ, п. 3.2). */
   @Get('operations.xlsx')
   @Roles('admin', 'director')
   async operations(@Res() res: Response, @Query() q: Record<string, string | undefined>) {
@@ -85,66 +87,129 @@ export class ExportController {
       amount_min: num(q.amount_min),
       amount_max: num(q.amount_max),
       q: q.q,
-      // Выгружаем весь отфильтрованный список, а не только видимую страницу
-      limit: 200,
-      offset: 0,
     };
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Операции');
-    ws.columns = [
-      { width: 12 }, { width: 24 }, { width: 14 }, { width: 26 }, { width: 30 },
-      { width: 26 }, { width: 16 }, { width: 16 }, { width: 34 },
-    ];
-    ws.addRow(['Журнал операций · суммы в сомони (TJS)']).font = { bold: true, size: 13 };
-    ws.addRow([]);
-    this.headerRow(ws, ['Дата', 'Счёт', 'Тип', 'Контрагент', 'Статья', 'Проект', 'Сумма', 'Оплата', 'Примечание']);
-    const TYPE: Record<string, string> = { in: 'Поступление', out: 'Выплата', move: 'Перемещение', accrual: 'Начисление' };
-    let total = 0;
-    for (let offset = 0; ; offset += 200) {
-      const page = await this.data.operations({ ...filters, offset });
-      for (const o of page.rows) {
-        const signed = o.type === 'in' ? o.amount : -o.amount;
-        const row = ws.addRow([
-          o.date, o.account ?? '—', TYPE[o.type] ?? o.type, o.party ?? '—',
-          (o.article ?? '—') + (o.isPlan ? ' (план)' : ''), o.project ?? '—',
-          signed, o.confirmed ? 'Подтверждена' : 'Не подтверждена', o.comment ?? '',
-        ]);
-        row.getCell(7).numFmt = '#,##0.00';
-        total += signed;
-      }
-      if (offset + page.rows.length >= page.total || page.rows.length === 0) break;
-    }
-    const totalRow = ws.addRow(['', 'Итого', '', '', '', '', total, '', '']);
-    totalRow.font = { bold: true };
-    totalRow.getCell(7).numFmt = '#,##0.00';
-    await this.send(res, wb, 'операции.xlsx');
+    await this.send(res, await this.exports.buildBuffer('operations', filters), this.exports.fileName('operations'));
   }
 
-  @Get('projects.xlsx')
+  /* ── Выгрузки по расписанию (ТЗ, п. 11, этап 2) ── */
+
+  /** Список расписаний и готовых файлов; mailConfigured — настроен ли SMTP. */
+  @Get('schedules')
   @Roles('admin', 'director')
-  async projects(@Res() res: Response) {
-    const projects = (await this.data.projects('admin')) as Array<{
-      name: string; group: string; resp: string; status: string; archived: boolean;
-      start: string | null; end: string | null; inF?: number; outF?: number; inP?: number; outP?: number;
-    }>;
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Проекты');
-    ws.columns = [
-      { width: 34 }, { width: 26 }, { width: 18 }, { width: 12 }, { width: 12 }, { width: 12 },
-      { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 },
-    ];
-    ws.addRow(['Проекты · суммы в сомони (TJS)']).font = { bold: true, size: 13 };
-    ws.addRow([]);
-    this.headerRow(ws, ['Проект', 'Группа', 'Ответственный', 'Статус', 'Начало', 'Конец', 'Доходы факт', 'Расходы факт', 'Доходы план', 'Расходы план', 'Прибыль факт']);
-    const STATUS: Record<string, string> = { plan: 'Плановый', work: 'В работе', done: 'Завершён' };
-    for (const p of projects) {
-      const row = ws.addRow([
-        p.name + (p.archived ? ' (архив)' : ''), p.group, p.resp, STATUS[p.status] ?? p.status,
-        p.start ?? '—', p.end ?? '—',
-        p.inF ?? 0, p.outF ?? 0, p.inP ?? 0, p.outP ?? 0, (p.inF ?? 0) - (p.outF ?? 0),
-      ]);
-      [7, 8, 9, 10, 11].forEach((i) => { row.getCell(i).numFmt = '#,##0.00'; });
+  async schedules() {
+    const [rows, files] = await Promise.all([
+      this.prisma.scheduledExport.findMany({ where: { deletedAt: null }, orderBy: { id: 'asc' } }),
+      this.prisma.exportFile.findMany({ where: { deletedAt: null }, orderBy: { id: 'desc' }, take: 30 }),
+    ]);
+    return {
+      mailConfigured: this.schedule.mailConfigured(),
+      kinds: EXPORT_KINDS.map((k) => ({ code: k, name: EXPORT_LABEL[k] })),
+      frequencies: FREQUENCIES.map((f) => ({ code: f, name: FREQUENCY_LABEL[f] })),
+      items: rows.map((s) => ({
+        id: s.id,
+        kind: s.kind,
+        kindName: EXPORT_LABEL[s.kind as ExportKind] ?? s.kind,
+        frequency: s.frequency,
+        frequencyName: FREQUENCY_LABEL[s.frequency as keyof typeof FREQUENCY_LABEL] ?? s.frequency,
+        hourUtc: s.hourUtc,
+        email: s.email,
+        enabled: s.enabled,
+        lastRunAt: s.lastRunAt?.toISOString() ?? null,
+        nextRunAt: s.nextRunAt.toISOString(),
+        lastError: s.lastError,
+      })),
+      files: files.map((f) => ({
+        id: f.id,
+        kind: f.kind,
+        kindName: EXPORT_LABEL[f.kind as ExportKind] ?? f.kind,
+        fileName: f.fileName,
+        size: f.size,
+        mailStatus: f.mailStatus,
+        createdAt: f.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  @Post('schedules')
+  @HttpCode(201)
+  @Roles('admin', 'director')
+  async createSchedule(@Req() req: AuthRequest, @Body() dto: ScheduleDto) {
+    const hourUtc = dto.hourUtc ?? 6;
+    const row = await this.prisma.scheduledExport.create({
+      data: {
+        kind: dto.kind,
+        frequency: dto.frequency,
+        hourUtc,
+        email: dto.email?.trim() || null,
+        enabled: dto.enabled ?? true,
+        nextRunAt: nextRun(dto.frequency, hourUtc),
+        authorId: req.user!.sub,
+      },
+    });
+    return { id: row.id, nextRunAt: row.nextRunAt.toISOString() };
+  }
+
+  @Patch('schedules/:id')
+  @Roles('admin', 'director')
+  async updateSchedule(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateScheduleDto) {
+    const row = await this.prisma.scheduledExport.findFirst({ where: { id, deletedAt: null } });
+    if (!row) throw new HttpException({ code: 'not_found', message: 'Расписание не найдено' }, HttpStatus.NOT_FOUND);
+    const frequency = dto.frequency ?? row.frequency;
+    const hourUtc = dto.hourUtc ?? row.hourUtc;
+    const updated = await this.prisma.scheduledExport.update({
+      where: { id },
+      data: {
+        frequency,
+        hourUtc,
+        ...(dto.email !== undefined ? { email: dto.email.trim() || null } : {}),
+        ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+        // Смена периодичности или часа сдвигает ближайший запуск
+        ...(dto.frequency !== undefined || dto.hourUtc !== undefined
+          ? { nextRunAt: nextRun(frequency, hourUtc) }
+          : {}),
+      },
+    });
+    return { id: updated.id, enabled: updated.enabled, nextRunAt: updated.nextRunAt.toISOString() };
+  }
+
+  @Delete('schedules/:id')
+  @Roles('admin', 'director')
+  async removeSchedule(@Param('id', ParseIntPipe) id: number) {
+    const row = await this.prisma.scheduledExport.findFirst({ where: { id, deletedAt: null } });
+    if (!row) throw new HttpException({ code: 'not_found', message: 'Расписание не найдено' }, HttpStatus.NOT_FOUND);
+    await this.prisma.scheduledExport.update({ where: { id }, data: { deletedAt: new Date() } });
+    return { id, deleted: true };
+  }
+
+  /** Выполнить расписание немедленно — «Сформировать сейчас». */
+  @Post('schedules/:id/run')
+  @HttpCode(200)
+  @Roles('admin', 'director')
+  async runSchedule(@Param('id', ParseIntPipe) id: number) {
+    const file = await this.schedule.run(id);
+    if (!file) {
+      const row = await this.prisma.scheduledExport.findFirst({ where: { id, deletedAt: null } });
+      if (!row) throw new HttpException({ code: 'not_found', message: 'Расписание не найдено' }, HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        { code: 'export_failed', message: row.lastError ?? 'Не удалось сформировать выгрузку' },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
-    await this.send(res, wb, 'проекты.xlsx');
+    return { id: file.id, fileName: file.fileName, mailStatus: file.mailStatus };
+  }
+
+  /** Скачать готовый файл выгрузки. */
+  @Get('files/:id')
+  @Roles('admin', 'director')
+  async downloadFile(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const f = await this.prisma.exportFile.findFirst({ where: { id, deletedAt: null } });
+    if (!f) throw new HttpException({ code: 'not_found', message: 'Файл выгрузки не найден' }, HttpStatus.NOT_FOUND);
+    let body: Buffer;
+    try {
+      body = await this.storage.get(f.storageKey);
+    } catch {
+      throw new HttpException({ code: 'file_missing', message: 'Файл не найден в хранилище' }, HttpStatus.NOT_FOUND);
+    }
+    await this.send(res, body, f.fileName);
   }
 }

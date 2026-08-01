@@ -438,6 +438,7 @@ model Operation {
   project         Project?        @relation(fields: [projectId], references: [id])
   dealId          Int?            @map("deal_id") // выплата по сделке закупки
   deal            Deal?           @relation(fields: [dealId], references: [id])
+  attachments     Attachment[]
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
   deletedAt       DateTime?       @map("deleted_at")
@@ -528,20 +529,27 @@ model Request {
   @@map("requests")
 }
 
+// Вложение принадлежит либо заявке кабинета, либо операции журнала
+// (ТЗ, п. 10: JPG/PNG/PDF до 10 МБ в объектном хранилище).
 model Attachment {
-  id         Int       @id @default(autoincrement())
-  requestId  Int       @map("request_id")
-  request    Request   @relation(fields: [requestId], references: [id])
-  kind       String // doc | photo | receipt
-  fileName   String    @map("file_name")
-  storageKey String?   @map("storage_key") // ключ в MinIO (S3)
-  mime       String?
-  size       Int?
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  deletedAt  DateTime? @map("deleted_at")
+  id           Int        @id @default(autoincrement())
+  requestId    Int?       @map("request_id")
+  request      Request?   @relation(fields: [requestId], references: [id])
+  operationId  Int?       @map("operation_id")
+  operation    Operation? @relation(fields: [operationId], references: [id])
+  kind         String // doc | photo | receipt
+  fileName     String     @map("file_name")
+  storageKey   String?    @map("storage_key") // ключ в MinIO (S3)
+  mime         String?
+  size         Int?
+  uploadedById Int?       @map("uploaded_by_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
 
   @@unique([requestId, fileName])
+  @@unique([operationId, fileName])
+  @@index([operationId])
   @@map("attachments")
 }
 
@@ -564,4 +572,45 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ── Выгрузки по расписанию (ТЗ, п. 11, этап 2) ──────────────────────────────
+
+model ScheduledExport {
+  id        Int       @id @default(autoincrement())
+  kind      String // report | projects | operations
+  frequency String // daily | weekly | monthly
+  hourUtc   Int       @default(6) @map("hour_utc") // час запуска по UTC
+  // Кому отправлять письмо; пусто — файл только копится в панели
+  email     String?
+  enabled   Boolean   @default(true)
+  lastRunAt DateTime? @map("last_run_at")
+  nextRunAt DateTime  @map("next_run_at")
+  lastError String?   @map("last_error")
+  authorId  Int?      @map("author_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  files ExportFile[]
+
+  @@index([enabled, nextRunAt])
+  @@map("scheduled_exports")
+}
+
+model ExportFile {
+  id         Int              @id @default(autoincrement())
+  scheduleId Int?             @map("schedule_id")
+  schedule   ScheduledExport? @relation(fields: [scheduleId], references: [id])
+  kind       String
+  fileName   String           @map("file_name")
+  storageKey String           @map("storage_key")
+  size       Int?
+  // Ушло ли письмо: sent | skipped | error
+  mailStatus String           @default("skipped") @map("mail_status")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  deletedAt  DateTime?        @map("deleted_at")
+
+  @@index([createdAt])
+  @@map("export_files")
 }

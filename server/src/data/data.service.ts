@@ -256,12 +256,18 @@ export class DataService {
       include: { account: true, counterparty: true, article: true, project: true },
     });
     if (!o) err(HttpStatus.NOT_FOUND, 'not_found', 'Операция не найдена');
-    const history = await this.prisma.auditLog.findMany({
-      where: { deletedAt: null, entity: 'operation', entityId: String(id) },
-      include: { user: true },
-      orderBy: { id: 'desc' },
-      take: 20,
-    });
+    const [history, attachments] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { deletedAt: null, entity: 'operation', entityId: String(id) },
+        include: { user: true },
+        orderBy: { id: 'desc' },
+        take: 20,
+      }),
+      this.prisma.attachment.findMany({
+        where: { operationId: id, deletedAt: null },
+        orderBy: { id: 'asc' },
+      }),
+    ]);
     return {
       id: o.id,
       date: dateStr(o.date)!,
@@ -284,6 +290,14 @@ export class DataService {
       externalRef: o.externalRef,
       locked: this.fromRequest(o.externalRef),
       createdAt: o.createdAt.toISOString(),
+      // Вложения операции (ТЗ, п. 10): скачиваются через GET /attachments/:id
+      attachments: attachments.map((a) => ({
+        id: a.id,
+        fileName: a.fileName,
+        mime: a.mime,
+        size: a.size,
+        hasFile: !!a.storageKey,
+      })),
       history: history.map((h) => ({
         at: h.createdAt.toISOString(),
         user: h.user?.name ?? '—',

@@ -141,6 +141,13 @@ ensure_env S3_ENDPOINT "http://minio:9000"
 ensure_env MINIO_ROOT_USER "minio"
 ensure_env MINIO_ROOT_PASSWORD "$(gen_secret)"
 ensure_env MINIO_BUCKET "ithona-attachments"
+# Почта для выгрузок по расписанию: без SMTP_HOST/SMTP_FROM письма не шлются,
+# файлы просто копятся в «Настройки → Выгрузки по расписанию»
+ensure_env SMTP_HOST ""
+ensure_env SMTP_PORT "587"
+ensure_env SMTP_FROM ""
+ensure_env SMTP_USER ""
+ensure_env SMTP_PASSWORD ""
 ensure_env TZ "Asia/Dushanbe"
 ensure_env SEED_PASSWORD_ADMIN "$(gen_secret)"
 ensure_env SEED_PASSWORD_DIRECTOR "$(gen_secret)"

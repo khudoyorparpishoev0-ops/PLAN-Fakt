@@ -6,7 +6,7 @@ import { SETTINGS_NAV } from '../data/admin';
 import { initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
-  type ApiAuditRow, type ApiRate, type ApiUser, type AuthUser, type RoleCode,
+  type ApiAuditRow, type ApiRate, type ApiSchedules, type ApiUser, type AuthUser, type RoleCode,
 } from '../lib/api';
 import { Badge, Th, AccentBtn } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
@@ -165,6 +165,34 @@ export default function SettingsScreen(props: SettingsScreenProps) {
   /* ── История действий ── */
   const [audit, setAudit] = useState<ApiAuditRow[]>([]);
   useEffect(() => { if (setTab === 'history') api.audit(100).then(setAudit).catch(() => {}); }, [setTab]);
+
+  /* ── Выгрузки по расписанию (ТЗ, п. 11, этап 2) ── */
+  const [sched, setSched] = useState<ApiSchedules | null>(null);
+  const [schedKind, setSchedKind] = useState('report');
+  const [schedFreq, setSchedFreq] = useState('weekly');
+  const [schedHour, setSchedHour] = useState('6');
+  const [schedMail, setSchedMail] = useState('');
+  const [schedBusy, setSchedBusy] = useState(false);
+  const loadSched = () => api.schedules().then(setSched).catch(() => {});
+  useEffect(() => { if (setTab === 'exports') void loadSched(); }, [setTab]);
+
+  const schedAct = async (fn: () => Promise<unknown>, done: string) => {
+    setSchedBusy(true);
+    try {
+      await fn();
+      await loadSched();
+      setNotice(done);
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Не удалось выполнить действие');
+    } finally {
+      setSchedBusy(false);
+    }
+  };
+
+  /** Дата-время UTC → местная подпись. */
+  const stamp = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  const kb = (n: number | null) => (n == null ? '' : n < 1024 * 1024 ? `${Math.round(n / 1024)} КБ` : `${(n / 1024 / 1024).toFixed(1)} МБ`);
 
   /* ── Профиль: смена пароля ── */
   const [pwdCur, setPwdCur] = useState('');
@@ -377,7 +405,127 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </table>
           </div>
         )}
-        {!['profile', 'users', 'general', 'rates', 'history'].includes(setTab) && (
+        {setTab === 'exports' && (
+          <div data-exports-tab style={{ maxWidth: 860 }}>
+            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Регулярные выгрузки</div>
+              <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5, marginBottom: 14 }}>
+                Отчёт формируется по расписанию и остаётся здесь для скачивания.{' '}
+                {sched?.mailConfigured
+                  ? 'Почтовый сервер настроен — файл уходит письмом на указанный адрес.'
+                  : 'Почтовый сервер не настроен: письма не отправляются, файл можно скачать из списка ниже.'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1.4fr .7fr 1.4fr auto', gap: 10, alignItems: 'end' }}>
+                <div>
+                  <div style={lbl}>Что выгружать</div>
+                  <select data-sched-kind value={schedKind} onChange={e => setSchedKind(e.target.value)} style={inp}>
+                    {(sched?.kinds ?? []).map(k => <option key={k.code} value={k.code}>{k.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={lbl}>Как часто</div>
+                  <select data-sched-freq value={schedFreq} onChange={e => setSchedFreq(e.target.value)} style={inp}>
+                    {(sched?.frequencies ?? []).map(f => <option key={f.code} value={f.code}>{f.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={lbl}>Час (UTC)</div>
+                  <input data-sched-hour value={schedHour} onChange={e => setSchedHour(e.target.value)} style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} />
+                </div>
+                <div>
+                  <div style={lbl}>Кому на почту</div>
+                  <input data-sched-mail value={schedMail} onChange={e => setSchedMail(e.target.value)} placeholder="можно не указывать" style={inp} />
+                </div>
+                <div
+                  data-sched-add
+                  onClick={schedBusy ? undefined : () => void schedAct(
+                    () => api.createSchedule({
+                      kind: schedKind,
+                      frequency: schedFreq,
+                      hourUtc: Number(schedHour) || 0,
+                      ...(schedMail.trim() ? { email: schedMail.trim() } : {}),
+                    }),
+                    'Расписание добавлено',
+                  )}
+                  className="hv-dim"
+                  style={{ background: schedBusy ? '#B9C2BC' : ACC, color: '#fff', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: schedBusy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Добавить
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>Расписания</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse' }}>
+                  <thead><tr>
+                    <Th style={{ padding: '8px 12px 8px 16px' }}>Отчёт</Th>
+                    <Th>Периодичность</Th>
+                    <Th>Получатель</Th>
+                    <Th>Последний запуск</Th>
+                    <Th>Следующий</Th>
+                    <Th style={{ padding: '8px 16px 8px 12px' }}>Действия</Th>
+                  </tr></thead>
+                  <tbody>
+                    {(sched?.items ?? []).map(it => (
+                      <tr key={it.id} className="hv-row">
+                        <td style={{ padding: '9px 12px 9px 16px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, fontWeight: 600 }}>
+                          {it.kindName}
+                          {!it.enabled && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: '#66706C', background: '#EFEEEA', borderRadius: 99, padding: '1px 8px' }}>выключено</span>}
+                          {it.lastError && <div style={{ fontSize: 11, color: '#B93227', marginTop: 2 }}>{it.lastError}</div>}
+                        </td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>{it.frequencyName}, {String(it.hourUtc).padStart(2, '0')}:00 UTC</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12.5, color: '#5A625E' }}>{it.email ?? '—'}</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12, color: '#5A625E', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.lastRunAt)}</td>
+                        <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', fontSize: 12, color: '#5A625E', fontFamily: PLEX, whiteSpace: 'nowrap' }}>{stamp(it.nextRunAt)}</td>
+                        <td style={{ padding: '9px 16px 9px 12px', borderBottom: '1px solid #F3F2ED' }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <span data-sched-run onClick={schedBusy ? undefined : () => void schedAct(() => api.runSchedule(it.id), 'Выгрузка сформирована')} className="hv-soft"
+                              style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', whiteSpace: 'nowrap' }}>Сформировать</span>
+                            <span onClick={schedBusy ? undefined : () => void schedAct(() => api.updateSchedule(it.id, { enabled: !it.enabled }), it.enabled ? 'Расписание выключено' : 'Расписание включено')} className="hv-soft"
+                              style={{ border: '1px solid #E0DED8', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#3E4643', cursor: 'pointer', whiteSpace: 'nowrap' }}>{it.enabled ? 'Выключить' : 'Включить'}</span>
+                            <span onClick={schedBusy ? undefined : () => void schedAct(() => api.removeSchedule(it.id), 'Расписание удалено')} className="hv-red"
+                              style={{ border: '1px solid #F0CFC9', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: '#B93227', cursor: 'pointer' }}>Удалить</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {(sched?.items ?? []).length === 0 && (
+                      <tr><td colSpan={6} style={{ padding: 16, fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>Расписаний нет — добавьте первое сверху</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid #F0EFEA' }}>Готовые файлы</div>
+              {(sched?.files ?? []).length === 0 && (
+                <div style={{ padding: 16, fontSize: 12.5, color: '#A6ACA8', textAlign: 'center' }}>Файлов пока нет</div>
+              )}
+              {(sched?.files ?? []).map(f => (
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid #F3F2ED' }}>
+                  <span style={{ width: 28, height: 32, borderRadius: 5, background: '#E6F4EB', color: '#1A7A4B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, flex: 'none' }}>XLSX</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div data-export-file onClick={() => void api.downloadExportFile(f.id, f.fileName)} style={{ fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</div>
+                    <div style={{ fontSize: 10.5, color: '#A6ACA8' }}>
+                      {f.kindName} · {kb(f.size)}
+                      {f.mailStatus === 'sent' ? ' · отправлено письмом' : f.mailStatus === 'error' ? ' · письмо не ушло' : ''}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#6B7370', fontFamily: PLEX, flex: 'none' }}>{stamp(f.createdAt)}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>
+              Час указывается по UTC — в Душанбе на 5 часов больше. Почта включается переменными
+              SMTP_HOST, SMTP_FROM (и при необходимости SMTP_PORT, SMTP_USER, SMTP_PASSWORD) в .env сервера.
+            </div>
+          </div>
+        )}
+        {!['profile', 'users', 'general', 'rates', 'history', 'exports'].includes(setTab) && (
           <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '48px 30px', textAlign: 'center', maxWidth: 620 }}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#EFEEE9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 13px' }}><svg width="21" height="21" viewBox="0 0 16 16" fill="none" stroke="#8A918D" strokeWidth="1.5"><circle cx="8" cy="8" r="2.1" /><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.35 1.35M11.05 11.05l1.35 1.35M12.4 3.6l-1.35 1.35M4.95 11.05L3.6 12.4" /></svg></div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{setOtherTitle}</div>

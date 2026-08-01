@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { ACC, PLEX, num } from '../theme';
-import { api, ApiError } from '../lib/api';
 import { Badge } from '../components/ui';
+import FilePreview from '../components/FilePreview';
 import type { ExpRow } from '../lib/rows';
 
 export interface ExpenseDrawerProps {
@@ -49,6 +50,8 @@ const detRow = { display: 'flex', justifyContent: 'space-between', fontSize: 12.
 const docChip = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' } as const;
 
 export default function ExpenseDrawer(props: ExpenseDrawerProps) {
+  /** Превью документа заявки прямо в шторке (ТЗ, п. 10). */
+  const [preview, setPreview] = useState<{ id: number; fileName: string } | null>(null);
   const { sel, onClose } = props;
   const steps = buildSteps(sel);
   const hasReason = sel.fact > sel.plan;
@@ -109,9 +112,7 @@ export default function ExpenseDrawer(props: ExpenseDrawerProps) {
                 key={a.id}
                 onClick={() => {
                   if (!a.hasFile) { props.onError?.(`«${a.fileName}» — демо-имя, файла нет`); return; }
-                  void api.openAttachment(a.id).catch((e: unknown) => {
-                    props.onError?.(e instanceof ApiError ? e.message : 'Не удалось открыть файл');
-                  });
+                  setPreview({ id: a.id, fileName: a.fileName });
                 }}
                 className="hv-row" style={docChip}
               >
@@ -145,6 +146,15 @@ export default function ExpenseDrawer(props: ExpenseDrawerProps) {
           </div>
         )}
       </div>
+
+      {preview && (
+        <FilePreview
+          id={preview.id}
+          fileName={preview.fileName}
+          onClose={() => setPreview(null)}
+          onError={msg => props.onError?.(msg)}
+        />
+      )}
     </div>
   );
 }

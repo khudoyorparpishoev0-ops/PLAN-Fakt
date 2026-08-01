@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD } from '../lib/format';
 import { badge } from '../lib/badges';
 import { api, ApiError, type ApiOperationCard, type ApiProject } from '../lib/api';
 import { Badge } from '../components/ui';
+import FilePreview from '../components/FilePreview';
 
 export interface OperationCardProps {
   id: number;
@@ -24,7 +25,18 @@ const ACTION_LABEL: Record<string, string> = {
   bulk_confirm: 'Оплата подтверждена',
   bulk_delete: 'Удалена',
   bulk_project: 'Перенесена в другой проект',
+  attach: 'Прикреплён документ',
+  detach: 'Документ откреплён',
 };
+
+/** Размер файла человекочитаемо. */
+const fileSize = (n: number | null) => (n == null ? '' : n < 1024 * 1024 ? `${Math.round(n / 1024)} КБ` : `${(n / 1024 / 1024).toFixed(1)} МБ`);
+
+/** Значок типа файла. */
+const fileTag = (mime: string | null) =>
+  mime === 'application/pdf' ? { t: 'PDF', bg: '#FAE7E4', fg: '#B93227' }
+  : mime?.startsWith('image/') ? { t: 'IMG', bg: '#E7EEF9', fg: '#3D62B3' }
+  : { t: 'ФАЙЛ', bg: '#EFEEEA', fg: '#5A625E' };
 
 const row = (label: string, value: React.ReactNode) => (
   <div style={{ display: 'flex', gap: 10, padding: '7px 0', borderBottom: '1px solid #F3F2ED', fontSize: 12.5 }}>
@@ -38,6 +50,36 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
   const [op, setOp] = useState<ApiOperationCard | null>(null);
   const [busy, setBusy] = useState(false);
   const [moveTo, setMoveTo] = useState('');
+  const [preview, setPreview] = useState<{ id: number; fileName: string; mime: string | null } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const reload = async () => setOp(await api.operation(id));
+
+  /** Загрузить и прикрепить документ к операции (ТЗ, п. 10). */
+  const attach = async (file: File) => {
+    setUploading(true);
+    try {
+      const up = await api.upload(file);
+      await api.attachToOperation(id, up);
+      await reload();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Не удалось прикрепить документ');
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
+  const detach = async (attId: number, name: string) => {
+    if (!window.confirm(`Открепить документ «${name}»?`)) return;
+    try {
+      await api.removeAttachment(attId);
+      await reload();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Не удалось открепить документ');
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -55,7 +97,7 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
       await api.bulkOperations([id], action, projectId);
       onChanged();
       if (action === 'delete') onClose();
-      else setOp(await api.operation(id));
+      else await reload();
     } catch (e) {
       onError(e instanceof ApiError ? e.message : 'Не удалось выполнить действие');
     } finally {
@@ -107,6 +149,45 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
             </div>
 
             <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D' }}>ДОКУМЕНТЫ</span>
+                <span onClick={uploading ? undefined : () => fileInput.current?.click()} data-attach-btn
+                  style={{ fontSize: 12, fontWeight: 700, color: uploading ? '#A6ACA8' : ACC, cursor: uploading ? 'default' : 'pointer' }}>
+                  {uploading ? 'ЗАГРУЖАЕМ…' : 'ПРИКРЕПИТЬ'}
+                </span>
+              </div>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/jpeg,image/png,application/pdf"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) void attach(f); }}
+              />
+              {op.attachments.length === 0 && (
+                <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5 }}>
+                  Документов нет. Прикрепите счёт, акт или чек — JPG, PNG или PDF до 10 МБ.
+                </div>
+              )}
+              {op.attachments.map(a => {
+                const tag = fileTag(a.mime);
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderTop: '1px solid #F3F2ED' }}>
+                    <span style={{ width: 28, height: 32, borderRadius: 5, background: tag.bg, color: tag.fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, flex: 'none' }}>{tag.t}</span>
+                    <div onClick={() => a.hasFile && setPreview({ id: a.id, fileName: a.fileName, mime: a.mime })}
+                      style={{ minWidth: 0, flex: 1, cursor: a.hasFile ? 'pointer' : 'default' }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: a.hasFile ? ACC : '#8A918D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
+                      <div style={{ fontSize: 10.5, color: '#A6ACA8' }}>{a.hasFile ? fileSize(a.size) || 'файл' : 'демо-имя, файла нет'}</div>
+                    </div>
+                    <div onClick={() => void detach(a.id, a.fileName)} title="Открепить" className="hv-cream"
+                      style={{ width: 26, height: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D', flex: 'none' }}>
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 2l10 10M12 2L2 12" /></svg>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: '#8A918D', marginBottom: 10 }}>ДЕЙСТВИЯ</div>
               {op.locked ? (
                 <div style={{ fontSize: 12.5, color: '#8A918D', lineHeight: 1.5 }}>
@@ -151,6 +232,16 @@ export default function OperationCard({ id, projects, onClose, onChanged, onErro
           </div>
         )}
       </div>
+
+      {preview && (
+        <FilePreview
+          id={preview.id}
+          fileName={preview.fileName}
+          mime={preview.mime}
+          onClose={() => setPreview(null)}
+          onError={onError}
+        />
+      )}
     </div>
   );
 }

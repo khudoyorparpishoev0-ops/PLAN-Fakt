@@ -9,6 +9,7 @@ import {
 import { kmRateSet, tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
 import { useIsMobile } from '../lib/responsive';
+import FilePreview from '../components/FilePreview';
 
 export interface HistoryScreenProps {
   pays: PayReq[];
@@ -346,6 +347,8 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   const [fPeriod, setFPeriod] = useState('За месяц');
   const [fStatus, setFStatus] = useState('Все');
   const [selReq, setSelReq] = useState<{ kind: ReqKind; id: string } | null>(null);
+  /** Превью вложения прямо в кабинете (ТЗ, п. 10). */
+  const [preview, setPreview] = useState<{ id: number; fileName: string } | null>(null);
 
   /* ── Фильтрация по проекту/статусу — применяется и к графикам, и к реестру ── */
   const passes = (project: string, status: ReqStatus) =>
@@ -379,12 +382,10 @@ export default function HistoryScreen(props: HistoryScreenProps) {
         ? filteredTrips.map((r) => ({ kind: 'trip' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.goal, amount: `${fmt(r.km)} км`, status: r.status, storno: r.storno, cam: r.photo, attId: r.attId }))
         : filteredCars.map((r) => ({ kind: 'auto' as ReqKind, id: r.id, date: r.date, project: r.project, name: r.category, amount: `${fmt(r.amount)} ${r.currency}`, status: r.status, storno: r.storno, doc: r.receipt, attId: r.attId }));
 
-  /** Открыть вложение: файл — из хранилища; имена-заглушки сида — подсказка. */
+  /** Открыть вложение превью-окном; имена-заглушки сида — подсказка. */
   const openFile = (attId: number | undefined, name: string) => {
     if (attId == null) { props.toast?.(`«${name}» — демо-имя из первоначальных данных, файла нет`); return; }
-    void api.openAttachment(attId).catch((e: unknown) => {
-      props.toast?.(e instanceof ApiError ? e.message : 'Не удалось открыть файл');
-    });
+    setPreview({ id: attId, fileName: name });
   };
 
   const selRow = selReq ? findRow(pays, trips, cars, selReq) : undefined;
@@ -531,6 +532,15 @@ export default function HistoryScreen(props: HistoryScreenProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {preview && (
+        <FilePreview
+          id={preview.id}
+          fileName={preview.fileName}
+          onClose={() => setPreview(null)}
+          onError={msg => props.toast?.(msg)}
+        />
       )}
     </div>
   );

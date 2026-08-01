@@ -227,6 +227,8 @@ export interface ApiOperationCard extends ApiOperation {
   /** Операция из одобренной заявки — правке не подлежит, только сторно. */
   locked: boolean;
   createdAt: string;
+  /** Прикреплённые документы (ТЗ, п. 10). */
+  attachments: { id: number; fileName: string; mime: string | null; size: number | null; hasFile: boolean }[];
   history: { at: string; user: string; action: string; value: unknown }[];
 }
 
@@ -557,6 +559,40 @@ export interface ApiNotification {
   date: string | null;
 }
 
+/** Регулярная выгрузка (ТЗ, п. 11, этап 2). */
+export interface ApiSchedule {
+  id: number;
+  kind: string;
+  kindName: string;
+  frequency: string;
+  frequencyName: string;
+  hourUtc: number;
+  email: string | null;
+  enabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string;
+  lastError: string | null;
+}
+
+export interface ApiExportFile {
+  id: number;
+  kind: string;
+  kindName: string;
+  fileName: string;
+  size: number | null;
+  mailStatus: string;
+  createdAt: string;
+}
+
+export interface ApiSchedules {
+  /** Настроен ли SMTP: без него файл просто копится в панели. */
+  mailConfigured: boolean;
+  kinds: { code: string; name: string }[];
+  frequencies: { code: string; name: string }[];
+  items: ApiSchedule[];
+  files: ApiExportFile[];
+}
+
 export interface ApiAuditRow {
   id: number;
   at: string;
@@ -692,6 +728,37 @@ export const api = {
 
   audit: (limit = 100) => authedReq<ApiAuditRow[]>(`/audit?limit=${limit}`),
 
+  /* ── Выгрузки по расписанию ── */
+
+  schedules: () => authedReq<ApiSchedules>('/export/schedules'),
+
+  createSchedule: (payload: { kind: string; frequency: string; hourUtc?: number; email?: string }) =>
+    authedReq<{ id: number; nextRunAt: string }>('/export/schedules', { method: 'POST', body: payload }),
+
+  updateSchedule: (id: number, payload: { frequency?: string; hourUtc?: number; email?: string; enabled?: boolean }) =>
+    authedReq<{ id: number; enabled: boolean; nextRunAt: string }>(`/export/schedules/${id}`, { method: 'PATCH', body: payload }),
+
+  removeSchedule: (id: number) =>
+    authedReq<{ id: number; deleted: boolean }>(`/export/schedules/${id}`, { method: 'DELETE' }),
+
+  /** Сформировать выгрузку немедленно. */
+  runSchedule: (id: number) =>
+    authedReq<{ id: number; fileName: string; mailStatus: string }>(`/export/schedules/${id}/run`, { method: 'POST' }),
+
+  /** Скачать готовый файл регулярной выгрузки. */
+  downloadExportFile: async (id: number, fileName: string): Promise<void> => {
+    const res = await authedFetch(`/export/files/${id}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
+
   users: () => authedReq<{ items: ApiUser[] }>('/users'),
 
   /** Кого можно назначить исполнителем задачи (админ и директор). */
@@ -709,6 +776,24 @@ export const api = {
     form.append('file', file);
     const res = await authedFetch('/uploads', { method: 'POST', body: form });
     return (await res.json()) as UploadedRef;
+  },
+
+  /** Прикрепить загруженный файл к операции журнала. */
+  attachToOperation: (operationId: number, file: UploadedRef & { kind?: string }) =>
+    authedReq<{ id: number; fileName: string }>(`/operations/${operationId}/attachments`, {
+      method: 'POST',
+      body: { key: file.key, fileName: file.fileName, mime: file.mime, size: file.size, kind: file.kind ?? 'doc' },
+    }),
+
+  /** Открепить вложение операции. */
+  removeAttachment: (id: number) =>
+    authedReq<{ id: number; deleted: boolean }>(`/attachments/${id}`, { method: 'DELETE' }),
+
+  /** Содержимое вложения как blob-ссылка — для превью прямо в интерфейсе. */
+  attachmentUrl: async (id: number): Promise<{ url: string; mime: string }> => {
+    const res = await authedFetch(`/attachments/${id}`);
+    const blob = await res.blob();
+    return { url: URL.createObjectURL(blob), mime: blob.type || res.headers.get('Content-Type') || '' };
   },
 
   /** Открыть вложение в новой вкладке (файл отдаётся только с токеном). */

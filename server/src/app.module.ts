@@ -5,6 +5,8 @@ import { AuthService } from './auth/auth.service';
 import { DataController } from './data/data.controller';
 import { DataService } from './data/data.service';
 import { ExportController } from './export/export.controller';
+import { ExportService } from './export/export.service';
+import { ExportScheduleService } from './export/schedule.service';
 import { HealthController } from './health.controller';
 import { PrismaService } from './prisma.service';
 import { RequestsController } from './requests/requests.controller';
@@ -26,6 +28,9 @@ import { UsersController } from './users/users.controller';
     HealthController, AuthController, UsersController, RequestsController,
     DataController, UploadsController, ExportController, Stage2Controller,
   ],
-  providers: [PrismaService, AuthService, RequestsService, DataService, StorageService, Stage2Service],
+  providers: [
+    PrismaService, AuthService, RequestsService, DataService, StorageService, Stage2Service,
+    ExportService, ExportScheduleService,
+  ],
 })
 export class AppModule {}
