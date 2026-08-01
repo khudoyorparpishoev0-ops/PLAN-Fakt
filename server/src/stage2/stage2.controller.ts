@@ -192,4 +192,12 @@ export class Stage2Controller {
   notifications(@Req() req: AuthRequest) {
     return this.s.notifications(req.user!);
   }
+
+  /** Отметить прочитанным. Без keys — всю ленту пользователя. */
+  @Post('notifications/read')
+  @HttpCode(200)
+  @Roles('admin', 'director', 'accountant')
+  markRead(@Req() req: AuthRequest, @Body() body: { keys?: string[] }) {
+    return this.s.markNotificationsRead(req.user!, Array.isArray(body?.keys) ? body.keys : undefined);
+  }
 }

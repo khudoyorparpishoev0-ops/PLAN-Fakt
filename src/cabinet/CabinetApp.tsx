@@ -10,6 +10,7 @@ import {
 import { monthlyStats, toCar, toPay, toTrip } from '../lib/mapping';
 import { Logo } from '../components/ui';
 import NotifyBell from '../components/NotifyBell';
+import NotificationsScreen, { type NotifyTarget } from '../admin/NotificationsScreen';
 import { CB, type ReqKind, type ReqStatus } from '../data/cabinet';
 import { setKmRate, tripAmount } from '../data/settings';
 import PayRequestsScreen from './PayRequestsScreen';
@@ -20,11 +21,11 @@ import CabinetProjectsScreen from './CabinetProjectsScreen';
 import TasksScreen from '../admin/TasksScreen';
 import { TAP, useIsMobile } from '../lib/responsive';
 
-export type CabScreen = 'pay' | 'car' | 'history' | 'projects' | 'tasks';
+export type CabScreen = 'pay' | 'car' | 'history' | 'projects' | 'tasks' | 'notifications';
 
 const TITLES: Record<CabScreen, string> = {
   pay: 'Заявки на оплату', car: 'Заявки на машину', history: 'Список всего / История',
-  projects: 'Проекты', tasks: 'Мои задачи',
+  projects: 'Проекты', tasks: 'Мои задачи', notifications: 'Уведомления',
 };
 
 function NavItem({ label, icon, active, onClick }: { label: string; icon: JSX.Element; active?: boolean; onClick?: () => void }) {
@@ -345,7 +346,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
               </div>
             </>
           )}
-          <NotifyBell refreshTick={notifyTick} />
+          <NotifyBell refreshTick={notifyTick} onOpenAll={() => setScreen('notifications')} />
           {onLogout && (
             <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer', flex: 'none' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
@@ -395,6 +396,16 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
           {screen === 'tasks' && <TasksScreen projects={projects} users={[]} role="accountant" onError={msg => toast(msg)} />}
+          {screen === 'notifications' && (
+            <NotificationsScreen
+              role="accountant"
+              onChanged={() => setNotifyTick(t => t + 1)}
+              onError={msg => { if (msg) toast(msg); }}
+              /* У бухгалтера нет ни склада, ни очереди директора: всё, что
+                 касается заявок, ведёт в его историю, остальное — в задачи. */
+              onOpen={(t: NotifyTarget) => setScreen(t.screen === 'tasks' ? 'tasks' : 'history')}
+            />
+          )}
         </div>
       </div>
       {pwdModal && (

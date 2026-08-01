@@ -703,6 +703,44 @@ export class Stage2Service {
       });
     }
 
-    return { items, count: items.length };
+    // Отметки о прочтении — свои у каждого пользователя. Правило пакета:
+    // директор прочитал, у бухгалтера уведомление осталось непрочитанным.
+    const read = await this.prisma.notificationRead.findMany({
+      where: { userId: user.sub, key: { in: items.map((i) => i.id) } },
+      select: { key: true },
+    });
+    const readKeys = new Set(read.map((r) => r.key));
+    const withRead = items.map((i) => ({ ...i, read: readKeys.has(i.id) }));
+
+    // Непрочитанные сверху, внутри — свежие вперёд: колокольчик должен
+    // показывать то, что человек ещё не разбирал.
+    withRead.sort((a, b) => {
+      if (a.read !== b.read) return a.read ? 1 : -1;
+      return (b.date ?? '').localeCompare(a.date ?? '');
+    });
+
+    return {
+      items: withRead,
+      // Счётчик колокольчика — только непрочитанные
+      count: withRead.filter((i) => !i.read).length,
+      total: withRead.length,
+    };
+  }
+
+  /** Отметить уведомления прочитанными. Без keys — всё, что сейчас в ленте.
+   *  Ключи не проверяем на существование: событие могло исчезнуть, пока
+   *  человек читал (заявку одобрил кто-то другой), и отметка о нём безвредна. */
+  async markNotificationsRead(user: { sub: number; role: string }, keys?: string[]) {
+    let list = keys?.filter((k) => typeof k === 'string' && k.length > 0 && k.length <= 64) ?? [];
+    if (!list.length) {
+      const feed = await this.notifications(user);
+      list = feed.items.filter((i) => !i.read).map((i) => i.id);
+    }
+    if (!list.length) return { read: 0 };
+    await this.prisma.notificationRead.createMany({
+      data: list.map((key) => ({ userId: user.sub, key })),
+      skipDuplicates: true,
+    });
+    return { read: list.length };
   }
 }

@@ -46,13 +46,14 @@ model User {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
 
-  requests       Request[]  @relation("RequestAuthor")
-  decisions      Request[]  @relation("RequestDecider")
-  stornos        Request[]  @relation("RequestStorno")
-  tasksAuthored  Task[]     @relation("TaskAuthor")
-  tasksAssigned  Task[]     @relation("TaskAssignee")
+  requests       Request[]          @relation("RequestAuthor")
+  decisions      Request[]          @relation("RequestDecider")
+  stornos        Request[]          @relation("RequestStorno")
+  tasksAuthored  Task[]             @relation("TaskAuthor")
+  tasksAssigned  Task[]             @relation("TaskAssignee")
   auditLogs      AuditLog[]
-  responsibleFor Project[]  @relation("ProjectResponsible")
+  readNotices    NotificationRead[]
+  responsibleFor Project[]          @relation("ProjectResponsible")
 
   @@map("users")
 }
@@ -613,4 +614,23 @@ model ExportFile {
 
   @@index([createdAt])
   @@map("export_files")
+}
+
+// ── Прочитанные уведомления ─────────────────────────────────────────────────
+// Уведомления не хранятся строками: они считаются из данных (заявки, остатки,
+// задачи, просроченные планы) и опознаются устойчивым ключом «req:12».
+// Хранить нужно только то, чего из данных не вывести, — прочёл ли КОНКРЕТНЫЙ
+// человек конкретное событие. Правило из дизайн-пакета: «прочитано» —
+// состояние пользователя, а не системы: директор прочитал, у бухгалтера
+// уведомление осталось непрочитанным.
+model NotificationRead {
+  id     Int      @id @default(autoincrement())
+  userId Int      @map("user_id")
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key    String // «req:12», «stock:3», «task:7» — ключ события
+  readAt DateTime @default(now()) @map("read_at")
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("notification_reads")
 }

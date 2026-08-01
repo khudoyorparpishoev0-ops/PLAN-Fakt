@@ -564,11 +564,21 @@ export interface ApiPlans {
 }
 
 export interface ApiNotification {
+  /** Устойчивый ключ события: «req:12», «stock:3», «task:7». */
   id: string;
   kind: string;
   title: string;
   note: string;
   date: string | null;
+  /** Прочитал ли ЭТОТ пользователь; у каждого получателя своё. */
+  read: boolean;
+}
+
+export interface ApiNotifications {
+  items: ApiNotification[];
+  /** Непрочитанные — то, что показывает колокольчик. */
+  count: number;
+  total: number;
 }
 
 /** Регулярная выгрузка (ТЗ, п. 11, этап 2). */
@@ -878,7 +888,11 @@ export const api = {
     authedReq<{ id: number }>('/plans', { method: 'POST', body: payload }),
   removePlan: (id: number) => authedReq<{ id: number }>(`/plans/${id}`, { method: 'DELETE' }),
 
-  notifications: () => authedReq<{ items: ApiNotification[]; count: number }>('/notifications'),
+  notifications: () => authedReq<ApiNotifications>('/notifications'),
+
+  /** Отметить прочитанным. Без ключей — всю ленту. */
+  markNotificationsRead: (keys?: string[]) =>
+    authedReq<{ read: number }>('/notifications/read', { method: 'POST', body: keys?.length ? { keys } : {} }),
 
   /** Состав колонок выгрузок — для диалога экспорта. */
   exportColumns: () => authedReq<ApiExportColumns>('/export/columns'),

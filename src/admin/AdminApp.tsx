@@ -28,19 +28,20 @@ import ClientsScreen from './ClientsScreen';
 import MobileView from './MobileView';
 import IncomeDrawer from './IncomeDrawer';
 import ApprovalsScreen from './ApprovalsScreen';
+import NotificationsScreen, { type NotifyTarget } from './NotificationsScreen';
 import ExpenseDrawer from './ExpenseDrawer';
 import ProjectDrawer from './ProjectDrawer';
 
 export type Screen =
   | 'panel' | 'incomes' | 'expenses' | 'report' | 'sprav' | 'settings' | 'projects' | 'deals'
-  | 'tasks' | 'planning' | 'stock' | 'clients' | 'approvals';
+  | 'tasks' | 'planning' | 'stock' | 'clients' | 'approvals' | 'notifications';
 
 const TITLES: Record<Screen, string> = {
   panel: 'Финансовая панель', incomes: 'Операции', expenses: 'Операции · Расходы',
   report: 'Отчёт «План–Факт»', sprav: 'Справочники', settings: 'Настройки',
   projects: 'Проекты', deals: 'Сделки по закупкам',
   tasks: 'Задачи', planning: 'Планирование', stock: 'Склад', clients: 'Клиенты и поставщики',
-  approvals: 'Заявки на утверждение',
+  approvals: 'Заявки на утверждение', notifications: 'Уведомления',
 };
 
 /** Пункт бокового меню. */
@@ -81,6 +82,7 @@ const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) 
 );
 
 const I = {
+  bell: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>,
   approve: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="2" /><path d="M5.5 8.2l1.9 1.9L11 6.4" /></svg>,
   pf: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="9" width="3" height="5" rx="1" /><rect x="6.5" y="5.5" width="3" height="8.5" rx="1" /><rect x="11" y="2.5" width="3" height="11.5" rx="1" /></svg>,
   pok: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 11.5a5.5 5.5 0 1111 0" /><path d="M8 11.5l2.8-2.4" /><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none" /></svg>,
@@ -273,6 +275,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
             </div>
             <SectionLabel pt={16}>ПАНЕЛЬ УПРАВЛЕНИЯ</SectionLabel>
             <NavItem label="Заявки на утверждение" icon={I.approve} badge={pendingReqs.length} active={screen === 'approvals'} onClick={go(() => setScreen('approvals'))} />
+            <NavItem label="Уведомления" icon={I.bell} active={screen === 'notifications'} onClick={go(() => setScreen('notifications'))} />
             <NavItem label="План-Факт" icon={I.pf} active={screen === 'report'} onClick={go(() => setScreen('report'))} />
             <NavItem label="Показатели" icon={I.pok} active={screen === 'panel'} onClick={go(() => setScreen('panel'))} />
             <NavItem label="Операции" icon={I.ops} active={screen === 'incomes' || screen === 'expenses'} onClick={go(() => setScreen('incomes'))} />
@@ -325,7 +328,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
                   </div>
                 </>
               )}
-              <NotifyBell refreshTick={notifyTick} />
+              <NotifyBell refreshTick={notifyTick} onOpenAll={() => setScreen('notifications')} />
               {onLogout && (
                 <div onClick={onLogout} title="Выйти из системы" className="hv-soft" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 9, padding: isMobile ? 0 : '7px 13px', width: isMobile ? TAP : undefined, height: isMobile ? TAP : undefined, fontSize: 12.5, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer', flex: 'none' }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" /><path d="M10.5 11.5L14 8l-3.5-3.5" /><path d="M14 8H6" /></svg>
@@ -334,6 +337,16 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               )}
             </div>
             <div data-app-scroll style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
+              {screen === 'notifications' && (
+                <NotificationsScreen
+                  role={user?.role ?? 'director'}
+                  onChanged={() => setNotifyTick(t => t + 1)}
+                  onError={setLoadError}
+                  onOpen={(t: NotifyTarget) => setScreen(
+                    t.screen === 'history' ? 'approvals' : (t.screen as Screen),
+                  )}
+                />
+              )}
               {screen === 'approvals' && <ApprovalsScreen onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}

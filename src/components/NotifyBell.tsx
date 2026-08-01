@@ -21,11 +21,14 @@ const KIND_ICON: Record<string, string> = {
 export interface NotifyBellProps {
   /** Сигнал перечитать список (после решения по заявке, движения склада и т. п.). */
   refreshTick?: number;
+  /** «Все уведомления» — переход на экран ленты. */
+  onOpenAll?: () => void;
 }
 
 /** Колокольчик в шапке: уведомления по роли (заявки, просрочки, склад, задачи). */
-export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
+export default function NotifyBell({ refreshTick = 0, onOpenAll }: NotifyBellProps) {
   const [items, setItems] = useState<ApiNotification[]>([]);
+  const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -33,7 +36,7 @@ export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
   useEffect(() => {
     let alive = true;
     api.notifications()
-      .then(r => { if (alive) setItems(r.items); })
+      .then(r => { if (alive) { setItems(r.items); setUnread(r.count); } })
       .catch(() => { /* уведомления не критичны — молча пропускаем */ });
     return () => { alive = false; };
   }, [refreshTick]);
@@ -64,8 +67,9 @@ export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
         style={{ position: 'relative', width: size, height: size, borderRadius: 9, border: '1px solid var(--fin-border)', background: open ? 'var(--fin-hover)' : 'var(--fin-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fin-text-2)' }}
       >
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>
-        {items.length > 0 && (
-          <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: 'var(--fin-minus)', color: 'var(--fin-surface)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{items.length}</span>
+        {/* Счётчик — только непрочитанные: разобранное не должно висеть цифрой */}
+        {unread > 0 && (
+          <span data-notify-count style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: 'var(--fin-minus)', color: 'var(--fin-surface)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unread}</span>
         )}
       </div>
 
@@ -73,7 +77,7 @@ export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
         <div data-notify-panel style={{ position: 'absolute', top: size + 8, right: 0, zIndex: 60, width: 340, maxWidth: 'calc(100vw - 24px)', maxHeight: 420, overflowY: 'auto', background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, boxShadow: '0 14px 36px rgba(0,0,0,.16)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--fin-divider)' }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>Уведомления</span>
-            <span style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{items.length ? `${items.length} шт.` : 'нет новых'}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{unread ? `${unread} новых` : 'нет новых'}</span>
           </div>
           {items.length === 0 && (
             <div style={{ padding: '22px 16px', textAlign: 'center', fontSize: 12.5, color: 'var(--fin-text-4)' }}>Всё спокойно — новых событий нет.</div>
@@ -81,16 +85,24 @@ export default function NotifyBell({ refreshTick = 0 }: NotifyBellProps) {
           {items.map(n => {
             const c = KIND_COLOR[n.kind] ?? KIND_COLOR.task;
             return (
-              <div key={n.id} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--fin-hover)' }}>
+              <div key={n.id} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--fin-hover)', background: n.read ? 'transparent' : 'var(--fin-surface-alt)' }}>
                 <span style={{ width: 26, height: 26, borderRadius: 8, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: c.bg, color: c.fg, fontSize: 13, fontWeight: 700 }}>{KIND_ICON[n.kind] ?? '•'}</span>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.35 }}>{n.title}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, lineHeight: 1.35 }}>{n.title}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)', marginTop: 2 }}>{n.note}</div>
                 </div>
                 {n.date && <div style={{ fontSize: 11, color: 'var(--fin-text-5)', fontFamily: PLEX, flex: 'none' }}>{fmtD(n.date)}</div>}
               </div>
             );
           })}
+          {onOpenAll && (
+            <div
+              data-notify-open-all
+              onClick={() => { setOpen(false); onOpenAll(); }}
+              className="hv-soft"
+              style={{ padding: '11px 14px', borderTop: '1px solid var(--fin-divider)', fontSize: 12.5, fontWeight: 600, color: ACC, cursor: 'pointer', textAlign: 'center' }}
+            >Все уведомления →</div>
+          )}
           <div style={{ padding: '10px 14px', fontSize: 11.5, color: 'var(--fin-text-4)' }}>
             Список формируется по вашей роли: <span style={{ color: ACC, fontWeight: 600 }}>заявки, просрочки, склад и задачи</span>.
           </div>
