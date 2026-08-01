@@ -4,8 +4,8 @@ import {
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
 import {
-  ClientDto, CreateDealDto, CreateTaskDto, SavePlanDto, StockMoveDto,
-  UpdateDealDto, UpdateGoodDto, UpdateTaskDto,
+  AddPaymentsDto, ClientDto, CreateDealDto, CreateDeliveryDto, CreateTaskDto, SavePlanDto,
+  StockMoveDto, UpdateDealDto, UpdateGoodDto, UpdateTaskDto,
 } from './stage2.dto';
 import { Stage2Service } from './stage2.service';
 
@@ -76,6 +76,51 @@ export class Stage2Controller {
   @Roles('admin', 'director')
   removeDeal(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
     return this.s.removeDeal(req.user!.sub, id);
+  }
+
+  /* ── Сделка: частичные оплаты ── */
+
+  /** Расходные операции журнала, которые можно прикрепить к сделке. */
+  @Get('deals/:id/payment-candidates')
+  @Roles('admin', 'director')
+  paymentCandidates(@Param('id', ParseIntPipe) id: number, @Query('limit') limit?: string) {
+    return this.s.paymentCandidates(id, int(limit) ?? 50);
+  }
+
+  @Post('deals/:id/payments')
+  @HttpCode(201)
+  @Roles('admin', 'director')
+  addPayments(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: AddPaymentsDto) {
+    return this.s.addPayments(req.user!.sub, id, dto.operationIds);
+  }
+
+  @Delete('deals/:id/payments/:operationId')
+  @Roles('admin', 'director')
+  removePayment(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('operationId', ParseIntPipe) operationId: number,
+  ) {
+    return this.s.removePayment(req.user!.sub, id, operationId);
+  }
+
+  /* ── Сделка: частичные поставки ── */
+
+  @Post('deals/:id/deliveries')
+  @HttpCode(201)
+  @Roles('admin', 'director')
+  createDelivery(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: CreateDeliveryDto) {
+    return this.s.createDelivery(req.user!.sub, id, dto);
+  }
+
+  @Delete('deals/:id/deliveries/:deliveryId')
+  @Roles('admin', 'director')
+  removeDelivery(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('deliveryId', ParseIntPipe) deliveryId: number,
+  ) {
+    return this.s.removeDelivery(req.user!.sub, id, deliveryId);
   }
 
   /* ── Склад ── */

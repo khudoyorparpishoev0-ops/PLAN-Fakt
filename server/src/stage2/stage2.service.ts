@@ -3,7 +3,7 @@ import { Prisma, type DealStatus, type TaskStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
 import type {
-  ClientDto, CreateDealDto, CreateTaskDto, DealPositionDto, SavePlanDto,
+  ClientDto, CreateDealDto, CreateDeliveryDto, CreateTaskDto, DealPositionDto, SavePlanDto,
   StockMoveDto, UpdateDealDto, UpdateGoodDto, UpdateTaskDto,
 } from './stage2.dto';
 
@@ -116,7 +116,25 @@ export class Stage2Service {
   async deals(status?: string) {
     const rows = await this.prisma.deal.findMany({
       where: { deletedAt: null, ...(status ? { status: status as DealStatus } : {}) },
-      include: { counterparty: true, project: true, positions: { where: { deletedAt: null } } },
+      include: {
+        counterparty: true,
+        project: true,
+        positions: { where: { deletedAt: null } },
+        payments: {
+          where: { deletedAt: null },
+          include: { account: true, counterparty: true, article: true },
+          orderBy: { date: 'asc' },
+        },
+        deliveries: {
+          where: { deletedAt: null },
+          include: {
+            counterparty: true,
+            project: true,
+            positions: { where: { deletedAt: null } },
+          },
+          orderBy: { date: 'asc' },
+        },
+      },
       orderBy: { id: 'desc' },
     });
     return rows.map((d) => ({
@@ -136,7 +154,42 @@ export class Stage2Service {
         total: somoni(BigInt(this.positionTotal(p)))!,
       })),
       total: somoni(BigInt(d.positions.reduce((s, p) => s + this.positionTotal(p), 0)))!,
+      // Частичные оплаты: привязанные к сделке выплаты из журнала
+      payments: d.payments.map((o) => ({
+        id: o.id,
+        date: dateStr(o.date)!,
+        account: o.account?.name ?? null,
+        party: o.counterparty?.name ?? null,
+        article: o.article?.name ?? null,
+        amount: somoni(o.amountTjsDirams)!,
+        confirmed: o.status === 'confirmed',
+      })),
+      paid: somoni(d.payments.reduce((s, o) => s + o.amountTjsDirams, 0n))!,
+      // Частичные поставки: полученные от поставщика товары и услуги
+      deliveries: d.deliveries.map((v) => ({
+        id: v.id,
+        date: dateStr(v.date)!,
+        isPlan: v.isPlan,
+        entity: v.entityName,
+        party: v.counterparty?.name ?? null,
+        project: v.project?.name ?? null,
+        comment: v.comment,
+        positions: v.positions.map((p) => ({
+          id: p.id, name: p.name, goodId: p.goodId, qty: dec(p.qty), unit: p.unit,
+          price: somoni(p.priceDirams)!,
+          total: somoni(BigInt(this.deliveryPositionTotal(p)))!,
+        })),
+        total: somoni(BigInt(v.positions.reduce((s, p) => s + this.deliveryPositionTotal(p), 0)))!,
+      })),
+      delivered: somoni(
+        BigInt(d.deliveries.reduce((s, v) => s + v.positions.reduce((x, p) => x + this.deliveryPositionTotal(p), 0), 0)),
+      )!,
     }));
+  }
+
+  /** Сумма позиции поставки: количество × цена (скидка учтена в сделке). */
+  private deliveryPositionTotal(p: { qty: Prisma.Decimal | number; priceDirams: bigint }): number {
+    return Math.round(dec(p.qty) * Number(p.priceDirams));
   }
 
   private positionData(p: DealPositionDto) {
@@ -202,18 +255,22 @@ export class Stage2Service {
         },
       });
       if (closing) {
-        // Позиции с привязкой к товару приходуются на склад (ТЗ, этап 2)
-        const positions = dto.positions
-          ? await tx.dealPosition.findMany({ where: { dealId: id, deletedAt: null } })
-          : deal.positions;
-        for (const p of positions.filter((x) => x.goodId != null)) {
-          await tx.stockMove.create({
-            data: {
-              goodId: p.goodId!, type: 'in', qty: p.qty, date: todayUtc(),
-              comment: `Приход по сделке ${deal.number}`,
-              projectId: dto.projectId ?? deal.projectId, dealId: id, userId,
-            },
-          });
+        // Если по сделке оформлялись поставки, товар уже пришёл на склад по ним —
+        // иначе (закупка без поставок) приходуем позиции при закрытии сделки.
+        const deliveries = await tx.delivery.count({ where: { dealId: id, deletedAt: null, isPlan: false } });
+        if (deliveries === 0) {
+          const positions = dto.positions
+            ? await tx.dealPosition.findMany({ where: { dealId: id, deletedAt: null } })
+            : deal.positions;
+          for (const p of positions.filter((x) => x.goodId != null)) {
+            await tx.stockMove.create({
+              data: {
+                goodId: p.goodId!, type: 'in', qty: p.qty, date: todayUtc(),
+                comment: `Приход по сделке ${deal.number}`,
+                projectId: dto.projectId ?? deal.projectId, dealId: id, userId,
+              },
+            });
+          }
         }
       }
     });
@@ -229,6 +286,136 @@ export class Stage2Service {
     await this.prisma.deal.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit(userId, 'deal', id, 'delete', { number: deal.number });
     return { id, deleted: true };
+  }
+
+  /* ── Сделка: частичные оплаты ─────────────────────────────────────────── */
+
+  private async dealOr404(id: number) {
+    const deal = await this.prisma.deal.findFirst({ where: { id, deletedAt: null } });
+    if (!deal) err(HttpStatus.NOT_FOUND, 'not_found', 'Сделка не найдена');
+    return deal;
+  }
+
+  /** Выплаты, которые можно прикрепить к сделке: расходные операции,
+   *  ещё не привязанные ни к одной сделке. */
+  async paymentCandidates(dealId: number, limit = 50) {
+    const deal = await this.dealOr404(dealId);
+    const rows = await this.prisma.operation.findMany({
+      where: {
+        deletedAt: null,
+        type: 'out',
+        dealId: null,
+        ...(deal.counterpartyId ? { counterpartyId: deal.counterpartyId } : {}),
+      },
+      include: { account: true, counterparty: true, article: true },
+      orderBy: [{ date: 'desc' }, { id: 'desc' }],
+      take: Math.min(Math.max(limit, 1), 200),
+    });
+    return rows.map((o) => ({
+      id: o.id,
+      date: dateStr(o.date)!,
+      account: o.account?.name ?? null,
+      party: o.counterparty?.name ?? null,
+      article: o.article?.name ?? null,
+      amount: somoni(o.amountTjsDirams)!,
+      confirmed: o.status === 'confirmed',
+    }));
+  }
+
+  /** Прикрепить выплаты к сделке. */
+  async addPayments(userId: number, dealId: number, operationIds: number[]) {
+    await this.dealOr404(dealId);
+    const rows = await this.prisma.operation.findMany({
+      where: { id: { in: operationIds }, deletedAt: null },
+      select: { id: true, type: true, dealId: true },
+    });
+    const wrongType = rows.filter((o) => o.type !== 'out');
+    if (wrongType.length)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'not_expense', 'К сделке закупки прикрепляются только выплаты', 'ids');
+    const busy = rows.filter((o) => o.dealId != null && o.dealId !== dealId);
+    if (busy.length)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'already_linked', 'Часть операций уже привязана к другой сделке', 'ids');
+    const ids = rows.map((o) => o.id);
+    if (!ids.length) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Не выбрано ни одной операции', 'ids');
+    await this.prisma.operation.updateMany({ where: { id: { in: ids } }, data: { dealId } });
+    await this.audit(userId, 'deal', dealId, 'add_payments', { ids });
+    return { added: ids.length };
+  }
+
+  /** Открепить выплату от сделки (сама операция остаётся в журнале). */
+  async removePayment(userId: number, dealId: number, operationId: number) {
+    const op = await this.prisma.operation.findFirst({ where: { id: operationId, dealId, deletedAt: null } });
+    if (!op) err(HttpStatus.NOT_FOUND, 'not_found', 'Выплата не найдена в этой сделке');
+    await this.prisma.operation.update({ where: { id: operationId }, data: { dealId: null } });
+    await this.audit(userId, 'deal', dealId, 'remove_payment', { operationId });
+    return { id: operationId, detached: true };
+  }
+
+  /* ── Сделка: частичные поставки ───────────────────────────────────────── */
+
+  /** Создать поставку. Позиции с товаром из справочника приходуются на склад
+   *  (плановая поставка — только документ, склад не трогает). */
+  async createDelivery(userId: number, dealId: number, dto: CreateDeliveryDto) {
+    const deal = await this.dealOr404(dealId);
+    if (!dto.positions?.length)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Добавьте хотя бы одну позицию поставки', 'positions');
+    const date = dateOf(dto.date);
+    const delivery = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.delivery.create({
+        data: {
+          dealId,
+          date,
+          isPlan: !!dto.isPlan,
+          entityName: dto.entityName?.trim() || null,
+          counterpartyId: dto.counterpartyId ?? deal.counterpartyId,
+          projectId: dto.projectId ?? deal.projectId,
+          comment: dto.comment?.trim() || null,
+          authorId: userId,
+          positions: {
+            create: dto.positions.map((p) => ({
+              name: p.name.trim(),
+              goodId: p.goodId ?? null,
+              qty: new Prisma.Decimal(String(p.qty)),
+              unit: p.unit ?? 'шт',
+              priceDirams: BigInt(Math.round(p.price * 100)),
+            })),
+          },
+        },
+        include: { positions: true },
+      });
+      if (!row.isPlan) {
+        for (const p of row.positions.filter((x) => x.goodId != null)) {
+          await tx.stockMove.create({
+            data: {
+              goodId: p.goodId!, type: 'in', qty: p.qty, date,
+              comment: `Поставка по сделке ${deal.number}`,
+              projectId: row.projectId, dealId, deliveryId: row.id, userId,
+            },
+          });
+        }
+      }
+      return row;
+    });
+    await this.audit(userId, 'delivery', delivery.id, 'create', { dealId, positions: delivery.positions.length });
+    return { id: delivery.id, dealId, positions: delivery.positions.length };
+  }
+
+  /** Удалить поставку вместе с её приходами на склад. */
+  async removeDelivery(userId: number, dealId: number, deliveryId: number) {
+    const row = await this.prisma.delivery.findFirst({ where: { id: deliveryId, dealId, deletedAt: null } });
+    if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Поставка не найдена');
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.update({ where: { id: deliveryId }, data: { deletedAt: now } });
+      await tx.deliveryPosition.updateMany({ where: { deliveryId }, data: { deletedAt: now } });
+      // Приходы именно этой поставки снимаем со склада, чтобы остаток остался верным
+      await tx.stockMove.updateMany({
+        where: { deliveryId, deletedAt: null },
+        data: { deletedAt: now },
+      });
+    });
+    await this.audit(userId, 'delivery', deliveryId, 'delete', { dealId });
+    return { id: deliveryId, deleted: true };
   }
 
   /* ── Склад ────────────────────────────────────────────────────────────── */

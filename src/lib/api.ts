@@ -427,6 +427,40 @@ export interface ApiDealPosition {
   total?: number;
 }
 
+/** Выплата поставщику, привязанная к сделке. */
+export interface ApiDealPayment {
+  id: number;
+  date: string;
+  account: string | null;
+  party: string | null;
+  article: string | null;
+  amount: number;
+  confirmed: boolean;
+}
+
+export interface ApiDeliveryPosition {
+  id?: number;
+  name: string;
+  goodId?: number | null;
+  qty: number;
+  unit: string;
+  price: number;
+  total?: number;
+}
+
+/** Поставка в рамках сделки: полученные товары и услуги. */
+export interface ApiDelivery {
+  id: number;
+  date: string;
+  isPlan: boolean;
+  entity: string | null;
+  party: string | null;
+  project: string | null;
+  comment: string | null;
+  positions: ApiDeliveryPosition[];
+  total: number;
+}
+
 export interface ApiDeal {
   id: number;
   number: string;
@@ -440,6 +474,12 @@ export interface ApiDeal {
   comment: string | null;
   positions: ApiDealPosition[];
   total: number;
+  /** Частичные оплаты: сколько мы уже заплатили поставщику. */
+  payments: ApiDealPayment[];
+  paid: number;
+  /** Частичные поставки: сколько поставщик уже отгрузил. */
+  deliveries: ApiDelivery[];
+  delivered: number;
 }
 
 export interface DealPayload {
@@ -700,6 +740,24 @@ export const api = {
   updateDeal: (id: number, payload: DealPayload) =>
     authedReq<{ id: number; closed: boolean }>(`/deals/${id}`, { method: 'PATCH', body: payload }),
   removeDeal: (id: number) => authedReq<{ id: number }>(`/deals/${id}`, { method: 'DELETE' }),
+
+  /** Выплаты журнала, которые можно прикрепить к сделке. */
+  paymentCandidates: (dealId: number, limit = 50) =>
+    authedReq<ApiDealPayment[]>(`/deals/${dealId}/payment-candidates?limit=${limit}`),
+
+  addPayments: (dealId: number, operationIds: number[]) =>
+    authedReq<{ added: number }>(`/deals/${dealId}/payments`, { method: 'POST', body: { operationIds } }),
+
+  removePayment: (dealId: number, operationId: number) =>
+    authedReq<{ id: number; detached: boolean }>(`/deals/${dealId}/payments/${operationId}`, { method: 'DELETE' }),
+
+  createDelivery: (dealId: number, payload: {
+    date?: string; isPlan?: boolean; entityName?: string; counterpartyId?: number; projectId?: number;
+    comment?: string; positions: ApiDeliveryPosition[];
+  }) => authedReq<{ id: number; dealId: number; positions: number }>(`/deals/${dealId}/deliveries`, { method: 'POST', body: payload }),
+
+  removeDelivery: (dealId: number, deliveryId: number) =>
+    authedReq<{ id: number; deleted: boolean }>(`/deals/${dealId}/deliveries/${deliveryId}`, { method: 'DELETE' }),
 
   stock: () => authedReq<ApiStockItem[]>('/stock'),
   stockMoves: (goodId?: number) => authedReq<ApiStockMove[]>(`/stock/moves${goodId ? `?good=${goodId}` : ''}`),

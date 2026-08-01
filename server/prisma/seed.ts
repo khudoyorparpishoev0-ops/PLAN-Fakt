@@ -554,6 +554,72 @@ async function seedStage2() {
     });
   }
 
+  // Частичная оплата и поставка по демо-сделке: карточка сразу показывает
+  // «мы должны» и «поставщик должен», как в прототипе
+  const deal = await prisma.deal.findUnique({ where: { number: 'СД-001' }, include: { positions: true } });
+  if (deal) {
+    // Частичная оплата: отдельная демо-операция, чтобы было видно остаток долга
+    const payArticle = await prisma.article.findFirst({ where: { name: 'Закупка материалов' } });
+    const payAccount = await prisma.account.findFirst({ where: { deletedAt: null } });
+    await prisma.operation.upsert({
+      where: { externalRef: 'deal:СД-001:pay1' },
+      update: { dealId: deal.id, deletedAt: null },
+      create: {
+        externalRef: 'deal:СД-001:pay1',
+        date: utcDate(2026, 10, 12),
+        type: 'out',
+        amountDirams: dirams(12000),
+        amountTjsDirams: dirams(12000),
+        currencyCode: 'TJS',
+        status: 'confirmed',
+        comment: 'Аванс по сделке СД-001',
+        accountId: payAccount?.id ?? null,
+        counterpartyId: supplier?.id ?? null,
+        articleId: payArticle?.id ?? null,
+        projectId: vahdat,
+        dealId: deal.id,
+      },
+    });
+    const hasDelivery = await prisma.delivery.count({ where: { dealId: deal.id, deletedAt: null } });
+    if (!hasDelivery) {
+      const part = deal.positions.filter((p) => p.goodId != null);
+      if (part.length) {
+        const date = utcDate(2026, 10, 14);
+        const delivery = await prisma.delivery.create({
+          data: {
+            dealId: deal.id,
+            date,
+            entityName: 'ООО «Насб Пайванд»',
+            counterpartyId: supplier?.id ?? null,
+            projectId: vahdat,
+            comment: 'Первая партия по сделке',
+            authorId: admin.id,
+            positions: {
+              // Приходит половина заказанного — сделка остаётся частично поставленной
+              create: part.map((p) => ({
+                name: p.name,
+                goodId: p.goodId,
+                qty: new Prisma.Decimal(Number(p.qty) / 2),
+                unit: p.unit,
+                priceDirams: p.priceDirams,
+              })),
+            },
+          },
+          include: { positions: true },
+        });
+        for (const p of delivery.positions) {
+          await prisma.stockMove.create({
+            data: {
+              goodId: p.goodId!, type: 'in', qty: p.qty, date,
+              comment: `Поставка по сделке ${deal.number}`,
+              projectId: vahdat, dealId: deal.id, deliveryId: delivery.id, userId: admin.id,
+            },
+          });
+        }
+      }
+    }
+  }
+
   // Задачи: по одной на роль, чтобы экран не был пустым
   const tasks: Array<{ title: string; assignee: number; due: Date; priority: string; project: number | null; status?: 'open' | 'in_progress' }> = [
     { title: 'Собрать закрывающие документы по сделке СД-001', assignee: accountant.id, due: utcDate(2026, 10, 20), priority: 'high', project: vahdat, status: 'in_progress' },

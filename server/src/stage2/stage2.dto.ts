@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
-  IsArray, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString, Length, Matches, Min, ValidateNested,
+  ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString,
+  Length, Matches, Min, ValidateNested,
 } from 'class-validator';
 
 /* ── Задачи ─────────────────────────────────────────────────────────────── */
@@ -99,4 +100,38 @@ export class SavePlanDto {
   @IsInt() articleId!: number;
   @IsOptional() @IsInt() projectId?: number;
   @IsNumber({}, { message: 'Сумма — число' }) @Min(0) amount!: number;
+}
+
+/* ── Поставки в рамках сделки ───────────────────────────────────────────── */
+
+export class DeliveryPositionDto {
+  @IsString() @Length(2, 200) name!: string;
+  @IsOptional() @IsInt() goodId?: number;
+  @IsPositive({ message: 'Количество должно быть больше нуля' }) qty!: number;
+  @IsOptional() @IsString() @Length(1, 20) unit?: string;
+  @IsNumber({}, { message: 'Цена — число' }) @Min(0) price!: number;
+}
+
+export class CreateDeliveryDto {
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date: YYYY-MM-DD' }) date?: string;
+  /** Плановая поставка — документ без прихода на склад. */
+  @IsOptional() @IsBoolean() isPlan?: boolean;
+  @IsOptional() @IsString() @Length(0, 200) entityName?: string;
+  @IsOptional() @IsInt() counterpartyId?: number;
+  @IsOptional() @IsInt() projectId?: number;
+  @IsOptional() @IsString() @Length(0, 500) comment?: string;
+
+  @IsArray()
+  @ArrayNotEmpty({ message: 'Добавьте хотя бы одну позицию поставки' })
+  @ValidateNested({ each: true })
+  @Type(() => DeliveryPositionDto)
+  positions!: DeliveryPositionDto[];
+}
+
+/** Прикрепление выплат журнала к сделке. */
+export class AddPaymentsDto {
+  @IsArray()
+  @ArrayNotEmpty({ message: 'Не выбрано ни одной операции' })
+  @IsInt({ each: true })
+  operationIds!: number[];
 }

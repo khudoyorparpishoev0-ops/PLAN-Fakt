@@ -4,7 +4,7 @@
 // Мягкое удаление: deleted_at везде; записи не удаляются физически.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // native — для локальной разработки; debian-openssl-3.0.x — рантайм
   // контейнера (node:20-slim, Debian bookworm, OpenSSL 3).
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -30,29 +30,29 @@ model Role {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  name         String
-  email        String    @unique
-  phone        String?
-  passwordHash String?   @map("password_hash")
+  id                 Int       @id @default(autoincrement())
+  name               String
+  email              String    @unique
+  phone              String?
+  passwordHash       String?   @map("password_hash")
   // Пароли из seed — временные: при первом входе интерфейс потребует смену
   // (форсирование — на шаге 2 вместе с авторизацией).
   mustChangePassword Boolean   @default(true) @map("must_change_password")
   passwordChangedAt  DateTime? @map("password_changed_at") // когда пользователь сменил пароль сам
-  roleId       Int       @map("role_id")
-  role         Role      @relation(fields: [roleId], references: [id])
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+  roleId             Int       @map("role_id")
+  role               Role      @relation(fields: [roleId], references: [id])
+  active             Boolean   @default(true)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
 
-  requests         Request[]  @relation("RequestAuthor")
-  decisions        Request[]  @relation("RequestDecider")
-  stornos          Request[]  @relation("RequestStorno")
-  tasksAuthored    Task[]     @relation("TaskAuthor")
-  tasksAssigned    Task[]     @relation("TaskAssignee")
-  auditLogs        AuditLog[]
-  responsibleFor   Project[]  @relation("ProjectResponsible")
+  requests       Request[]  @relation("RequestAuthor")
+  decisions      Request[]  @relation("RequestDecider")
+  stornos        Request[]  @relation("RequestStorno")
+  tasksAuthored  Task[]     @relation("TaskAuthor")
+  tasksAssigned  Task[]     @relation("TaskAssignee")
+  auditLogs      AuditLog[]
+  responsibleFor Project[]  @relation("ProjectResponsible")
 
   @@map("users")
 }
@@ -86,6 +86,7 @@ model Project {
   tasks      Task[]
   deals      Deal[]
   stockMoves StockMove[]
+  Delivery   Delivery[]
 
   @@map("projects")
 }
@@ -138,23 +139,24 @@ model Counterparty {
 
   operations Operation[]
   deals      Deal[]
+  Delivery   Delivery[]
 
   @@map("counterparties")
 }
 
 model Account {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  note      String? // «Расчётный счёт · остаток …» и т.п.
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  note          String? // «Расчётный счёт · остаток …» и т.п.
   // Вид счёта: cash — касса (наличные), bank — расчётный счёт, other.
   // Нужен для карточки «Деньги» (касса и банковские счета показываются раздельно).
-  kind      String    @default("other")
+  kind          String    @default("other")
   // Входящий остаток на начало учёта, в дирамах: баланс счёта =
   // opening + подтверждённые поступления − подтверждённые выплаты.
-  openingDirams BigInt @default(0) @map("opening_dirams")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  openingDirams BigInt    @default(0) @map("opening_dirams")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   operations Operation[]
 
@@ -179,13 +181,14 @@ model Good {
   // Складской учёт (модуль «Склад», этап 2)
   sku       String? // артикул
   unit      String    @default("шт") // единица измерения
-  minQty    Decimal   @default(0) @db.Decimal(18, 3) @map("min_qty") // неснижаемый остаток
+  minQty    Decimal   @default(0) @map("min_qty") @db.Decimal(18, 3) // неснижаемый остаток
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  moves     StockMove[]
-  positions DealPosition[]
+  moves          StockMove[]
+  positions      DealPosition[]
+  delivPositions DeliveryPosition[]
 
   @@map("goods")
 }
@@ -193,21 +196,23 @@ model Good {
 // ── Склад: движения товаров (остаток = сумма приходов − расходов) ───────────
 
 model StockMove {
-  id        Int       @id @default(autoincrement())
-  goodId    Int       @map("good_id")
-  good      Good      @relation(fields: [goodId], references: [id])
-  type      String // in — приход, out — расход (списание/отгрузка)
-  qty       Decimal   @db.Decimal(18, 3)
-  date      DateTime  @db.Date
-  comment   String?
-  projectId Int?      @map("project_id")
-  project   Project?  @relation(fields: [projectId], references: [id])
-  dealId    Int?      @map("deal_id") // приход по закупке
-  deal      Deal?     @relation(fields: [dealId], references: [id])
-  userId    Int?      @map("user_id")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  id         Int       @id @default(autoincrement())
+  goodId     Int       @map("good_id")
+  good       Good      @relation(fields: [goodId], references: [id])
+  type       String // in — приход, out — расход (списание/отгрузка)
+  qty        Decimal   @db.Decimal(18, 3)
+  date       DateTime  @db.Date
+  comment    String?
+  projectId  Int?      @map("project_id")
+  project    Project?  @relation(fields: [projectId], references: [id])
+  dealId     Int?      @map("deal_id") // приход по закупке
+  deal       Deal?     @relation(fields: [dealId], references: [id])
+  deliveryId Int?      @map("delivery_id") // приход по конкретной поставке
+  delivery   Delivery? @relation(fields: [deliveryId], references: [id])
+  userId     Int?      @map("user_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
 
   @@index([goodId, date])
   @@map("stock_moves")
@@ -223,26 +228,73 @@ enum DealStatus {
 }
 
 model Deal {
-  id             Int          @id @default(autoincrement())
-  number         String       @unique // «СД-001»
+  id             Int           @id @default(autoincrement())
+  number         String        @unique // «СД-001»
   title          String
-  status         DealStatus   @default(draft)
-  date           DateTime     @db.Date
-  counterpartyId Int?         @map("counterparty_id")
+  status         DealStatus    @default(draft)
+  date           DateTime      @db.Date
+  counterpartyId Int?          @map("counterparty_id")
   counterparty   Counterparty? @relation(fields: [counterpartyId], references: [id])
-  projectId      Int?         @map("project_id")
-  project        Project?     @relation(fields: [projectId], references: [id])
+  projectId      Int?          @map("project_id")
+  project        Project?      @relation(fields: [projectId], references: [id])
   comment        String?
-  authorId       Int?         @map("author_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
+  authorId       Int?          @map("author_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
 
-  positions DealPosition[]
-  moves     StockMove[]
+  positions  DealPosition[]
+  moves      StockMove[]
+  payments   Operation[]
+  deliveries Delivery[]
 
   @@index([status])
   @@map("deals")
+}
+
+// ── Поставки в рамках сделки закупки ────────────────────────────────────────
+// Документ получения товаров и услуг от поставщика. Позиции с товаром из
+// справочника приходуются на склад в момент поставки.
+model Delivery {
+  id             Int           @id @default(autoincrement())
+  dealId         Int           @map("deal_id")
+  deal           Deal          @relation(fields: [dealId], references: [id])
+  date           DateTime      @db.Date
+  isPlan         Boolean       @default(false) @map("is_plan") // плановая поставка
+  entityName     String?       @map("entity_name") // юрлицо-получатель
+  counterpartyId Int?          @map("counterparty_id")
+  counterparty   Counterparty? @relation(fields: [counterpartyId], references: [id])
+  projectId      Int?          @map("project_id")
+  project        Project?      @relation(fields: [projectId], references: [id])
+  comment        String?
+  authorId       Int?          @map("author_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+
+  positions DeliveryPosition[]
+  moves     StockMove[]
+
+  @@index([dealId])
+  @@map("deliveries")
+}
+
+model DeliveryPosition {
+  id          Int       @id @default(autoincrement())
+  deliveryId  Int       @map("delivery_id")
+  delivery    Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  name        String
+  goodId      Int?      @map("good_id")
+  good        Good?     @relation(fields: [goodId], references: [id])
+  qty         Decimal   @db.Decimal(18, 3)
+  unit        String    @default("шт")
+  priceDirams BigInt    @map("price_dirams")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([deliveryId])
+  @@map("delivery_positions")
 }
 
 model DealPosition {
@@ -255,7 +307,7 @@ model DealPosition {
   qty         Decimal   @db.Decimal(18, 3)
   unit        String    @default("шт")
   priceDirams BigInt    @map("price_dirams") // цена за единицу, в дирамах
-  discountPct Decimal   @default(0) @db.Decimal(5, 2) @map("discount_pct")
+  discountPct Decimal   @default(0) @map("discount_pct") @db.Decimal(5, 2)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
@@ -310,10 +362,10 @@ model Service {
 // дирам за км (решение заказчика 30.07.2026: по умолчанию 0 = не задана,
 // пока не задана — поездки показываются в километрах, а не в деньгах).
 model Setting {
-  key       String    @id
+  key       String   @id
   value     String
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
 }
@@ -363,48 +415,51 @@ enum OperationStatus {
 }
 
 model Operation {
-  id             Int             @id @default(autoincrement())
-  externalRef    String?         @unique @map("external_ref") // ключ идемпотентности seed («Д-1041», «ops:3»)
-  date           DateTime        @db.Date // дата операции
-  type           OperationType
-  isPlan         Boolean         @default(false) @map("is_plan") // план/факт
-  amountDirams   BigInt          @map("amount_dirams") // сумма в валюте операции, в дирамах
-  currencyCode   String          @default("TJS") @map("currency_code")
-  currency       Currency        @relation(fields: [currencyCode], references: [code])
-  rate           Decimal         @default(1) @db.Decimal(18, 6) // курс к TJS на дату курса
-  rateDate       DateTime?       @map("rate_date") @db.Date
-  amountTjsDirams BigInt         @map("amount_tjs_dirams") // сумма в TJS, в дирамах
-  status         OperationStatus @default(confirmed)
-  comment        String?
-  accountId      Int?            @map("account_id")
-  account        Account?        @relation(fields: [accountId], references: [id])
-  counterpartyId Int?            @map("counterparty_id")
-  counterparty   Counterparty?   @relation(fields: [counterpartyId], references: [id])
-  articleId      Int?            @map("article_id")
-  article        Article?        @relation(fields: [articleId], references: [id])
-  projectId      Int?            @map("project_id")
-  project        Project?        @relation(fields: [projectId], references: [id])
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-  deletedAt      DateTime?       @map("deleted_at")
+  id              Int             @id @default(autoincrement())
+  externalRef     String?         @unique @map("external_ref") // ключ идемпотентности seed («Д-1041», «ops:3»)
+  date            DateTime        @db.Date // дата операции
+  type            OperationType
+  isPlan          Boolean         @default(false) @map("is_plan") // план/факт
+  amountDirams    BigInt          @map("amount_dirams") // сумма в валюте операции, в дирамах
+  currencyCode    String          @default("TJS") @map("currency_code")
+  currency        Currency        @relation(fields: [currencyCode], references: [code])
+  rate            Decimal         @default(1) @db.Decimal(18, 6) // курс к TJS на дату курса
+  rateDate        DateTime?       @map("rate_date") @db.Date
+  amountTjsDirams BigInt          @map("amount_tjs_dirams") // сумма в TJS, в дирамах
+  status          OperationStatus @default(confirmed)
+  comment         String?
+  accountId       Int?            @map("account_id")
+  account         Account?        @relation(fields: [accountId], references: [id])
+  counterpartyId  Int?            @map("counterparty_id")
+  counterparty    Counterparty?   @relation(fields: [counterpartyId], references: [id])
+  articleId       Int?            @map("article_id")
+  article         Article?        @relation(fields: [articleId], references: [id])
+  projectId       Int?            @map("project_id")
+  project         Project?        @relation(fields: [projectId], references: [id])
+  dealId          Int?            @map("deal_id") // выплата по сделке закупки
+  deal            Deal?           @relation(fields: [dealId], references: [id])
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at")
 
   @@index([date])
   @@index([projectId])
   @@index([articleId])
+  @@index([dealId])
   @@map("operations")
 }
 
 // ── Планы (база сравнения «план–факт») ──────────────────────────────────────
 
 model Plan {
-  id           Int       @id @default(autoincrement())
-  externalRef  String?   @unique @map("external_ref") // ключ идемпотентности seed
-  articleId    Int       @map("article_id")
-  article      Article   @relation(fields: [articleId], references: [id])
-  projectId    Int?      @map("project_id")
-  project      Project?  @relation(fields: [projectId], references: [id])
-  period       DateTime  @db.Date // первый день месяца
-  amountDirams BigInt    @map("amount_dirams")
+  id              Int       @id @default(autoincrement())
+  externalRef     String?   @unique @map("external_ref") // ключ идемпотентности seed
+  articleId       Int       @map("article_id")
+  article         Article   @relation(fields: [articleId], references: [id])
+  projectId       Int?      @map("project_id")
+  project         Project?  @relation(fields: [projectId], references: [id])
+  period          DateTime  @db.Date // первый день месяца
+  amountDirams    BigInt    @map("amount_dirams")
   // Отображаемые атрибуты строки отчёта «План-Факт» (экраны «Показатели»/«Расходы»):
   // плановая/фактическая даты, статус («Получен», «Частично оплачено»…),
   // ответственный и причина отклонения — как в колонках прототипа.
@@ -413,9 +468,9 @@ model Plan {
   statusLabel     String?   @map("status_label")
   responsibleName String?   @map("responsible_name")
   reason          String?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
 
   @@index([articleId, period])
   @@map("plans")
