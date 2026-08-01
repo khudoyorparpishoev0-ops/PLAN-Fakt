@@ -49,8 +49,6 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
   const [descr, setDescr] = useState('');
   const [planStr, setPlanStr] = useState('');
   const [factStr, setFactStr] = useState('');
-  const [currency, setCurrency] = useState('TJS');
-  const [rateStr, setRateStr] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [account, setAccount] = useState('');
   const [comment, setComment] = useState('');
@@ -61,8 +59,6 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
   const factOk = factStr.trim() === '' || parseAmount(factStr) > 0;
   const amount = factStr.trim() !== '' ? parseAmount(factStr) : planStr.trim() !== '' ? parseAmount(planStr) : NaN;
   const isPlan = factStr.trim() === '';
-  const rate = rateStr.trim() !== '' ? parseAmount(rateStr) : undefined;
-  const tjsPreview = Number.isFinite(amount) ? (currency === 'TJS' ? amount : rate ? amount * rate : null) : null;
   const valid = article !== '' && Number.isFinite(amount) && amount > 0 && planOk && factOk && !!date && !busy;
 
   const submit = async () => {
@@ -74,8 +70,6 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
       type: kind,
       isPlan,
       amount,
-      currency,
-      ...(rate ? { rate } : {}),
       articleName: article,
       projectId: project ? Number(project) : undefined,
       accountId: account ? Number(account) : undefined,
@@ -131,20 +125,13 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
           </div>
           <div style={{ marginBottom: 14 }}><div style={lbl}>Описание</div><input value={descr} onChange={e => setDescr(e.target.value)} placeholder={income ? 'За что поступают деньги' : 'За что платим'} style={inp} /></div>
           <div style={sec}>СУММЫ</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr 1fr', gap: 10, marginBottom: 10 }}>
+          {/* Учёт ведётся в одной валюте, поэтому ни выбора валюты, ни курса,
+              ни пересчёта в сомони в форме нет — введённая сумма и есть итог. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
             <div><div style={lbl}>Плановая сумма</div><input value={planStr} onChange={e => setPlanStr(e.target.value)} placeholder="0" style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} /></div>
-            <div>
-              <div style={lbl}>Валюта</div>
-              <select value={currency} onChange={e => setCurrency(e.target.value)} style={sel}>
-                <option value="TJS">TJS — сомони</option><option>USD</option><option>EUR</option><option>RUB</option><option>CNY</option>
-              </select>
-            </div>
-            <div><div style={lbl}>Курс к сомони</div><input value={rateStr} onChange={e => setRateStr(e.target.value)} placeholder={currency === 'TJS' ? '1,00' : 'из курсов БД'} disabled={currency === 'TJS'} style={{ ...inp, textAlign: 'right', fontFamily: PLEX, ...(currency === 'TJS' ? { background: '#FAF9F6', color: '#8A918D' } : {}) }} /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <div><div style={lbl}>Фактическая сумма</div><input value={factStr} onChange={e => setFactStr(e.target.value)} placeholder="Заполняется при оплате" style={{ ...inp, background: '#FAF9F6', textAlign: 'right', fontFamily: PLEX }} /></div>
-            <div><div style={lbl}>Сумма в сомони</div><input value={tjsPreview != null ? fmt(Math.round(tjsPreview * 100) / 100) : ''} placeholder="считается автоматически" disabled style={{ ...inp, border: '1px solid #EFEDE8', background: '#FAF9F6', textAlign: 'right', color: '#8A918D', fontFamily: PLEX }} /></div>
           </div>
+          <div style={{ fontSize: 12, color: '#8A918D', marginBottom: 14 }}>Суммы в сомони (TJS)</div>
           <div style={sec}>ОПЛАТА</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <div><div style={lbl}>Дата операции</div><input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, fontFamily: PLEX }} /></div>

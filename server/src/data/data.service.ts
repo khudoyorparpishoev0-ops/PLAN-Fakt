@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, type ArticleType, type ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
+import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
 import type { CreateOperationDto, OperationFilters } from './operations.dto';
 
 /** Виды справочников с общим CRUD. */
@@ -174,9 +175,14 @@ export class DataService {
       if (!account) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Счёт не найден', 'accountId');
     }
 
-    const currency = dto.currency ?? 'TJS';
+    // Валюту не подменяем молча: при выключенной мультивалютности «1000 USD»
+    // превратилось бы в 1000 сомони — цифра та же, смысл другой.
+    if (!currencyAllowed(dto.currency))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'currency_disabled', CURRENCY_DISABLED_MESSAGE, 'currency');
+
+    const currency = dto.currency ?? BASE_CURRENCY;
     let rate = new Prisma.Decimal(1);
-    if (currency !== 'TJS') {
+    if (currency !== BASE_CURRENCY) {
       if (dto.rate != null && dto.rate > 0) {
         rate = new Prisma.Decimal(String(dto.rate));
       } else {

@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
+import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
 import type { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
 
 /** Дирамы → сомони (для проверок при правке заявки). */
@@ -164,8 +165,12 @@ export class RequestsService {
       if (!project) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Проект не найден', 'projectId');
     }
 
+    if (!currencyAllowed(dto.currency))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'currency_disabled', CURRENCY_DISABLED_MESSAGE, 'currency');
+
     const amountDirams = dto.amount != null ? BigInt(Math.round(dto.amount * 100)) : null;
-    const currency = kind === 'trip' ? null : (dto.currency ?? 'TJS');
+    // У поездки суммы нет — только километры, поэтому валюта не заполняется
+    const currency = kind === 'trip' ? null : (dto.currency ?? BASE_CURRENCY);
 
     // Номер: гонка на unique(number) маловероятна, но повторяем до 3 раз
     for (let attempt = 0; ; attempt++) {
@@ -229,6 +234,8 @@ export class RequestsService {
       const project = await this.prisma.project.findFirst({ where: { id: dto.projectId, deletedAt: null } });
       if (!project) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Проект не найден', 'projectId');
     }
+    if (!currencyAllowed(dto.currency))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'currency_disabled', CURRENCY_DISABLED_MESSAGE, 'currency');
 
     const row = await this.prisma.request.update({
       where: { id },

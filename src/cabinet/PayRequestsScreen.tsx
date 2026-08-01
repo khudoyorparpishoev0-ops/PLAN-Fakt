@@ -138,13 +138,11 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
   );
 }
 
-const CURRENCIES = ['TJS', 'USD', 'EUR'];
 
 export default function PayRequestsScreen({ pays, projects, createRequest, toast }: PayRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
-  const [currency, setCurrency] = useState('TJS');
   const [name, setName] = useState('');
   const [doc, setDoc] = useState<UploadedRef | null>(null);
   const [busy, setBusy] = useState(false);
@@ -158,11 +156,11 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
     setBusy(true);
     const ok = await createRequest({
       kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
-      amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')), currency,
+      amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')),
       attachment: doc ?? undefined,
     });
     setBusy(false);
-    if (ok) { setProject(''); setAmountStr(''); setCurrency('TJS'); setName(''); setDoc(null); }
+    if (ok) { setProject(''); setAmountStr(''); setName(''); setDoc(null); }
   };
 
   return (
@@ -179,12 +177,15 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
           </div>
           <div>
             <label style={FORM_LABEL}>2) Сумма</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            {/* Учёт в одной валюте: вместо выбора — неизменяемая подпись TJS */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <input value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0"
                 style={{ ...INPUT44, flex: 1, width: 'auto', ...num }} />
-              <Select44 value={currency} onChange={setCurrency} style={{ width: 92, flex: 'none' }}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select44>
+              <span style={{
+                width: 92, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 8, border: '1px solid #E7E5E0', background: '#FAF9F6',
+                color: '#8A918D', fontWeight: 600, fontSize: 14, ...num,
+              }}>TJS</span>
             </div>
           </div>
           <div>

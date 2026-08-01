@@ -3,6 +3,7 @@ import { ACC, SOFT, PLEX } from '../theme';
 import { badge } from '../lib/badges';
 import { fmt } from '../lib/format';
 import { SETTINGS_NAV } from '../data/admin';
+import { SINGLE_CURRENCY } from '../lib/currency';
 import { initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
@@ -99,13 +100,16 @@ function CreateUserModal({ onClose, onCreated }: {
 export default function SettingsScreen(props: SettingsScreenProps) {
   const { setTab, setSetTab, user } = props;
   const isMobile = useIsMobile();
-  const setNav = SETTINGS_NAV.map(([id, t]) => ({
+  // Пока валюта одна, курсы не применяются нигде — вкладка скрыта,
+  // но сам экран цел: он вернётся вместе с мультивалютностью.
+  const navItems = SETTINGS_NAV.filter(([id]) => !(SINGLE_CURRENCY && id === 'rates'));
+  const setNav = navItems.map(([id, t]) => ({
     id, t,
     fw: setTab === id ? 600 : 400,
     fg: id === 'delete' ? '#B93227' : setTab === id ? ACC : '#3E4643',
     bg: setTab === id ? SOFT : 'transparent',
   }));
-  const setOtherTitle = (SETTINGS_NAV.find(x => x[0] === setTab) || ['', ''])[1];
+  const setOtherTitle = (navItems.find(x => x[0] === setTab) || ['', ''])[1];
   const [notice, setNotice] = useState<string | null>(null);
 
   /* ── Пользователи ── */
@@ -348,7 +352,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </div>
           </div>
         )}
-        {setTab === 'rates' && (
+        {setTab === 'rates' && !SINGLE_CURRENCY && (
           <div style={{ ...cardS, maxWidth: 720 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Курсы валют</div>
             <div style={{ fontSize: 12.5, color: '#8A918D', marginBottom: 16 }}>Курс к сомони на дату. Используется при одобрении валютных заявок и вводе операций.</div>

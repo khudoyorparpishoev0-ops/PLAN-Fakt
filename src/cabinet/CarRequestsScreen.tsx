@@ -61,7 +61,6 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
   const [aProject, setAProject] = useState('');
   const [category, setCategory] = useState('');
   const [amountStr, setAmountStr] = useState('');
-  const [currency, setCurrency] = useState('TJS');
   const [receipt, setReceipt] = useState<UploadedRef | null>(null);
   const [autoBusy, setAutoBusy] = useState(false);
 
@@ -75,10 +74,10 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
     setAutoBusy(true);
     const ok = await createRequest({
       kind: 'auto', projectId: projectIdOf(aProject), name: category, category: category as CarCategory,
-      amount, currency, attachment: receipt ?? undefined,
+      amount, attachment: receipt ?? undefined,
     });
     setAutoBusy(false);
-    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setCurrency('TJS'); setReceipt(null); }
+    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setReceipt(null); }
   };
 
   return (
@@ -169,12 +168,15 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
               </div>
               <div>
                 <label style={FORM_LABEL}>3) Сумма</label>
-                <div style={{ display: 'flex', gap: 8 }}>
+                {/* Учёт в одной валюте: вместо выбора — неизменяемая подпись TJS */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
                   <input value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0"
                     style={{ ...INPUT44, flex: 1, width: 'auto', ...num }} />
-                  <Select44 value={currency} onChange={setCurrency} style={{ width: 92, flex: 'none' }}>
-                    <option>TJS</option><option>USD</option>
-                  </Select44>
+                  <span style={{
+                    width: 92, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 8, border: '1px solid #E7E5E0', background: '#FAF9F6',
+                    color: '#8A918D', fontWeight: 600, fontSize: 14, ...num,
+                  }}>TJS</span>
                 </div>
               </div>
               <div>

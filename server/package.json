@@ -11,7 +11,8 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:expense": "tsx check/expense-rule.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
