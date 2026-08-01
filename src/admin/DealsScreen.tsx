@@ -9,6 +9,7 @@ import {
 } from '../lib/api';
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { useEscapeClose } from '../lib/escape';
 
 export interface DealsScreenProps {
   dicts: ApiDictionaries | null;
@@ -60,6 +61,7 @@ function DealModal({ dicts, projects, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (payload: { title: string; date: string; counterpartyId?: number; projectId?: number; comment?: string }) => Promise<void>;
 }) {
+  useEscapeClose(onClose);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [counterpartyId, setCounterpartyId] = useState('');
@@ -137,6 +139,7 @@ function PayModal({ dealId, onClose, onDone, onError }: {
   onDone: () => Promise<void>;
   onError: (msg: string) => void;
 }) {
+  useEscapeClose(onClose);
   const [rows, setRows] = useState<ApiDealPayment[]>([]);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [q, setQ] = useState('');
@@ -243,6 +246,7 @@ function DeliveryModal({ deal, dicts, projects, onClose, onDone, onError }: {
   onDone: () => Promise<void>;
   onError: (msg: string) => void;
 }) {
+  useEscapeClose(onClose);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [isPlan, setIsPlan] = useState(false);
   const [entityName, setEntityName] = useState(dicts?.entities?.[0]?.name ?? '');
@@ -399,6 +403,7 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
   /** Склад изменился — обновить остатки и уведомления. */
   onStockChanged: () => void;
 }) {
+  useEscapeClose(onBack);
   const [rows, setRows] = useState<ApiDealPosition[]>(deal.positions);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<'goods' | 'pay' | 'delivery'>('goods');

@@ -3,6 +3,7 @@ import { ACC, PLEX, num } from '../theme';
 import { Badge } from '../components/ui';
 import FilePreview from '../components/FilePreview';
 import type { ExpRow } from '../lib/rows';
+import { useEscapeClose } from '../lib/escape';
 
 export interface ExpenseDrawerProps {
   sel: ExpRow;
@@ -50,6 +51,7 @@ const detRow = { display: 'flex', justifyContent: 'space-between', fontSize: 12.
 const docChip = { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #E7E5E0', borderRadius: 9, padding: '7px 11px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' } as const;
 
 export default function ExpenseDrawer(props: ExpenseDrawerProps) {
+  useEscapeClose(props.onClose);
   /** Превью документа заявки прямо в шторке (ТЗ, п. 10). */
   const [preview, setPreview] = useState<{ id: number; fileName: string } | null>(null);
   const { sel, onClose } = props;

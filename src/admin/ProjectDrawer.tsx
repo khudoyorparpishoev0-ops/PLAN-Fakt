@@ -7,6 +7,7 @@ import { fmt, fmtD, pct1 } from '../lib/format';
 import { badge } from '../lib/badges';
 import { api, type ApiProjectSummary } from '../lib/api';
 import { Badge } from '../components/ui';
+import { useEscapeClose } from '../lib/escape';
 
 export interface ProjectDrawerProps {
   proj: Project & { archived: boolean };
@@ -18,6 +19,7 @@ export interface ProjectDrawerProps {
 }
 
 export default function ProjectDrawer({ proj, onClose, onArchive, onSaved }: ProjectDrawerProps) {
+  useEscapeClose(onClose);
   const [editing, setEditing] = useState(false);
   /* Сводка по статьям — GET /api/projects/:id/summary (ТЗ, п. 9) */
   const [summary, setSummary] = useState<ApiProjectSummary | null>(null);

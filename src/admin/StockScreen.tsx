@@ -5,6 +5,7 @@ import { badge } from '../lib/badges';
 import { api, ApiError, type ApiProject, type ApiStockItem, type ApiStockMove } from '../lib/api';
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { useEscapeClose } from '../lib/escape';
 
 export interface StockScreenProps {
   projects: ApiProject[];
@@ -26,6 +27,7 @@ function MoveModal({ goods, projects, preset, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (payload: { goodId: number; type: 'in' | 'out'; qty: number; date?: string; projectId?: number; comment?: string }) => Promise<void>;
 }) {
+  useEscapeClose(onClose);
   const [goodId, setGoodId] = useState(String(preset?.goodId ?? goods[0]?.id ?? ''));
   const [type, setType] = useState<'in' | 'out'>(preset?.type ?? 'in');
   const [amount, setAmount] = useState('');
@@ -130,6 +132,7 @@ function GoodDrawer({ item, moves, onClose, onSaved, onMove, onError }: {
   onMove: (type: 'in' | 'out') => void;
   onError: (msg: string) => void;
 }) {
+  useEscapeClose(onClose);
   const [sku, setSku] = useState(item.sku ?? '');
   const [unit, setUnit] = useState(item.unit);
   const [minQty, setMinQty] = useState(String(item.minQty));

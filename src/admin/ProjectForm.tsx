@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { ACC, PLEX } from '../theme';
 import { api, ApiError, type ProjectPayload } from '../lib/api';
+import { useEscapeClose } from '../lib/escape';
 
 export interface ProjectFormProps {
   /** id — правка существующего проекта, иначе создание. */
@@ -18,6 +19,7 @@ const lbl: CSSProperties = { fontSize: 12, color: '#6B7370', marginBottom: 4 };
  *  ответственный, статус, сроки). Статус «Завершён» ставится вручную —
  *  «Плановый» и «В работе» система выставляет по фактическим платежам. */
 export default function ProjectForm({ id, initial, groups, onClose, onSaved }: ProjectFormProps) {
+  useEscapeClose(onClose);
   const [name, setName] = useState(initial?.name ?? '');
   const [group, setGroup] = useState(initial?.group ?? (groups[0] ?? ''));
   const [resp, setResp] = useState(initial?.resp ?? '');

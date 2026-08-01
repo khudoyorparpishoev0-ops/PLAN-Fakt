@@ -8,6 +8,7 @@ import {
 } from '../lib/api';
 import { AccentBtn, Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { useEscapeClose } from '../lib/escape';
 
 export interface TasksScreenProps {
   projects: ApiProject[];
@@ -38,6 +39,7 @@ function TaskModal({ initial, projects, users, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (payload: TaskPayload) => Promise<void>;
 }) {
+  useEscapeClose(onClose);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [projectId, setProjectId] = useState(String(initial?.projectId ?? ''));

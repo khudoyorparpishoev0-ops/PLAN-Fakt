@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { PLEX, num } from '../theme';
 import { fmt, fmtD } from '../lib/format';
 import { api, ApiError, type ApiOperation } from '../lib/api';
+import { useEscapeClose } from '../lib/escape';
 
 export interface ArticleOpsDrawerProps {
   /** Название статьи (категории отчёта). */
@@ -21,6 +22,7 @@ export interface ArticleOpsDrawerProps {
 
 /** Детализация операций статьи (ТЗ, п. 3.1: клик по строке план-факта). */
 export default function ArticleOpsDrawer(p: ArticleOpsDrawerProps) {
+  useEscapeClose(p.onClose);
   const [rows, setRows] = useState<ApiOperation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);

@@ -4,6 +4,7 @@ import { fmt, sgn } from '../lib/format';
 import { api, ApiError, type ApiPlans, type ApiPlanRow } from '../lib/api';
 import { AccentBtn, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { useEscapeClose } from '../lib/escape';
 
 export interface PlanningScreenProps {
   onError: (msg: string) => void;
@@ -33,6 +34,7 @@ function PlanModal({ data, initial, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (payload: { articleId: number; projectId?: number; amount: number }) => Promise<void>;
 }) {
+  useEscapeClose(onClose);
   const [articleId, setArticleId] = useState(String(initial?.articleId ?? data.articles[0]?.id ?? ''));
   const [projectId, setProjectId] = useState(String(initial?.projectId ?? ''));
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');

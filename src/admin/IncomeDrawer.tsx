@@ -5,6 +5,7 @@ import {
   api, ApiError,
   type ApiDictionaries, type ApiProject, type CreateOperationPayload,
 } from '../lib/api';
+import { useEscapeClose } from '../lib/escape';
 
 export interface IncomeDrawerProps {
   /** Вид операции: доход (in) или расход (out). */
@@ -32,6 +33,7 @@ const parseAmount = (s: string): number =>
  *  Если фактическая сумма не заполнена — создаётся ПЛАНОВАЯ операция
  *  на плановую сумму (оплата не подтверждена). */
 export default function IncomeDrawer(props: IncomeDrawerProps) {
+  useEscapeClose(props.onClose);
   const { kind, dicts, projects } = props;
   const income = kind === 'in';
 

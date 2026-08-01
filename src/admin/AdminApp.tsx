@@ -48,6 +48,7 @@ function NavItem({ label, icon, active, disabled, onClick }: {
     <div
       onClick={disabled ? undefined : onClick}
       title={disabled ? 'Появится на этапе 2' : undefined}
+      data-nav={label}
       className={!disabled && !active ? 'hv-side' : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 11, height: 38, margin: '1px 10px', padding: '0 12px',

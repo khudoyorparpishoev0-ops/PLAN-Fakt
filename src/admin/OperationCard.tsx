@@ -5,6 +5,7 @@ import { badge } from '../lib/badges';
 import { api, ApiError, type ApiOperationCard, type ApiProject } from '../lib/api';
 import { Badge } from '../components/ui';
 import FilePreview from '../components/FilePreview';
+import { useEscapeClose } from '../lib/escape';
 
 export interface OperationCardProps {
   id: number;
@@ -47,6 +48,7 @@ const row = (label: string, value: React.ReactNode) => (
 
 /** Карточка операции журнала (ТЗ, п. 3.2: клик по строке). */
 export default function OperationCard({ id, projects, onClose, onChanged, onError }: OperationCardProps) {
+  useEscapeClose(onClose);
   const [op, setOp] = useState<ApiOperationCard | null>(null);
   const [busy, setBusy] = useState(false);
   const [moveTo, setMoveTo] = useState('');

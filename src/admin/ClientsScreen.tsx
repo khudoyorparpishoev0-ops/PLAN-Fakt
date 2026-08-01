@@ -5,6 +5,7 @@ import { badge } from '../lib/badges';
 import { api, ApiError, type ApiClient } from '../lib/api';
 import { Badge, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { useEscapeClose } from '../lib/escape';
 
 export interface ClientsScreenProps {
   onError: (msg: string) => void;
@@ -26,6 +27,7 @@ function ClientDrawer({ item, onClose, onSaved, onError }: {
   onSaved: () => void;
   onError: (msg: string) => void;
 }) {
+  useEscapeClose(onClose);
   const [kind, setKind] = useState<Kind>(item.kind);
   const [inn, setInn] = useState(item.inn ?? '');
   const [phone, setPhone] = useState(item.phone ?? '');

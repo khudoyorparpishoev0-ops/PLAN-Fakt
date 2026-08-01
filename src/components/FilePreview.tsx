@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ACC } from '../theme';
 import { api, ApiError } from '../lib/api';
+import { useEscapeClose } from '../lib/escape';
 
 export interface FilePreviewProps {
   id: number;
@@ -13,6 +14,7 @@ export interface FilePreviewProps {
 /** Превью вложения прямо в интерфейсе (ТЗ, п. 10): картинка — изображением,
  *  PDF — во встроенном просмотрщике; остальное предлагается скачать. */
 export default function FilePreview({ id, fileName, mime, onClose, onError }: FilePreviewProps) {
+  useEscapeClose(onClose);
   const [url, setUrl] = useState<string | null>(null);
   const [type, setType] = useState(mime ?? '');
   const [error, setError] = useState<string | null>(null);
