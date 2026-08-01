@@ -17,7 +17,8 @@
 #   4) дописывает сервисы backend и frontend в /opt/app/docker-compose.yml
 #      (не ломая postgres/minio; повторный запуск дублей не создаёт);
 #   5) собирает и поднимает контейнеры, выполняет prisma migrate deploy и seed;
-#   6) настраивает системный nginx (проксирование / -> :8080, /api/ -> :3000);
+#   6) ставит ежедневные резервные копии базы (/opt/app/backups);
+#   7) настраивает системный nginx (проксирование / -> :8080, /api/ -> :3000);
 #   7) проверяет http://localhost/ и http://localhost/api/health и печатает итог.
 # Идемпотентен: повторный запуск обновляет развёрнутое, ничего не ломая.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +268,56 @@ STEP="наполнение БД (seed)"
 say "Seed (идемпотентный)"
 $COMPOSE -f "$COMPOSE_FILE" --project-directory /opt/app exec -T backend npm run seed
 
+# ── Резервные копии базы ────────────────────────────────────────────────────
+# Самая дешёвая страховка и единственная, которой не было: без неё одно
+# неудачное восстановление или сбой диска стоит всей базы.
+STEP="резервные копии базы"
+say "Резервные копии: ежедневный pg_dump в /opt/app/backups"
+install -m 700 "$APP_DIR/deploy/backup-db.sh" /opt/app/backup-db.sh
+mkdir -p /opt/app/backups
+chmod 700 /opt/app/backups
+
+if command -v systemctl >/dev/null 2>&1; then
+  cat > /etc/systemd/system/ithona-backup.service <<'EOF'
+[Unit]
+Description=Резервная копия базы IT-HONA
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/app/backup-db.sh
+EOF
+  # 03:30 по времени сервера, со случайным разбросом до 15 минут:
+  # ночью и вразнобой, чтобы дамп не совпал с чужой нагрузкой.
+  cat > /etc/systemd/system/ithona-backup.timer <<'EOF'
+[Unit]
+Description=Ежедневная резервная копия базы IT-HONA
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl daemon-reload
+  systemctl enable --now ithona-backup.timer >/dev/null 2>&1 \
+    && echo "  + таймер ithona-backup.timer включён (ежедневно в 03:30)" \
+    || echo "  ! таймер включить не удалось — запускайте /opt/app/backup-db.sh вручную"
+else
+  echo "  ! systemd не найден — добавьте /opt/app/backup-db.sh в cron вручную"
+fi
+
+# Первая копия снимается сразу: таймер сработает только ночью, а проверить
+# что всё работает, нужно сейчас — и получить точку отката до правок.
+if /opt/app/backup-db.sh; then
+  :
+else
+  echo "  ! первая резервная копия не снялась — проверьте вывод выше"
+fi
+
 # ── Системный nginx ─────────────────────────────────────────────────────────
 STEP="настройка системного nginx"
 say "Конфиг nginx: $NGINX_SITE"
@@ -342,6 +393,7 @@ case "$health" in
     echo "  Приложение: http://$IP/          (финансы + модули этапа 2 на данных API)"
     echo "  API:        http://$IP/api/health -> $health"
     echo "  Пароли тестовых пользователей — в $ENV_FILE (SEED_PASSWORD_*)."
+    echo "  Резервные копии: /opt/app/backups (ежедневно 03:30, хранятся 14 дней)."
     ;;
   *)
     echo "API не отвечает '\"db\":\"ok\"' на http://localhost/api/health. Последний ответ: ${health:-<пусто>}"
