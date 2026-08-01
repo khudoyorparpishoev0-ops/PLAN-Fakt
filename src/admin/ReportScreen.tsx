@@ -129,12 +129,18 @@ export default function ReportScreen(props: ReportScreenProps) {
 
   return (
     <div data-screen-label="Сводный План-Факт">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div data-print-hide style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, color: '#5A625E' }}>Сводный отчёт за <b>{props.periodLabel}</b> · все проекты · в сомони</div>
         <div style={{ flex: 1 }} />
         <div onClick={() => void api.downloadExport('report')} title="Скачать план-факт.xlsx" className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1.5" y="1.5" width="11" height="11" rx="2" /><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" /></svg>Excel</div>
-        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>
-        <div className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="1.5" width="8" height="4" rx="1" /><rect x="1.5" y="5.5" width="11" height="5" rx="1.5" /><rect x="4" y="9" width="6" height="3.5" rx="1" /></svg>Печать</div>
+        <div onClick={() => window.print()} title="Открывает диалог печати — там выберите «Сохранить как PDF»" data-print-pdf className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5h6L11.5 4v8.5h-8.5z" /><path d="M5 8h4M5 10.5h4" /></svg>PDF</div>
+        <div onClick={() => window.print()} title="Печать отчёта" data-print-btn className="hv-soft" style={expBtn}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="1.5" width="8" height="4" rx="1" /><rect x="1.5" y="5.5" width="11" height="5" rx="1.5" /><rect x="4" y="9" width="6" height="3.5" rx="1" /></svg>Печать</div>
+      </div>
+
+      {/* Шапка печатной версии — на экране не видна */}
+      <div style={{ display: 'none', marginBottom: 12 }} data-print-header className="print-only">
+        <div style={{ fontSize: 16, fontWeight: 700 }}>IT-HONA LLC · Отчёт «План–Факт»</div>
+        <div style={{ fontSize: 12, color: '#5A625E' }}>За {props.periodLabel} · все проекты · суммы в сомони (TJS)</div>
       </div>
       <div style={{ background: '#fff', border: '1px solid #E7E5E0', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -169,7 +175,7 @@ export default function ReportScreen(props: ReportScreenProps) {
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Клик по строке — операции статьи за период, «▸» — разбивка по проектам. Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
+      <div data-print-hide style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Клик по строке — операции статьи за период, «▸» — разбивка по проектам. Отклонение = Факт − План. Для доходов минус — недополучено. Для расходов плюс — перерасход, минус — экономия. Если план не указан — статус «Нет данных», деление на ноль не выполняется.</div>
 
       {detail && (
         <ArticleOpsDrawer

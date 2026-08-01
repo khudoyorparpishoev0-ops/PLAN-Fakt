@@ -814,6 +814,41 @@ export class DataService {
     return { id: updated.id, name: updated.name };
   }
 
+  /** Удаление проекта. По ТЗ (п. 8) удалять то, на что есть ссылки, нельзя —
+   *  проект с операциями, планами, заявками, задачами или сделками можно
+   *  только убрать в архив. */
+  async removeProject(userId: number, id: number) {
+    const row = await this.prisma.project.findFirst({ where: { id, deletedAt: null } });
+    if (!row) err(HttpStatus.NOT_FOUND, 'not_found', 'Проект не найден');
+    const [operations, plans, requests, tasks, deals, moves] = await Promise.all([
+      this.prisma.operation.count({ where: { projectId: id, deletedAt: null } }),
+      this.prisma.plan.count({ where: { projectId: id, deletedAt: null } }),
+      this.prisma.request.count({ where: { projectId: id, deletedAt: null } }),
+      this.prisma.task.count({ where: { projectId: id, deletedAt: null } }),
+      this.prisma.deal.count({ where: { projectId: id, deletedAt: null } }),
+      this.prisma.stockMove.count({ where: { projectId: id, deletedAt: null } }),
+    ]);
+    const used = operations + plans + requests + tasks + deals + moves;
+    if (used > 0) {
+      const parts = [
+        operations && `операций: ${operations}`,
+        plans && `планов: ${plans}`,
+        requests && `заявок: ${requests}`,
+        tasks && `задач: ${tasks}`,
+        deals && `сделок: ${deals}`,
+        moves && `движений склада: ${moves}`,
+      ].filter(Boolean).join(', ');
+      err(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'project_in_use',
+        `Проект используется (${parts}) — его можно только убрать в архив`,
+      );
+    }
+    await this.prisma.project.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.auditRef(userId, 'project', id, 'delete', { name: row.name });
+    return { id, deleted: true };
+  }
+
   /* ── Настройки, курсы, аудит ──────────────────────────────────────────── */
 
   /** Настройки: ставка компенсации км (сомони/км; 0 — не задана). */

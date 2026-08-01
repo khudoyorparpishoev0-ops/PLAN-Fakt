@@ -242,13 +242,13 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
     : { width: 238, flex: 'none', background: '#123A26', display: 'flex', flexDirection: 'column', overflowY: 'auto' };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
+    <div data-app-shell style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
       {device === 'desktop' ? (
         <>
           {isMobile && menuOpen && (
             <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(21,24,23,.42)', zIndex: 79 }} />
           )}
-          <div style={sidebarStyle}>
+          <div data-print-hide style={sidebarStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '18px 16px 2px' }}>
               <Logo />
               <div style={{ minWidth: 0 }}>
@@ -280,8 +280,8 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1.5"><path d="M4 9l3-3 3 3" /></svg>
             </div>
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: '#FFFFFF', borderBottom: '1px solid #E7E5E0' }}>
+          <div data-app-main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div data-print-hide style={{ height: 60, flex: 'none', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '0 12px' : '0 24px', background: '#FFFFFF', borderBottom: '1px solid #E7E5E0' }}>
               {isMobile && (
                 <div
                   onClick={() => setMenuOpen(true)}
@@ -317,7 +317,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
+            <div data-app-scroll style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 28px' : '22px 28px 32px' }}>
               {screen === 'panel' && <PanelScreen incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
@@ -337,7 +337,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
         <MobileView goDesktop={() => setDevice('desktop')} totals={totals} incomes={incomesRaw} expenses={expenses} />
       )}
       {loadError && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#B93227', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
+        <div data-print-hide style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 90, background: '#B93227', color: '#fff', borderRadius: 10, padding: '11px 18px', fontSize: 13, fontWeight: 600, boxShadow: '0 10px 28px rgba(0,0,0,.24)', cursor: 'pointer' }}
           onClick={() => setLoadError(null)} title="Скрыть">
           {loadError}
         </div>

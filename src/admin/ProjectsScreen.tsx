@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from 'react';
 import type { Project } from '../data/admin';
 import { PRJ_GROUPS } from '../data/admin';
-import { api, type ProjectPayload } from '../lib/api';
+import { api, ApiError, type ProjectPayload } from '../lib/api';
 import ProjectForm from './ProjectForm';
 import { ACC, PLEX, num } from '../theme';
 import { fmt, fmtD, pct1, plural } from '../lib/format';
@@ -17,6 +17,22 @@ export interface ProjectsScreenProps {
   onSaved: () => void;
   onError: (msg: string) => void;
 }
+
+/** Показатель для анализа (ТЗ, п. 3.3). */
+type Metric = 'accrual' | 'cash' | 'cashflow';
+
+const METRIC_LABEL: Record<Metric, string> = {
+  accrual: 'Прибыль методом начисления',
+  cash: 'Прибыль кассовым методом',
+  cashflow: 'Движение денег',
+};
+
+/** Подписи колонок доходов/расходов/итога под выбранный показатель. */
+const METRIC_COLUMNS: Record<Metric, [string, string, string]> = {
+  accrual: ['Доходы', 'Расходы', 'Прибыль'],
+  cash: ['Поступило', 'Оплачено', 'Прибыль'],
+  cashflow: ['Поступления', 'Выплаты', 'Сальдо'],
+};
 
 interface Row {
   key: string;
@@ -35,7 +51,7 @@ interface Row {
 const projBadge = (st: Project['status']): BadgeData =>
   st === 'plan' ? badge('Плановый', 'blue') : st === 'work' ? badge('В работе', 'yellow') : badge('Завершён', 'green');
 
-export default function ProjectsScreen({ projects, toggleArchive, openProject, onSaved }: ProjectsScreenProps) {
+export default function ProjectsScreen({ projects, toggleArchive, openProject, onSaved, onError }: ProjectsScreenProps) {
   const isMobile = useIsMobile();
   /** Открытая форма проекта: новый или правка существующего. */
   const [form, setForm] = useState<{ id?: number; initial?: Partial<ProjectPayload> } | null>(null);
@@ -50,19 +66,45 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
   const [grpCol, setGrpCol] = useState<Record<string, boolean>>({});
   const [showPlan, setShowPlan] = useState(false);
   const [projMenu, setProjMenu] = useState<string | null>(null);
+  const [metric, setMetric] = useState<Metric>('accrual');
+  const [fStart, setFStart] = useState('');
+  const [fEnd, setFEnd] = useState('');
+  const [fGroup, setFGroup] = useState('');
 
   const q = search.trim().toLowerCase();
   const projF = projects.filter(p =>
     (p.status === 'plan' ? fPlan : p.status === 'work' ? fWork : fDone)
     && (p.archived ? fArch : fActive)
+    && (!fGroup || p.group === fGroup)
+    // Начало не раньше указанной даты, окончание не позже (ТЗ, п. 3.3)
+    && (!fStart || (!!p.s && p.s >= fStart))
+    && (!fEnd || (!!p.e && p.e <= fEnd))
     && (!q || p.name.toLowerCase().includes(q) || p.group.toLowerCase().includes(q) || p.resp.toLowerCase().includes(q)));
   const money = (n: number) => (n ? fmt(n) : '—');
 
+  /** Суммы проекта под выбранный показатель: начисление учитывает и
+   *  неоплаченные обязательства (плановые операции), касса — только факт. */
+  const metricSums = (p: { inF: number; outF: number; inP: number; outP: number }) =>
+    metric === 'accrual'
+      ? { inc: p.inF + p.inP, exp: p.outF + p.outP }
+      : { inc: p.inF, exp: p.outF };
+
+  const removeProject = async (id: string, name: string) => {
+    if (!window.confirm(`Удалить проект «${name}»? Действие необратимо.`)) return;
+    try {
+      await api.removeProject(Number(id));
+      onSaved();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Не удалось удалить проект');
+    }
+  };
+
   const mkRow = (p: Project & { archived: boolean }, padL: string, sub: string): Row => {
-    const prof = p.inF - p.outF, rent = p.inF ? (prof / p.inF) * 100 : null;
+    const { inc, exp } = metricSums(p);
+    const prof = inc - exp, rent = inc ? (prof / inc) * 100 : null;
     return {
       key: p.id, chev: '', padL, fw: 600, rowBg: 'transparent', sub, name: p.name, archived: p.archived, b: projBadge(p.status),
-      sd: fmtD(p.s), ed: fmtD(p.e), inFF: money(p.inF), outFF: money(p.outF),
+      sd: fmtD(p.s), ed: fmtD(p.e), inFF: money(inc), outFF: money(exp),
       profF: fmt(prof), profFg: prof > 0 ? '#1A7A4B' : prof < 0 ? '#B93227' : '#6B7370',
       rentF: rent == null ? '—' : pct1(rent) + '%', rentFg: rent == null ? '#9AA29E' : '#1A7A4B',
       inPF: 'план ' + fmt(p.inP), outPF: 'план ' + fmt(p.outP), profPF: 'план ' + fmt(p.inP - p.outP),
@@ -79,7 +121,7 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
       },
       actArch: (e) => { e.stopPropagation(); setProjMenu(null); toggleArchive(p.id); },
       archLabel: p.archived ? 'Вернуть из архива' : 'Убрать в архив',
-      actDel: (e) => { e.stopPropagation(); setProjMenu(null); },
+      actDel: (e) => { e.stopPropagation(); setProjMenu(null); void removeProject(p.id, p.name); },
     };
   };
 
@@ -89,7 +131,9 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
     const kids = projF.filter(p => p.group === g);
     if (!kids.length) return;
     const col = !!grpCol[g];
-    const gin = kids.reduce((a, p) => a + p.inF, 0), gout = kids.reduce((a, p) => a + p.outF, 0), gp = gin - gout;
+    const gin = kids.reduce((a, p) => a + metricSums(p).inc, 0);
+    const gout = kids.reduce((a, p) => a + metricSums(p).exp, 0);
+    const gp = gin - gout;
     const ginP = kids.reduce((a, p) => a + p.inP, 0), goutP = kids.reduce((a, p) => a + p.outP, 0);
     const sts = Array.from(new Set(kids.map(p => p.status)));
     const ss = kids.map(p => p.s).filter((x): x is string => !!x).sort()[0];
@@ -108,7 +152,10 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
     if (!col) kids.forEach(p => projRows.push(mkRow(p, '36px', p.resp)));
   });
 
-  const tIn = projF.reduce((a, p) => a + p.inF, 0), tOut = projF.reduce((a, p) => a + p.outF, 0), tProf = tIn - tOut;
+  const tIn = projF.reduce((a, p) => a + metricSums(p).inc, 0);
+  const tOut = projF.reduce((a, p) => a + metricSums(p).exp, 0);
+  const tProf = tIn - tOut;
+  const [colInc, colExp, colProf] = METRIC_COLUMNS[metric];
 
   return (
     <div data-screen-label="Проекты" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
@@ -126,9 +173,15 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
           <CheckRow on={fWork} label="В работе" onClick={() => setFWork(v => !v)} />
           <CheckRow on={fDone} label="Завершён" onClick={() => setFDone(v => !v)} />
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '14px 0 8px' }}>ПАРАМЕТРЫ</div>
-          <input placeholder="Начало проекта" style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none', marginBottom: 8 }} />
-          <input placeholder="Конец проекта" style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none', marginBottom: 8 }} />
-          <select style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff' }}><option>Проекты: все</option><option>Монтажные проекты</option><option>Сервисное обслуживание</option><option>Поставки оборудования</option></select>
+          <input type="date" data-proj-start value={fStart} onChange={e => setFStart(e.target.value)} title="Начало проекта не раньше" style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none', marginBottom: 8, fontFamily: PLEX }} />
+          <input type="date" data-proj-end value={fEnd} onChange={e => setFEnd(e.target.value)} title="Окончание проекта не позже" style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 10px', fontSize: 12.5, background: '#fff', outline: 'none', marginBottom: 8, fontFamily: PLEX }} />
+          <select data-proj-group value={fGroup} onChange={e => setFGroup(e.target.value)} style={{ width: '100%', height: 34, border: '1px solid #DFDCD6', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff' }}>
+            <option value="">Проекты: все</option>
+            {PRJ_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+          {(fStart || fEnd || fGroup) && (
+            <div data-proj-reset onClick={() => { setFStart(''); setFEnd(''); setFGroup(''); }} style={{ fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer', marginTop: 4 }}>Сбросить параметры</div>
+          )}
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', color: '#A6ACA8', margin: '14px 0 7px' }}>АРХИВ</div>
           <CheckRow on={fActive} label="Показать активные" onClick={() => setFActive(v => !v)} />
           <CheckRow on={fArch} label="Показать архивные" onClick={() => setFArch(v => !v)} />
@@ -141,7 +194,9 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           <AccentBtn style={{ padding: '8px 15px' }} onClick={() => setForm({})}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Проект</AccentBtn>
-          <select title="Показатель для анализа" style={{ height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#1B1F1E', fontWeight: 500 }}><option>Прибыль методом начисления</option><option>Прибыль кассовым методом</option><option>Движение денег</option></select>
+          <select data-proj-metric value={metric} onChange={e => setMetric(e.target.value as Metric)} title="Показатель для анализа" style={{ height: 34, border: '1px solid #E0DED8', borderRadius: 8, padding: '0 8px', fontSize: 12.5, background: '#fff', color: '#1B1F1E', fontWeight: 500 }}>
+            {(Object.keys(METRIC_LABEL) as Metric[]).map(m => <option key={m} value={m}>{METRIC_LABEL[m]}</option>)}
+          </select>
           <div style={{ display: 'inline-flex', background: '#EBEAE4', padding: 3, borderRadius: 9, gap: 2 }}>
             <div onClick={() => setProjView('flat')} title="По проектам" style={{ width: 32, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: projView === 'flat' ? '#FFFFFF' : 'transparent', boxShadow: projView === 'flat' ? '0 1px 2px rgba(0,0,0,.08)' : 'none', color: '#3E4643' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3.5h10M2 7h10M2 10.5h10" /></svg></div>
             <div onClick={() => setProjView('groups')} title="По группам проектов" style={{ width: 32, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: projView === 'groups' ? '#FFFFFF' : 'transparent', boxShadow: projView === 'groups' ? '0 1px 2px rgba(0,0,0,.08)' : 'none', color: '#3E4643' }}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h10" /><path d="M5 7h7M5 11h7" /><path d="M2.5 5v6" /></svg></div>
@@ -160,10 +215,10 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
               <Th style={{ padding: '8px 12px 8px 16px', cursor: 'pointer' }}>Проект ▾</Th>
               <Th right>Начало · Конец</Th>
               <Th>Статус</Th>
-              <Th right>Доходы</Th>
-              <Th right>Расходы</Th>
-              <Th right>Прибыль</Th>
-              <Th right>Рентаб.</Th>
+              <Th right>{colInc}</Th>
+              <Th right>{colExp}</Th>
+              <Th right>{colProf}</Th>
+              <Th right>{metric === 'cashflow' ? '' : 'Рентаб.'}</Th>
               <th style={{ padding: '8px 10px', borderBottom: '1px solid #E7E5E0', width: 34 }} />
             </tr></thead>
             <tbody>
@@ -184,9 +239,9 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
                 <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', textAlign: 'right', fontSize: 13, fontWeight: 600, color: r.profFg, ...num, whiteSpace: 'nowrap' }}>{r.profF}{showPlan && <div style={{ fontSize: 11, color: '#A6ACA8', fontWeight: 400 }}>{r.profPF}</div>}</td>
                 <td style={{ padding: '9px 12px', borderBottom: '1px solid #F3F2ED', textAlign: 'right', fontSize: 12.5, fontWeight: 600, color: r.rentFg, ...num, whiteSpace: 'nowrap' }}>{r.rentF}</td>
                 <td style={{ padding: '9px 10px', borderBottom: '1px solid #F3F2ED', position: 'relative' }}>
-                  <div onClick={r.menuClick} className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="2.5" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="7" cy="11.5" r="1.2" /></svg></div>
+                  <div onClick={r.menuClick} data-proj-row-menu className="hv-cream" style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A918D' }}><svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="2.5" r="1.2" /><circle cx="7" cy="7" r="1.2" /><circle cx="7" cy="11.5" r="1.2" /></svg></div>
                   {r.menuOpen && (
-                    <div style={{ position: 'absolute', right: 34, top: 30, zIndex: 40, background: '#fff', border: '1px solid #E7E5E0', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 5, minWidth: 190 }}>
+                    <div data-proj-menu style={{ position: 'absolute', right: 34, top: 30, zIndex: 40, background: '#fff', border: '1px solid #E7E5E0', borderRadius: 10, boxShadow: '0 10px 28px rgba(0,0,0,.14)', padding: 5, minWidth: 190 }}>
                       <div onClick={r.actEdit} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#6B7370" strokeWidth="1.4"><path d="M9.5 2l2.5 2.5L5 11.5H2.5V9z" /></svg>Редактировать</div>
                       <div onClick={r.actArch} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#6B7370" strokeWidth="1.4"><rect x="1.5" y="2" width="11" height="3" rx="1" /><path d="M2.5 5v6a1.5 1.5 0 001.5 1.5h6A1.5 1.5 0 0011.5 11V5" /><path d="M5.5 8h3" /></svg>{r.archLabel}</div>
                       <div onClick={r.actDel} className="hv-red" style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', color: '#B93227', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#B93227" strokeWidth="1.4"><path d="M2.5 3.5h9M5.5 3.5V2h3v1.5M3.5 3.5l.7 8A1.5 1.5 0 005.7 13h2.6a1.5 1.5 0 001.5-1.4l.7-8.1" /></svg>Удалить</div>
@@ -199,13 +254,22 @@ export default function ProjectsScreen({ projects, toggleArchive, openProject, o
           </table>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', padding: '10px 16px', borderTop: '1px solid #E7E5E0', background: '#FAF9F6', fontSize: 12.5, alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>{plural(projF.length)}</span>
-            <span style={{ color: '#6B7370' }}>Доходы: <b style={{ color: '#1B1F1E', ...num }}>{fmt(tIn)}</b></span>
-            <span style={{ color: '#6B7370' }}>Расходы: <b style={{ color: '#1B1F1E', ...num }}>{fmt(tOut)}</b></span>
-            <span style={{ color: '#6B7370' }}>Прибыль: <b style={{ color: '#1A7A4B', ...num }}>{fmt(tProf)}</b></span>
-            <span style={{ color: '#6B7370' }}>Рентабельность: <b style={{ color: '#1A7A4B', ...num }}>{tIn ? pct1((tProf / tIn) * 100) + '%' : '—'}</b></span>
+            <span style={{ color: '#6B7370' }}>{colInc}: <b style={{ color: '#1B1F1E', ...num }}>{fmt(tIn)}</b></span>
+            <span style={{ color: '#6B7370' }}>{colExp}: <b style={{ color: '#1B1F1E', ...num }}>{fmt(tOut)}</b></span>
+            <span style={{ color: '#6B7370' }}>{colProf}: <b style={{ color: '#1A7A4B', ...num }}>{fmt(tProf)}</b></span>
+            {metric !== 'cashflow' && (
+              <span style={{ color: '#6B7370' }}>Рентабельность: <b style={{ color: '#1A7A4B', ...num }}>{tIn ? pct1((tProf / tIn) * 100) + '%' : '—'}</b></span>
+            )}
           </div>
         </div>
-        <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>Нажмите строку — откроется карточка проекта. Дата начала — первая операция по проекту, дата окончания — последняя. Итоги в нижней строке считаются по выбранным фильтрам.</div>
+        <div style={{ fontSize: 12, color: '#8A918D', marginTop: 10, lineHeight: 1.5 }}>
+          Нажмите строку — откроется карточка проекта. Дата начала — первая операция по проекту, дата окончания — последняя.
+          Итоги в нижней строке считаются по выбранным фильтрам.{' '}
+          {metric === 'accrual'
+            ? 'Метод начисления учитывает и неоплаченные обязательства — плановые операции проекта.'
+            : 'Кассовый метод и движение денег считаются только по подтверждённым платежам.'}
+          {' '}Удалить можно лишь проект без операций, планов, заявок, задач и сделок — остальные убираются в архив.
+        </div>
       </div>
       {form && (
         <ProjectForm

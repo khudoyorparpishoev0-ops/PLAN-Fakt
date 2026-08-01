@@ -28,3 +28,23 @@ input, select, textarea { font-family: inherit; color: #1B1F1E; }
 .hv-side:hover { background: rgba(255, 255, 255, 0.07); }
 .hv-drop:hover { border-color: var(--fin-accent, #1B7A3C) !important; color: var(--fin-accent, #1B7A3C) !important; }
 .hv-tabbar:hover { background: #FAFAF8 !important; }
+
+/* Печать отчёта (ТЗ, п. 3.1 — кнопки «Печать» и «PDF»).
+   Приложение живёт в раскладке 100vh с внутренней прокруткой, поэтому для
+   печати каркас распрямляется в обычный поток, а сайдбар, шапка и панели
+   действий скрываются пометкой data-print-hide. */
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: #fff; }
+  [data-print-hide] { display: none !important; }
+  [data-app-shell] { display: block !important; height: auto !important; overflow: visible !important; }
+  [data-app-main] { display: block !important; min-width: 0 !important; }
+  [data-app-scroll] { height: auto !important; overflow: visible !important; padding: 0 !important; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  /* Бейджи статусов и итоговые строки печатаются с фоном */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Блоки только для печати (шапка печатной версии отчёта) */
+.print-only { display: none; }
+@media print { .print-only { display: block !important; } }

@@ -612,6 +612,9 @@ export const api = {
 
   projectSummary: (id: number) => authedReq<ApiProjectSummary>(`/projects/${id}/summary`),
 
+  /** Удаление проекта; занятый ссылками вернёт 422 «project_in_use». */
+  removeProject: (id: number) => authedReq<{ id: number; deleted: boolean }>(`/projects/${id}`, { method: 'DELETE' }),
+
   archiveProject: (id: number, archived: boolean) =>
     authedReq<{ id: number; archived: boolean }>(`/projects/${id}`, { method: 'PATCH', body: { archived } }),
 

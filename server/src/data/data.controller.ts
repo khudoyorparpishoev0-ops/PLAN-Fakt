@@ -157,6 +157,13 @@ export class DataController {
     return this.data.createProject(req.user!.sub, dto);
   }
 
+  /** Удаление проекта; занятый ссылками — 422 (по ТЗ только архив). */
+  @Delete('projects/:id')
+  @Roles('admin', 'director')
+  removeProject(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.data.removeProject(req.user!.sub, id);
+  }
+
   @Get('dictionaries')
   @Roles('admin', 'director')
   dictionaries() {
