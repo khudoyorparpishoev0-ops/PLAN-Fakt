@@ -252,7 +252,11 @@ export default function PanelScreen(props: PanelScreenProps) {
         <FilterChip label="Проект" value={fProject} options={projectOptions} onChange={setFProject} />
         <FilterChip label="Категория" value={fCat} options={catOptions} onChange={setFCat} />
         <FilterChip label="Контрагент" value={fParty} options={partyOptions} onChange={setFParty} />
-        <div style={chipS}>Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b></div>
+        {/* Учёт в одной валюте: это не фильтр, а подпись — выпадающего списка
+            здесь быть не должно, иначе чип обещает выбор, которого нет. */}
+        <div style={{ ...chipS, cursor: 'default' }} title="Учёт ведётся в сомони">
+          Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b>
+        </div>
         <FilterChip label="Статус" value={fStatus} options={statusOptions} onChange={setFStatus} />
         {(fProject !== 'Все' || fCat !== 'Все' || fParty !== 'Все' || fStatus !== 'Все') && (
           <div
@@ -416,7 +420,14 @@ export default function PanelScreen(props: PanelScreenProps) {
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>Показать все события →
           </div>
           <div style={{ background: 'var(--fin-surface-alt)', borderRadius: 10, padding: '11px 13px', marginTop: 12, fontSize: 12, color: 'var(--fin-text-4)', lineHeight: 1.5 }}>
-            Статусы: <span style={{ color: 'var(--fin-plus)', fontWeight: 600 }}>зелёный</span> — в норме, <span style={{ color: 'var(--fin-warn)', fontWeight: 600 }}>жёлтый</span> — внимание, <span style={{ color: 'var(--fin-warn)', fontWeight: 600 }}>оранжевый</span> — риск, <span style={{ color: 'var(--fin-minus)', fontWeight: 600 }}>красный</span> — критично, <span style={{ fontWeight: 600 }}>серый</span> — нет данных.
+            {/* Легенда описывает ровно те цвета, что есть в токенах. Раньше она
+                называла жёлтый и оранжевый разными, хотя в дизайн-системе цвет
+                предупреждения один: подпись бейджа («Внимание», «Риск») несёт
+                степень, цвет — только её характер. */}
+            Статусы: <span style={{ color: 'var(--fin-plus)', fontWeight: 600 }}>зелёный</span> — в норме,{' '}
+            <span style={{ color: 'var(--fin-warn)', fontWeight: 600 }}>охристый</span> — внимание или риск (степень видна в подписи),{' '}
+            <span style={{ color: 'var(--fin-minus)', fontWeight: 600 }}>красный</span> — критично,{' '}
+            <span style={{ color: 'var(--fin-neutral)', fontWeight: 600 }}>серый</span> — нет данных.
           </div>
         </div>
       </div>

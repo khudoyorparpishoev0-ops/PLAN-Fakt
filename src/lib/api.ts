@@ -155,6 +155,8 @@ export interface ApiAttachment {
   fileName: string;
   /** false — имя-заглушка из демо-данных, файла в хранилище нет. */
   hasFile: boolean;
+  mime?: string | null;
+  size?: number | null;
 }
 
 export interface ApiRequest {
@@ -511,6 +513,8 @@ export interface ApiDeal {
   /** Частичные поставки: сколько поставщик уже отгрузил. */
   deliveries: ApiDelivery[];
   delivered: number;
+  /** Договоры и накладные к сделке. */
+  attachments: ApiAttachment[];
 }
 
 export interface DealPayload {
@@ -690,6 +694,13 @@ export const api = {
     authedReq<ApiRequest>(`/requests/${id}/status`, { method: 'PATCH', body: { status, ...(comment ? { comment } : {}) } }),
 
   deleteRequest: (id: number) => authedReq<void>(`/requests/${id}`, { method: 'DELETE' }),
+
+  /** Прикрепить загруженный файл к сделке закупки. */
+  attachToDeal: (dealId: number, file: UploadedRef & { kind?: string }) =>
+    authedReq<{ id: number; fileName: string; mime: string | null; size: number | null }>(
+      `/deals/${dealId}/attachments`,
+      { method: 'POST', body: { key: file.key, fileName: file.fileName, mime: file.mime, size: file.size, kind: file.kind ?? 'doc' } },
+    ),
 
   /** Массовое одобрение из очереди директора. Непригодные заявки не роняют
    *  пачку — возвращаются в skipped с причиной. */

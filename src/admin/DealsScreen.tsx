@@ -408,6 +408,7 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
   const [tab, setTab] = useState<'goods' | 'pay' | 'delivery'>('goods');
   const [payModal, setPayModal] = useState(false);
   const [delivModal, setDelivModal] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
   const isMobile = useIsMobile();
   const locked = deal.status === 'done' || deal.status === 'canceled';
 
@@ -469,6 +470,7 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
   const progressCard = (
     label: string, action: string, onAction: () => void,
     icon: JSX.Element, value: number, oweLabel: string, owe: number, oweFg: string,
+    pctLabel: string,
   ) => (
     <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -485,10 +487,36 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
       <div style={{ height: 6, background: 'var(--fin-bg)', borderRadius: 99, overflow: 'hidden', margin: '11px 0 8px' }}>
         <div style={{ height: '100%', background: ACC, width: pct(value) + '%' }} />
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{pct(value)}%</div>
+      {/* Голая цифра «53%» не говорит, чего именно: подпись из прототипа */}
+      <div style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>{pctLabel}: {pct(value)}%</div>
       <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>{oweLabel}: <span style={{ color: oweFg, ...num }}>{fmt(Math.round(owe))} TJS</span></div>
     </div>
   );
+
+  /** Загрузка файла к сделке: сначала в хранилище, потом привязка. */
+  const attachFile = async (file: File | undefined) => {
+    if (!file || fileBusy) return;
+    if (file.size > 10 * 1024 * 1024) { onError('Файл больше 10 МБ'); return; }
+    setFileBusy(true);
+    try {
+      const up = await api.upload(file);
+      await api.attachToDeal(deal.id, up);
+      await onReload();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Не удалось приложить файл');
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const detachFile = async (id: number) => {
+    try {
+      await api.removeAttachment(id);
+      await onReload();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Не удалось открепить файл');
+    }
+  };
 
   /** Открепить выплату от сделки (операция остаётся в журнале). */
   const detachPayment = async (operationId: number) => {
@@ -555,10 +583,55 @@ function DealCard({ deal, dicts, projects, onBack, onError, onReload, onClosed, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}><span style={{ color: 'var(--fin-text-4)', width: 84 }}>Дата</span><span style={{ fontWeight: 500, fontFamily: PLEX }}>{fmtD(deal.date)}</span></div>
           </div>
         </div>
-        {progressCard('ВЫПЛАТЫ ПОСТАВЩИКУ', 'ДОБАВИТЬ', () => setPayModal(true), <CoinsIcon size={17} />, paid, 'Мы должны', weOwe, 'var(--fin-minus)')}
-        {progressCard('ПОСТАВКИ', 'СОЗДАТЬ', () => setDelivModal(true), <TruckIcon size={17} />, delivered, 'Поставщик должен', supOwe, 'var(--fin-warn)')}
+        {progressCard('ВЫПЛАТЫ ПОСТАВЩИКУ', 'ДОБАВИТЬ', () => setPayModal(true), <CoinsIcon size={17} />, paid, 'Мы должны', weOwe, 'var(--fin-minus)', 'Оплачено')}
+        {progressCard('ПОСТАВКИ', 'СОЗДАТЬ', () => setDelivModal(true), <TruckIcon size={17} />, delivered, 'Поставщик должен', supOwe, 'var(--fin-warn)', 'Отгружено')}
       </div>
 
+      {/* ── Файлы и комментарии: договоры и накладные к сделке ───────── */}
+      <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', color: 'var(--fin-text-4)' }}>ФАЙЛЫ И КОММЕНТАРИИ</span>
+          <div style={{ flex: 1 }} />
+          {!locked && (
+            <label data-deal-attach style={{ fontSize: 12, fontWeight: 700, color: ACC, cursor: fileBusy ? 'default' : 'pointer' }}>
+              {fileBusy ? 'ЗАГРУЖАЕМ…' : 'ПРИЛОЖИТЬ'}
+              <input
+                type="file" style={{ display: 'none' }} disabled={fileBusy}
+                accept=".jpg,.jpeg,.png,.pdf,.xlsx,.docx,image/jpeg,image/png,application/pdf"
+                onChange={(e) => { void attachFile(e.target.files?.[0]); e.target.value = ''; }}
+              />
+            </label>
+          )}
+        </div>
+        {deal.attachments.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.55 }}>
+            Договор, счёт и накладная хранятся вместе со сделкой — их не придётся искать
+            в почте, когда поставщик задержит поставку.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {deal.attachments.map((a) => (
+              <div key={a.id} data-deal-file={a.fileName} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--fin-surface-alt)', borderRadius: 8 }}>
+                <span style={{ width: 34, height: 34, flex: 'none', borderRadius: 8, background: 'var(--fin-segment)', color: 'var(--fin-text-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
+                  {(a.fileName.split('.').pop() ?? 'ФАЙЛ').slice(0, 4).toUpperCase()}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</span>
+                  <span style={{ fontSize: 11, color: 'var(--fin-text-4)' }}>
+                    {a.size ? `${Math.max(1, Math.round(a.size / 1024))} КБ` : 'размер неизвестен'}
+                  </span>
+                </span>
+                {a.hasFile
+                  ? <span onClick={() => void api.openAttachment(a.id)} style={{ fontSize: 12, fontWeight: 600, color: ACC, cursor: 'pointer' }}>Открыть</span>
+                  : <span style={{ fontSize: 11.5, color: 'var(--fin-text-5)' }}>файл недоступен</span>}
+                {!locked && (
+                  <span onClick={() => void detachFile(a.id)} title="Открепить" style={{ fontSize: 12, fontWeight: 600, color: 'var(--fin-minus)', cursor: 'pointer' }}>×</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', gap: 4, background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, padding: '6px 8px', marginBottom: 12, flexWrap: 'wrap' }}>
         {tabBtn('goods', 'Товары и услуги', rows.length)}
         {tabBtn('pay', 'Выплаты', deal.payments.length)}

@@ -244,10 +244,11 @@ model Deal {
   updatedAt      DateTime      @updatedAt @map("updated_at")
   deletedAt      DateTime?     @map("deleted_at")
 
-  positions  DealPosition[]
-  moves      StockMove[]
-  payments   Operation[]
-  deliveries Delivery[]
+  positions   DealPosition[]
+  moves       StockMove[]
+  payments    Operation[]
+  deliveries  Delivery[]
+  attachments Attachment[]
 
   @@index([status])
   @@map("deals")
@@ -538,6 +539,10 @@ model Attachment {
   request      Request?   @relation(fields: [requestId], references: [id])
   operationId  Int?       @map("operation_id")
   operation    Operation? @relation(fields: [operationId], references: [id])
+  // Договоры и накладные к сделке закупки — блок «Файлы и комментарии»
+  // из эталонного прототипа
+  dealId       Int?       @map("deal_id")
+  deal         Deal?      @relation(fields: [dealId], references: [id])
   kind         String // doc | photo | receipt
   fileName     String     @map("file_name")
   storageKey   String?    @map("storage_key") // ключ в MinIO (S3)
@@ -550,7 +555,9 @@ model Attachment {
 
   @@unique([requestId, fileName])
   @@unique([operationId, fileName])
+  @@unique([dealId, fileName])
   @@index([operationId])
+  @@index([dealId])
   @@map("attachments")
 }
 

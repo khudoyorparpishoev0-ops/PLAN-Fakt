@@ -134,6 +134,8 @@ export class Stage2Service {
           },
           orderBy: { date: 'asc' },
         },
+        // Договоры и накладные к сделке — блок «Файлы и комментарии»
+        attachments: { where: { deletedAt: null }, orderBy: { id: 'asc' } },
       },
       orderBy: { id: 'desc' },
     });
@@ -184,6 +186,15 @@ export class Stage2Service {
       delivered: somoni(
         BigInt(d.deliveries.reduce((s, v) => s + v.positions.reduce((x, p) => x + this.deliveryPositionTotal(p), 0), 0)),
       )!,
+      attachments: d.attachments.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        fileName: a.fileName,
+        mime: a.mime,
+        size: a.size,
+        // Файла может не быть у демо-строк, заведённых сидом без хранилища
+        hasFile: !!a.storageKey,
+      })),
     }));
   }
 

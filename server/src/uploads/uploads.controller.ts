@@ -103,13 +103,52 @@ export class UploadsController {
     return { id: att.id, fileName: att.fileName, mime: att.mime, size: att.size };
   }
 
+  /** Прикрепить файл к сделке закупки: договоры и накладные.
+   *  Блок «Файлы и комментарии» из эталонного прототипа. */
+  @Post('deals/:id/attachments')
+  @HttpCode(201)
+  @Roles('admin', 'director')
+  async attachToDeal(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AttachToOperationDto,
+  ) {
+    const deal = await this.prisma.deal.findFirst({ where: { id, deletedAt: null } });
+    if (!deal) throw new HttpException({ code: 'not_found', message: 'Сделка не найдена' }, HttpStatus.NOT_FOUND);
+    const fileName = dto.fileName.trim();
+    const exists = await this.prisma.attachment.findFirst({ where: { dealId: id, fileName } });
+    if (exists && exists.deletedAt === null) {
+      throw new HttpException(
+        { code: 'file_exists', message: 'Файл с таким именем уже прикреплён к сделке', field: 'fileName' },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    const data = {
+      dealId: id,
+      kind: dto.kind ?? 'doc',
+      fileName,
+      storageKey: dto.key,
+      mime: dto.mime ?? null,
+      size: dto.size ?? null,
+      uploadedById: req.user!.sub,
+      deletedAt: null,
+    };
+    const att = exists
+      ? await this.prisma.attachment.update({ where: { id: exists.id }, data })
+      : await this.prisma.attachment.create({ data });
+    await this.prisma.auditLog.create({
+      data: { userId: req.user!.sub, entity: 'deal', entityId: String(id), action: 'attach', newValue: { fileName } },
+    });
+    return { id: att.id, fileName: att.fileName, mime: att.mime, size: att.size };
+  }
+
   /** Открепить вложение операции (файл в хранилище остаётся). */
   @Delete('attachments/:id')
   @Roles('admin', 'director')
   async removeAttachment(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
     const att = await this.prisma.attachment.findFirst({ where: { id, deletedAt: null } });
     if (!att) throw new HttpException({ code: 'not_found', message: 'Вложение не найдено' }, HttpStatus.NOT_FOUND);
-    if (att.operationId == null) {
+    if (att.operationId == null && att.dealId == null) {
       throw new HttpException(
         { code: 'request_attachment', message: 'Вложение заявки удаляется вместе с заявкой' },
         HttpStatus.UNPROCESSABLE_ENTITY,
