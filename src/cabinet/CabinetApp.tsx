@@ -13,6 +13,7 @@ import { CB, type ReqKind, type ReqStatus } from '../data/cabinet';
 import { setKmRate, tripAmount } from '../data/settings';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
+import MobileRequestForm from './MobileRequestForm';
 import HistoryScreen from './HistoryScreen';
 import CabinetProjectsScreen from './CabinetProjectsScreen';
 import TasksScreen from '../admin/TasksScreen';
@@ -379,8 +380,17 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
             <KpiCard label="ОДОБРЕНО" value={fmt(approvedSum)} unit="TJS" note={approvedNote} icon="✓" iconBg="var(--fin-plus-soft)" iconFg="var(--fin-plus)" b={CB.approved} />
             <KpiCard label="ОТКЛОНЕНО" value={String(nRej)} unit={pluralReq(nRej)} note="Требуют исправления" icon="!" iconBg="var(--fin-minus-soft)" iconFg="var(--fin-minus)" b={CB.rejected} />
           </div>
-          {screen === 'pay' && <PayRequestsScreen pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
-          {screen === 'car' && <CarRequestsScreen trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
+          {/* На телефоне обе десктопные формы заменяет единая форма заявки
+              из макета «Мобильный сотрудника»: вид переключается в ней самой,
+              а подпись кнопки называет недостающее поле. Списки остаются. */}
+          {isMobile && (screen === 'pay' || screen === 'car') && (
+            <MobileRequestForm
+              initialKind={screen === 'pay' ? 'payment' : 'trip'}
+              projects={formProjects} createRequest={createRequest} toast={toast}
+            />
+          )}
+          {screen === 'pay' && <PayRequestsScreen hideForm={isMobile} pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
+          {screen === 'car' && <CarRequestsScreen hideForm={isMobile} trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
           {screen === 'tasks' && <TasksScreen projects={projects} users={[]} role="accountant" onError={msg => toast(msg)} />}

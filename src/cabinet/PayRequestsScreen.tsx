@@ -6,6 +6,9 @@ import { dirB, ownB, type PayReq } from '../data/cabinet';
 import { useIsMobile } from '../lib/responsive';
 
 export interface PayRequestsScreenProps {
+  /** true — десктопную форму не показывать: на телефоне её заменяет
+   *  единая форма MobileRequestForm (макет «Мобильный сотрудника»). */
+  hideForm?: boolean;
   pays: PayReq[];
   projects: ApiProject[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
@@ -139,7 +142,7 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 }
 
 
-export default function PayRequestsScreen({ pays, projects, createRequest, toast }: PayRequestsScreenProps) {
+export default function PayRequestsScreen({ pays, projects, createRequest, toast, hideForm }: PayRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
@@ -166,6 +169,7 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
   return (
     <div data-screen-label="Заявки на оплату" style={{ maxWidth: 1120, animation: 'cabFade .2s ease' }}>
       {/* ── Форма (прототип, строки 96–120) ── */}
+      {!hideForm && (
       <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>СОЗДАТЬ ЗАЯВКУ НА ОПЛАТУ</div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
@@ -200,6 +204,7 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
         </div>
         <SubmitBtn label="Отправить на утверждение Директору" disabled={!valid} onClick={submit} />
       </div>
+      )}
 
       {/* ── Мои последние заявки (прототип, строки 122–146) ── */}
       <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>

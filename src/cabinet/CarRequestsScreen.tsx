@@ -10,6 +10,9 @@ import {
 import { useIsMobile } from '../lib/responsive';
 
 export interface CarRequestsScreenProps {
+  /** true — десктопные формы не показывать: на телефоне их заменяет
+   *  единая форма MobileRequestForm (макет «Мобильный сотрудника»). */
+  hideForm?: boolean;
   trips: TripReq[];
   cars: CarReq[];
   projects: ApiProject[];
@@ -30,7 +33,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export default function CarRequestsScreen({ trips, cars, projects, createRequest, toast }: CarRequestsScreenProps) {
+export default function CarRequestsScreen({ trips, cars, projects, createRequest, toast, hideForm }: CarRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
@@ -90,6 +93,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
 
       {tab === 'trip' && (
         <div>
+          {!hideForm && (
           <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>СОЗДАТЬ ЗАЯВКУ НА ПОЕЗДКУ</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
@@ -120,6 +124,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!tripValid} onClick={submitTrip} />
           </div>
+          )}
           <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>МОИ ЗАЯВКИ НА МАШИНУ</div>
             <div style={{ overflowX: 'auto' }}>
@@ -150,6 +155,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
 
       {tab === 'expense' && (
         <div>
+          {!hideForm && (
           <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, padding: '22px 24px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.01em', marginBottom: 18 }}>ДОБАВИТЬ РАСХОД НА АВТО</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 22px' }}>
@@ -189,6 +195,7 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!autoValid} onClick={submitAuto} />
           </div>
+          )}
           <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', fontSize: 14, fontWeight: 700, borderBottom: '1px solid var(--fin-divider)' }}>МОИ РАСХОДЫ НА АВТО</div>
             <div style={{ overflowX: 'auto' }}>
