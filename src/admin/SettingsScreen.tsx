@@ -4,6 +4,8 @@ import { badge } from '../lib/badges';
 import { fmt } from '../lib/format';
 import { SETTINGS_NAV } from '../data/admin';
 import { SINGLE_CURRENCY } from '../lib/currency';
+import RightsMatrix from './RightsMatrix';
+import CompanyTab from './CompanyTab';
 import { initials } from '../lib/compute';
 import {
   api, ApiError, ROLE_LABELS,
@@ -218,8 +220,13 @@ export default function SettingsScreen(props: SettingsScreenProps) {
     }
   };
 
+  /* Последнего администратора нельзя отключить — иначе систему закрывают
+     изнутри в два клика. Сервер это тоже проверяет (422 last_admin);
+     замок в строке нужен, чтобы кнопка не обещала невозможного. */
+  const activeAdmins = users.filter(u => u.active && u.role.code === 'admin').length;
   const usersRows = users.map(u => ({
     id: u.id,
+    locked: u.active && u.role.code === 'admin' && activeAdmins <= 1,
     init: initials(u.name),
     name: u.name,
     phone: u.phone ?? '—',
@@ -283,6 +290,8 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </div>
           </div>
         )}
+        {setTab === 'rights' && <RightsMatrix />}
+        {setTab === 'company' && <CompanyTab />}
         {setTab === 'general' && (
           <div style={cardS}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Общие настройки</div>
@@ -338,11 +347,19 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                       </td>
                       <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
                         <span
-                          onClick={() => void toggleActive(users.find(x => x.id === u.id)!)}
-                          className={u.active ? 'hv-red' : 'hv-soft'}
-                          style={{ display: 'inline-block', border: u.active ? '1px solid var(--fin-minus-soft)' : '1px solid var(--fin-border)', color: u.active ? 'var(--fin-minus)' : 'var(--fin-text-2)', borderRadius: 8, padding: '5px 11px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          data-user-block={u.id}
+                          title={u.locked ? 'Единственного администратора отключить нельзя' : undefined}
+                          onClick={u.locked ? undefined : () => void toggleActive(users.find(x => x.id === u.id)!)}
+                          className={u.locked ? undefined : u.active ? 'hv-red' : 'hv-soft'}
+                          style={{
+                            display: 'inline-block', borderRadius: 8, padding: '5px 11px',
+                            fontSize: 12, fontWeight: 600,
+                            border: u.locked ? '1px solid var(--fin-border)' : u.active ? '1px solid var(--fin-minus-soft)' : '1px solid var(--fin-border)',
+                            color: u.locked ? 'var(--fin-text-5)' : u.active ? 'var(--fin-minus)' : 'var(--fin-text-2)',
+                            cursor: u.locked ? 'not-allowed' : 'pointer',
+                          }}
                         >
-                          {u.active ? 'Заблокировать' : 'Разблокировать'}
+                          {u.locked ? '🔒 Единственный админ' : u.active ? 'Заблокировать' : 'Разблокировать'}
                         </span>
                       </td>
                     </tr>

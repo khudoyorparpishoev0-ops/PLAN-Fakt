@@ -136,6 +136,32 @@ export class UsersController {
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
+    // Последнего администратора нельзя ни отключить, ни понизить: иначе
+    // систему закрывают изнутри в два клика и войти в настройки больше
+    // некому. Проверка на сервере, а не только замок в интерфейсе.
+    const losesAdmin = (dto.active === false || (dto.role && dto.role !== 'admin'));
+    if (losesAdmin) {
+      const wasAdmin = await this.prisma.user.findFirst({
+        where: { id, deletedAt: null, active: true, role: { code: 'admin' } },
+        select: { id: true },
+      });
+      if (wasAdmin) {
+        const admins = await this.prisma.user.count({
+          where: { deletedAt: null, active: true, role: { code: 'admin' } },
+        });
+        if (admins <= 1) {
+          throw new HttpException(
+            {
+              code: 'last_admin',
+              message: 'Это единственный администратор — его нельзя отключить или понизить',
+              field: dto.active === false ? 'active' : 'role',
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+      }
+    }
+
     let roleId: number | undefined;
     if (dto.role) {
       const role = await this.prisma.role.findUnique({ where: { code: dto.role } });

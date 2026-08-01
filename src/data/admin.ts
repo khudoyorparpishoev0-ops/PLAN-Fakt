@@ -187,7 +187,8 @@ export const USERS: UserRow[] = [
 ];
 
 export const SETTINGS_NAV: [string, string][] = [
-  ['general', 'Общие настройки'], ['users', 'Пользователи'], ['profile', 'Мой профиль'],
+  ['general', 'Общие настройки'], ['users', 'Пользователи'], ['rights', 'Права'],
+  ['company', 'Компания'], ['profile', 'Мой профиль'],
   ['integr', 'Интеграции'], ['import', 'Правила импорта'], ['api', 'API-доступ'],
   ['security', 'Безопасность'], ['rates', 'Курсы валют'], ['exports', 'Выгрузки по расписанию'],
   ['history', 'История действий'],

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
+import { savedDensity } from './CompanyTab';
 import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
 import {
@@ -144,7 +145,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
   const [period, setPeriod] = useState<PeriodKind>(DEFAULT_PERIOD);
   const range = useMemo(() => periodRange(period), [period]);
 
-  useEffect(() => { applyThemeVars(); }, []);
+  useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
 
   const loadData = async () => {
     const [pf, reqs, projs] = await Promise.all([

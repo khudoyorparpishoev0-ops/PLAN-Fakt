@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
+import { savedDensity } from '../admin/CompanyTab';
 import { fmt } from '../lib/format';
 import { initials } from '../lib/compute';
 import {
@@ -181,7 +182,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   const [notifyTick, setNotifyTick] = useState(0);
   const [pwdModal, setPwdModal] = useState(false);
 
-  useEffect(() => { applyThemeVars(); }, []);
+  useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
   useEffect(() => {
     if (toastMsg == null) return;
     const t = setTimeout(() => setToastMsg(null), 3500);
