@@ -13,7 +13,8 @@
     "seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:expense": "tsx check/expense-rule.ts",
-    "check:export": "tsx check/export-format.ts"
+    "check:export": "tsx check/export-format.ts",
+    "clean:demo": "tsx scripts/clean-demo.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
