@@ -45,6 +45,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import { CARS, PAY, TRIPS } from '../../src/data/cabinet';
+import { DEMO_CLEANED_KEY } from './demo-flag';
 
 const prisma = new PrismaClient();
 const APPLY = process.argv.includes('--yes');
@@ -209,6 +210,14 @@ async function main() {
       await tx.deal.update({ where: { id: deal.id }, data: { deletedAt: now } });
     }
     const acc = await tx.account.updateMany({ where: openingWhere, data: { openingDirams: BigInt(0) } });
+    // Отметка в той же транзакции: иначе она может разойтись с фактом удаления,
+    // а по ней сид решает, работать ему или молча выйти.
+    const stamp = now.toISOString().slice(0, 10);
+    await tx.setting.upsert({
+      where: { key: DEMO_CLEANED_KEY },
+      update: { value: stamp },
+      create: { key: DEMO_CLEANED_KEY, value: stamp },
+    });
     return { o: o.count, p: p.count, r: r.count, t: t.count, m: m.count, d, dp, pos, att: att + ra.count, acc: acc.count };
   });
 
@@ -224,7 +233,8 @@ async function main() {
   if (res.acc) line('счетов', res.acc, 'входящий остаток обнулён');
   console.log('\nУдаление мягкое: строки остались в базе с отметкой deleted_at.');
   console.log('Если убрали лишнее — восстановите из копии или снимите отметку вручную.');
-  console.log('Повторный `npm run seed` вернёт демо-данные обратно.\n');
+  console.log('\nБаза помечена как боевая: сид при следующем деплое пропустит наполнение');
+  console.log('и не вернёт удалённое. Если демо-данные всё же нужны: npm run seed -- --force\n');
 
   await prisma.$disconnect();
 }

@@ -25,6 +25,7 @@ import * as bcrypt from 'bcryptjs';
 
 import { ART, EXPENSES, GEN, INCOMES, OPS, POSITIONS, PROJECTS } from '../../src/data/admin';
 import { CARS, PAY, TRIPS, type ReqStatus } from '../../src/data/cabinet';
+import { DEMO_CLEANED_KEY, DEMO_CLEANED_MESSAGE } from '../scripts/demo-flag';
 
 const prisma = new PrismaClient();
 
@@ -642,6 +643,18 @@ async function seedStage2() {
 /* ── Запуск ─────────────────────────────────────────────────────────────── */
 
 async function main() {
+  // Боевая база: демо-данные с неё уже убрали, возвращать их нельзя.
+  // Выход с кодом 0 — деплой должен продолжиться, это не ошибка.
+  const cleaned = await prisma.setting.findUnique({ where: { key: DEMO_CLEANED_KEY } });
+  if (cleaned && !process.argv.includes('--force')) {
+    console.log(DEMO_CLEANED_MESSAGE(cleaned.value));
+    return;
+  }
+  if (cleaned) {
+    await prisma.setting.delete({ where: { key: DEMO_CLEANED_KEY } });
+    console.log('[seed] --force: отметка очистки снята, база снова демонстрационная.');
+  }
+
   console.log('[seed] Роли и пользователи…');
   await seedRolesAndUsers();
   console.log('[seed] Валюты и курсы…');
