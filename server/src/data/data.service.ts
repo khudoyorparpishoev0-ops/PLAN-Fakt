@@ -123,6 +123,10 @@ export class DataService {
         ...(f.amount_max != null ? { lte: BigInt(Math.round(f.amount_max * 100)) } : {}),
       };
     }
+    if (f.excludeArchived) {
+      // Отдельным AND: у поиска q уже занят where.OR
+      where.AND = [{ OR: [{ projectId: null }, { project: { archived: false } }] }];
+    }
     if (f.q?.trim()) {
       const q = f.q.trim();
       where.OR = [
@@ -357,13 +361,16 @@ export class DataService {
 
   /** План-факт за период (по умолчанию — все данные) вместе с показателями
    *  дашборда: остатки счетов, ожидания/обязательства, задолженности. */
-  async planFact(from?: string, to?: string): Promise<{
+  async planFact(from?: string, to?: string, opts?: { includeArchived?: boolean }): Promise<{
     incomes: PlanFactRow[]; expenses: PlanFactRow[]; metrics: DashboardMetrics;
   }> {
     const dFrom = from ? new Date(from + 'T00:00:00Z') : undefined;
     const dTo = to ? new Date(to + 'T00:00:00Z') : undefined;
+    // На экране архивные проекты участвуют всегда; отдельная опция нужна
+    // выгрузке (решение 11: галочка, по умолчанию архив не попадает в файл)
+    const includeArchived = opts?.includeArchived ?? true;
     const th = await this.pfThresholds();
-    const { incomes, expenses } = await this.planFactRows(dFrom, dTo, th);
+    const { incomes, expenses } = await this.planFactRows(dFrom, dTo, th, includeArchived);
 
     // Прибыль предыдущего периода той же длины — для «К прошлому периоду»
     let prevProfitFact: number | null = null;
@@ -382,7 +389,7 @@ export class DataService {
 
   /** Строки план-факта: планы (+ факт-операции по externalRef) и плановые
    *  операции из одобренных заявок (`req:<номер>`, сторно схлопывается). */
-  private async planFactRows(from?: Date, to?: Date, th: PfThresholds = PF_DEFAULTS): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
+  private async planFactRows(from?: Date, to?: Date, th: PfThresholds = PF_DEFAULTS, includeArchived = true): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
     const plans = await this.prisma.plan.findMany({
       where: {
         deletedAt: null,
@@ -403,6 +410,7 @@ export class DataService {
     const incomes: PlanFactRow[] = [];
     const expenses: PlanFactRow[] = [];
     for (const p of plans) {
+      if (!includeArchived && p.project?.archived) continue;
       const n = p.externalRef!.slice('plan:'.length);
       const fact = factByRef.get(n);
       const planTjs = somoni(p.amountDirams)!;
@@ -453,6 +461,7 @@ export class DataService {
     });
     const reqByNumber = new Map(requests.map((r) => [r.number, r]));
     for (const [number, acc] of byNumber) {
+      if (!includeArchived && acc.first.project?.archived) continue;
       const req = reqByNumber.get(number);
       expenses.push({
         n: number,

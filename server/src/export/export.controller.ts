@@ -15,6 +15,10 @@ import { EXPORT_KINDS, ExportScheduleService, FREQUENCIES, FREQUENCY_LABEL, next
 /** Число из query-строки: пустое и нечисловое → undefined. */
 const num = (v?: string) => (v && Number.isFinite(Number(v)) ? Number(v) : undefined);
 
+/** Решение 11: «Включить архивные проекты» — галочка, по умолчанию выключена. */
+const archivedOf = (q: Record<string, string | undefined>): boolean =>
+  q.archived === '1' || q.archived === 'true';
+
 export class ScheduleDto {
   @IsIn(EXPORT_KINDS, { message: 'kind: report | projects | operations' })
   kind!: ExportKind;
@@ -97,7 +101,7 @@ export class ExportController {
 
   /** Состав колонок для диалога выгрузки. */
   @Get('columns')
-  @Roles('admin', 'director')
+  @Roles('admin', 'director', 'accountant')
   columns() {
     return {
       kinds: (Object.keys(COLUMNS) as ExportKind[]).map((k) => ({
@@ -109,22 +113,22 @@ export class ExportController {
   }
 
   @Get('report.xlsx')
-  @Roles('admin', 'director')
+  @Roles('admin', 'director', 'accountant')
   async report(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
-    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q) };
+    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q), archived: archivedOf(q) };
     await this.send(res, await this.exports.buildBuffer('report', undefined, opts), this.exports.fileName('report', opts));
   }
 
   @Get('projects.xlsx')
-  @Roles('admin', 'director')
+  @Roles('admin', 'director', 'accountant')
   async projects(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
-    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q) };
+    const opts: ExportOptions = { who: await this.who(req), columns: this.columnsOf(q), archived: archivedOf(q) };
     await this.send(res, await this.exports.buildBuffer('projects', undefined, opts), this.exports.fileName('projects', opts));
   }
 
   /** Журнал операций с теми же фильтрами, что и на экране (ТЗ, п. 3.2). */
   @Get('operations.xlsx')
-  @Roles('admin', 'director')
+  @Roles('admin', 'director', 'accountant')
   async operations(@Req() req: AuthRequest, @Res() res: Response, @Query() q: Record<string, string | undefined>) {
     const filters: OperationFilters = {
       type: q.type
@@ -143,6 +147,7 @@ export class ExportController {
     };
     const opts: ExportOptions = {
       who: await this.who(req), columns: this.columnsOf(q), filters: await this.describe(filters),
+      archived: archivedOf(q),
     };
     await this.send(res, await this.exports.buildBuffer('operations', filters, opts), this.exports.fileName('operations', opts));
   }

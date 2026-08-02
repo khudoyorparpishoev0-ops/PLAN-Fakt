@@ -89,6 +89,8 @@ export interface ExportMeta {
 export interface ExportOptions extends ExportMeta {
   /** Выбранные колонки; пусто — все. Заблокированные добавляются всегда. */
   columns?: string[];
+  /** Включить архивные проекты (решение 11); по умолчанию архив не выгружается. */
+  archived?: boolean;
 }
 
 /** Дата для ячейки Excel. Полдень локального дня, чтобы часовой пояс не
@@ -133,10 +135,11 @@ export class ExportService {
 
   async build(kind: ExportKind, filters?: OperationFilters, opts?: ExportOptions): Promise<ExcelJS.Workbook> {
     const cols = this.pick(kind, opts?.columns);
+    const includeArchived = !!opts?.archived;
     const wb =
-      kind === 'report' ? await this.report(cols)
-      : kind === 'projects' ? await this.projects(cols)
-      : await this.operations(cols, filters ?? {});
+      kind === 'report' ? await this.report(cols, includeArchived)
+      : kind === 'projects' ? await this.projects(cols, includeArchived)
+      : await this.operations(cols, { ...(filters ?? {}), excludeArchived: !includeArchived });
     this.paramsSheet(wb, kind, cols, opts);
     return wb;
   }
@@ -205,6 +208,7 @@ export class ExportService {
     stamp.getCell(2).numFmt = 'dd.mm.yyyy hh:mm';
     put('Валюта учёта', `${BASE_CURRENCY} — сомони, без пересчёта`);
     put('Организация', 'IT-HONA LLC');
+    put('Архивные проекты', opts?.archived ? 'включены' : 'не включены');
     ws.addRow([]);
     ws.addRow(['Фильтры']).font = { bold: true, size: 12 };
     const filters = opts?.filters ?? [];
@@ -220,8 +224,8 @@ export class ExportService {
 
   /* ── Выгрузки ─────────────────────────────────────────────────────────── */
 
-  private async report(cols: ColumnSpec[]): Promise<ExcelJS.Workbook> {
-    const pf = await this.data.planFact();
+  private async report(cols: ColumnSpec[], includeArchived: boolean): Promise<ExcelJS.Workbook> {
+    const pf = await this.data.planFact(undefined, undefined, { includeArchived });
     const wb = new ExcelJS.Workbook();
     const ws = this.sheet(wb, 'План-Факт', cols, `Сводный отчёт «План-Факт» · суммы в ${BASE_CURRENCY}`);
 
@@ -251,7 +255,7 @@ export class ExportService {
     return wb;
   }
 
-  private async projects(cols: ColumnSpec[]): Promise<ExcelJS.Workbook> {
+  private async projects(cols: ColumnSpec[], includeArchived: boolean): Promise<ExcelJS.Workbook> {
     const projects = (await this.data.projects('admin')) as Array<{
       name: string; group: string; resp: string; status: string; archived: boolean;
       start: string | null; end: string | null; inF?: number; outF?: number; inP?: number; outP?: number;
@@ -261,6 +265,7 @@ export class ExportService {
     this.headerRow(ws, cols);
     const STATUS: Record<string, string> = { plan: 'Плановый', work: 'В работе', done: 'Завершён' };
     for (const p of projects) {
+      if (!includeArchived && p.archived) continue;
       this.dataRow(ws, cols, {
         name: p.name + (p.archived ? ' (архив)' : ''), group: p.group, resp: p.resp,
         status: STATUS[p.status] ?? p.status, start: p.start, end: p.end,

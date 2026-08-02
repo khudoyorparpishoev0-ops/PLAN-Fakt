@@ -47,6 +47,8 @@ export default function ExportDialog({ kind, query, rowCount, onClose }: ExportD
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
+  // Решение 11: архивные проекты в файл — только по явной галочке
+  const [withArchived, setWithArchived] = useState(false);
 
   useEffect(() => {
     api.exportColumns()
@@ -80,7 +82,7 @@ export default function ExportDialog({ kind, query, rowCount, onClose }: ExportD
     try {
       // Полный состав не передаём — сервер и так отдаст всё
       const cols = picked.length === all.length ? undefined : picked.map((c) => c.key);
-      await api.downloadExport(kind, query, cols);
+      await api.downloadExport(kind, query, cols, withArchived);
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось сформировать файл');
@@ -143,6 +145,20 @@ export default function ExportDialog({ kind, query, rowCount, onClose }: ExportD
               })}
             </div>
           </div>
+
+          {/* Решение 11: архив — только по явной галочке, по умолчанию чисто */}
+          <label data-export-archived onClick={() => setWithArchived(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }}>
+            <span style={{
+              width: 17, height: 17, flex: 'none', borderRadius: 5, display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              border: `1.5px solid ${withArchived ? ACC : 'var(--fin-border)'}`,
+              background: withArchived ? ACC : 'var(--fin-surface)',
+            }}>
+              {withArchived && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--fin-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+            </span>
+            <span style={{ fontSize: 13 }}>Включить архивные проекты</span>
+            <span style={{ fontSize: 11.5, color: 'var(--fin-text-4)' }}>по умолчанию архив в файл не попадает</span>
+          </label>
 
           {/* Предпросмотр листа — перестраивается вместе с выбором */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>

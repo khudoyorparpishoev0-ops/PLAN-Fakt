@@ -10,6 +10,8 @@ import { kmRateSet, tripAmount } from '../data/settings';
 import { CabBadge, TD_CAB, TH_CAB } from './PayRequestsScreen';
 import { useIsMobile } from '../lib/responsive';
 import FilePreview from '../components/FilePreview';
+import ExportDialog, { type ExportKind } from '../admin/ExportDialog';
+import { Ic } from '../icons';
 
 export interface HistoryScreenProps {
   pays: PayReq[];
@@ -349,6 +351,9 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   const [selReq, setSelReq] = useState<{ kind: ReqKind; id: string } | null>(null);
   /** Превью вложения прямо в кабинете (ТЗ, п. 10). */
   const [preview, setPreview] = useState<{ id: number; fileName: string } | null>(null);
+  /** Решение 07: сводная выгрузка доступна бухгалтеру. */
+  const [exportMenu, setExportMenu] = useState(false);
+  const [exportKind, setExportKind] = useState<ExportKind | null>(null);
 
   /* ── Фильтрация по проекту/статусу — применяется и к графикам, и к реестру ── */
   const passes = (project: string, status: ReqStatus) =>
@@ -408,7 +413,27 @@ export default function HistoryScreen(props: HistoryScreenProps) {
       {/* ── Главный реестр (прототип, строки 315–374) ── */}
       <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '18px 20px 14px', flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, paddingTop: 6 }}>ГЛАВНЫЙ РЕЕСТР ЗАЯВОК</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 6, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>ГЛАВНЫЙ РЕЕСТР ЗАЯВОК</div>
+            {/* Решение 07: бухгалтер может выгружать все данные — не только свои заявки */}
+            <div style={{ position: 'relative' }}>
+              <div
+                data-cab-export
+                onClick={() => setExportMenu(v => !v)}
+                className="hv-soft"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid var(--fin-border)', background: 'var(--fin-surface)', borderRadius: 8, padding: '6px 11px', fontSize: 12, fontWeight: 600, color: 'var(--fin-text-2)', cursor: 'pointer' }}
+              >
+                <Ic name="xls" size={14} />Выгрузка в Excel<span style={{ fontSize: 9, color: 'var(--fin-text-4)' }}>▾</span>
+              </div>
+              {exportMenu && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 30, background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 10, boxShadow: 'var(--fin-shadow-modal)', padding: 5, minWidth: 190 }}>
+                  {([['report', 'Отчёт «План-Факт»'], ['operations', 'Журнал операций'], ['projects', 'Проекты']] as [ExportKind, string][]).map(([k, t]) => (
+                    <div key={k} data-cab-export-kind={k} onClick={() => { setExportKind(k); setExportMenu(false); }} className="hv-soft" style={{ padding: '8px 11px', borderRadius: 7, fontSize: 12.5, cursor: 'pointer' }}>{t}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <MiniDonut items={donutItems} />
             <MiniSparkline data={monthly} />
@@ -542,6 +567,8 @@ export default function HistoryScreen(props: HistoryScreenProps) {
           onError={msg => props.toast?.(msg)}
         />
       )}
+
+      {exportKind && <ExportDialog kind={exportKind} onClose={() => setExportKind(null)} />}
     </div>
   );
 }

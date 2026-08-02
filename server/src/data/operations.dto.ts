@@ -13,6 +13,9 @@ export interface OperationFilters {
   amount_min?: number;
   amount_max?: number;
   q?: string;
+  /** Не включать операции архивных проектов (решение 11: галочка в диалоге
+   *  экспорта, по умолчанию выключена — архив в файл не попадает). */
+  excludeArchived?: boolean;
   limit?: number;
   offset?: number;
 }

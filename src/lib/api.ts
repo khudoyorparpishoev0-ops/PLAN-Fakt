@@ -945,6 +945,8 @@ export const api = {
     name: 'report' | 'projects' | 'operations',
     query?: OperationQuery,
     columns?: string[],
+    /** Решение 11: включить архивные проекты (по умолчанию не выгружаются). */
+    archived?: boolean,
   ): Promise<void> => {
     const parts: string[] = [];
     if (name === 'operations' && query) {
@@ -952,6 +954,7 @@ export const api = {
       if (qs) parts.push(qs);
     }
     if (columns?.length) parts.push(`columns=${encodeURIComponent(columns.join(','))}`);
+    if (archived) parts.push('archived=1');
     const res = await authedFetch(`/export/${name}.xlsx${parts.length ? `?${parts.join('&')}` : ''}`);
     const blob = await res.blob();
     const cd = res.headers.get('Content-Disposition') ?? '';
