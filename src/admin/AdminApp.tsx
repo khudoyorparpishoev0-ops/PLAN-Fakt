@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
 import { PF_DEFAULTS, type PfThresholds } from '../lib/badges';
+import { Ic, type IconName } from '../icons';
 import { savedDensity } from './CompanyTab';
 import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
@@ -48,7 +49,7 @@ const TITLES: Record<Screen, string> = {
 
 /** Пункт бокового меню. */
 function NavItem({ label, icon, active, disabled, badge, onClick }: {
-  label: string; icon: JSX.Element; active?: boolean; disabled?: boolean;
+  label: string; icon: IconName; active?: boolean; disabled?: boolean;
   /** Счётчик справа (очередь заявок); 0 не показывается. */
   badge?: number;
   onClick?: () => void;
@@ -66,7 +67,8 @@ function NavItem({ label, icon, active, disabled, badge, onClick }: {
         color: disabled ? 'rgba(255,255,255,.4)' : active ? 'var(--fin-surface)' : 'rgba(255,255,255,.82)',
       }}
     >
-      {icon}
+      {/* Правило набора: штрих активного пункта — 2, обычного — 1.7 */}
+      <Ic name={icon} bold={active} />
       <span style={{ fontSize: 13.5, fontWeight: active ? 600 : 500 }}>{label}</span>
       {!!badge && (
         <span style={{
@@ -83,21 +85,11 @@ const SectionLabel = ({ children, pt = 14 }: { children: string; pt?: number }) 
   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'rgba(255,255,255,.4)', padding: `${pt}px 22px 6px` }}>{children}</div>
 );
 
-const I = {
-  bell: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z" /><path d="M6.5 13a1.5 1.5 0 003 0" /></svg>,
-  approve: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="2" /><path d="M5.5 8.2l1.9 1.9L11 6.4" /></svg>,
-  pf: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="9" width="3" height="5" rx="1" /><rect x="6.5" y="5.5" width="3" height="8.5" rx="1" /><rect x="11" y="2.5" width="3" height="11.5" rx="1" /></svg>,
-  pok: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 11.5a5.5 5.5 0 1111 0" /><path d="M8 11.5l2.8-2.4" /><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none" /></svg>,
-  ops: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 5.5h10" /><path d="M9.5 2.8l3 2.7-3 2.7" /><path d="M13.5 10.5h-10" /><path d="M6.5 7.8l-3 2.7 3 2.7" /></svg>,
-  tasks: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="2.5" width="10" height="11.5" rx="1.8" /><rect x="5.5" y="1" width="5" height="3" rx="1" /><path d="M5.8 8l1.6 1.6 3-3.3" /></svg>,
-  plan: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="12" height="11" rx="2" /><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" /></svg>,
-  prj: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="12" height="8.5" rx="1.8" /><path d="M6 5V3.8A1.3 1.3 0 017.3 2.5h1.4A1.3 1.3 0 0110 3.8V5" /><path d="M2 8.7h12" /></svg>,
-  deals: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="13.5" r="1" /><circle cx="12" cy="13.5" r="1" /><path d="M1.5 2h2l1.5 8.5h7L14 5H4.2" /></svg>,
-  store: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1.8l5.5 3v6.4L8 14.2 2.5 11.2V4.8z" /><path d="M2.6 4.9L8 8l5.4-3.1M8 8v6.2" /></svg>,
-  clients: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="2" width="10" height="12" rx="1.2" /><path d="M5.6 5h1.4M9 5h1.4M5.6 8h1.4M9 8h1.4M6 14v-2.2h4V14" /></svg>,
-  sprav: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 4C6.9 3 5.2 2.8 2.5 2.8v9.7c2.7 0 4.4.2 5.5 1.2 1.1-1 2.8-1.2 5.5-1.2V2.8C10.8 2.8 9.1 3 8 4z" /><path d="M8 4v9.7" /></svg>,
-  users: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="2.3" /><path d="M1.8 13a4.2 4.2 0 018.4 0" /><path d="M10.5 4.2a2.3 2.3 0 010 4.3M11.2 13a4.2 4.2 0 00-1.4-3.1" /></svg>,
-  set: <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="2.1" /><path d="M8 1.8v1.9M8 12.3v1.9M1.8 8h1.9M12.3 8h1.9M3.6 3.6l1.35 1.35M11.05 11.05l1.35 1.35M12.4 3.6l-1.35 1.35M4.95 11.05L3.6 12.4" /></svg>,
+/** Иконки меню — по карте «иконка → пункт» из it-hona/icons.js (src/icons.tsx). */
+const I: Record<string, IconName> = {
+  bell: 'bell', approve: 'approve', pf: 'chart', pok: 'gauge', ops: 'list',
+  tasks: 'check', plan: 'calendar', prj: 'folder', deals: 'cart', store: 'box',
+  clients: 'briefcase', sprav: 'book', users: 'users', set: 'sliders',
 };
 
 export interface AdminAppProps {
