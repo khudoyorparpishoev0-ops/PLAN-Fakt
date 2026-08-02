@@ -6,7 +6,7 @@ import { PERIOD_KINDS, type PeriodKind } from '../lib/period';
 import { useIsMobile } from '../lib/responsive';
 import { ACC, SOFT, ROW_PAD, CARD_PAD, GOLOS, num } from '../theme';
 import { fmt, pct1 } from '../lib/format';
-import { devInfo, incDevB, expDevB } from '../lib/badges';
+import { devInfo, incDevB, expDevB, type PfThresholds } from '../lib/badges';
 import { Badge, Th } from '../components/ui';
 
 export interface PanelScreenProps {
@@ -19,6 +19,8 @@ export interface PanelScreenProps {
   decideRequest: (id: number, status: 'approved' | 'rejected') => void;
   /** Роль смотрящего: согласовывает только директор, администратор наблюдает. */
   role: string;
+  /** Пороги статусов План-Факта (настраиваются в «Настройках»). */
+  pf: PfThresholds;
   /** Отчётный период (общий для панели, расходов и отчёта). */
   period: PeriodKind;
   setPeriod: (p: PeriodKind) => void;
@@ -116,12 +118,12 @@ const icMap: Record<string, string> = {
   'Оплата заказчиков': 'money', 'Закупка оборудования': 'cart', 'Подрядчики': 'people',
   'Транспорт': 'truck', 'Зарплата': 'card', 'Налоги': 'percent',
 };
-function dR(type: 'inc' | 'exp', cat: string, plan: number, fact: number, pending?: boolean) {
+function dR(type: 'inc' | 'exp', cat: string, plan: number, fact: number, pending: boolean | undefined, th: PfThresholds) {
   return {
     ic: icMap[cat] || 'money', cat,
     planF: fmt(plan), factF: pending && !fact ? '—' : fmt(fact),
     ...devInfo(type, plan, fact, pending),
-    b: type === 'inc' ? incDevB(plan, fact, pending) : expDevB(plan, fact, pending),
+    b: type === 'inc' ? incDevB(plan, fact, pending, th) : expDevB(plan, fact, pending, th),
   };
 }
 
@@ -173,8 +175,8 @@ export default function PanelScreen(props: PanelScreenProps) {
     return [...byCat.entries()].sort((a, b) => b[1].plan - a[1].plan);
   };
   const dashRows = [
-    ...aggregate(incomes).slice(0, 1).map(([cat, v]) => dR('inc', cat, v.plan, v.fact, v.pending && !v.fact)),
-    ...aggregate(expenses).slice(0, 5).map(([cat, v]) => dR('exp', cat, v.plan, v.fact, v.pending && !v.fact)),
+    ...aggregate(incomes).slice(0, 1).map(([cat, v]) => dR('inc', cat, v.plan, v.fact, v.pending && !v.fact, props.pf)),
+    ...aggregate(expenses).slice(0, 5).map(([cat, v]) => dR('exp', cat, v.plan, v.fact, v.pending && !v.fact, props.pf)),
   ];
 
   /* ── «Требует внимания» — события считаются из данных периода ── */

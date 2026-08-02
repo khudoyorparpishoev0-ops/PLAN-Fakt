@@ -1,6 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react';
-import { ACC, SOFT, PLEX } from '../theme';
-import { badge } from '../lib/badges';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { ACC, SOFT, PLEX, C } from '../theme';
+import { badge, pfLegend, PF_DEFAULTS } from '../lib/badges';
 import { fmt } from '../lib/format';
 import { SETTINGS_NAV } from '../data/admin';
 import { SINGLE_CURRENCY } from '../lib/currency';
@@ -130,19 +130,47 @@ export default function SettingsScreen(props: SettingsScreenProps) {
     }
   };
 
-  /* ── Общие настройки: ставка км ── */
+  /* ── Общие настройки: ставка км + пороги статусов План-Факта ── */
   const [kmRateStr, setKmRateStr] = useState('');
+  const [pfStr, setPfStr] = useState<Record<'norm' | 'warn' | 'check', string>>({ norm: '', warn: '', check: '' });
   useEffect(() => {
     if (setTab === 'general') {
-      api.settings().then(s => setKmRateStr(s.kmRate ? String(s.kmRate).replace('.', ',') : '0')).catch(() => {});
+      api.settings().then(s => {
+        setKmRateStr(s.kmRate ? String(s.kmRate).replace('.', ',') : '0');
+        setPfStr({
+          norm: String(s.pf.norm).replace('.', ','),
+          warn: String(s.pf.warn).replace('.', ','),
+          check: String(s.pf.check).replace('.', ','),
+        });
+      }).catch(() => {});
     }
   }, [setTab]);
   const saveKmRate = async () => {
     const v = parseFloat(kmRateStr.trim().replace(/\s/g, '').replace(',', '.'));
     if (!Number.isFinite(v) || v < 0) { setNotice('Ставка — неотрицательное число'); return; }
     try {
-      await api.updateSettings(v);
+      await api.updateSettings({ kmRate: v });
       setNotice('Ставка сохранена. Поездки теперь ' + (v > 0 ? `считаются по ${kmRateStr} TJS/км` : 'показываются в километрах'));
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Не удалось сохранить (нужна роль администратора)');
+    }
+  };
+
+  /** Введённые пороги числами; null — где-то не число. */
+  const pfParsed = useMemo(() => {
+    const num = (s: string) => parseFloat(s.trim().replace(/\s/g, '').replace(',', '.'));
+    const th = { norm: num(pfStr.norm), warn: num(pfStr.warn), check: num(pfStr.check) };
+    return Object.values(th).every(v => Number.isFinite(v) && v >= 0 && v <= 100) ? th : null;
+  }, [pfStr]);
+  const savePf = async () => {
+    if (!pfParsed) { setNotice('Пороги — числа от 0 до 100 (проценты)'); return; }
+    if (pfParsed.warn <= pfParsed.norm || pfParsed.check <= pfParsed.norm) {
+      setNotice('Пороги «Критично» и «Проверить план» должны быть больше нормы');
+      return;
+    }
+    try {
+      await api.updateSettings({ pf: pfParsed });
+      setNotice('Пороги сохранены — статусы во всех отчётах пересчитаются при следующей загрузке');
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Не удалось сохранить (нужна роль администратора)');
     }
@@ -309,6 +337,38 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <div onClick={saveKmRate} className="hv-dim" style={primaryBtn}>Сохранить</div>
+            </div>
+
+            <div style={{ ...secHead, marginTop: 28 }}>ПОРОГИ СТАТУСОВ ПЛАН-ФАКТА</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.55, marginBottom: 14 }}>
+              По этим порогам считаются статусы в отчёте «План-Факт», на дашборде и в Excel
+              (решение заказчика: пороги настраиваемые). Отклонение — в процентах от плана;
+              «в свою пользу» для дохода — больше плана, для расхода — меньше.
+            </div>
+            <div data-pf-thresholds style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 200px)', gap: 14 }}>
+              {([
+                ['norm', 'Норма, ±%', 'До этого отклонения — «В норме»'],
+                ['warn', 'Критично, %', 'Против плана больше этого — «Критично», до — «Внимание»'],
+                ['check', 'Проверить план, %', 'В свою пользу больше этого — подозрительно хорошо'],
+              ] as const).map(([key, title, hint]) => (
+                <div key={key}>
+                  <div style={lbl}>{title}</div>
+                  <input data-pf-input={key} value={pfStr[key]} onChange={e => setPfStr(s => ({ ...s, [key]: e.target.value }))} style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} />
+                  <div style={{ fontSize: 11, color: 'var(--fin-text-4)', lineHeight: 1.45, marginTop: 5 }}>{hint}</div>
+                </div>
+              ))}
+            </div>
+            {/* Предпросмотр из тех же порогов, что и формула: что сохранится, то и увидят */}
+            <div data-pf-preview style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, padding: '11px 14px', background: 'var(--fin-surface-alt)', borderRadius: 10 }}>
+              {pfLegend(pfParsed ?? PF_DEFAULTS).map(l => (
+                <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fin-text-2)' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 99, background: C[l.color].fg }} />
+                  <b>{l.label}</b> {l.rule}
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <div onClick={savePf} data-pf-save className="hv-dim" style={primaryBtn}>Сохранить пороги</div>
             </div>
           </div>
         )}

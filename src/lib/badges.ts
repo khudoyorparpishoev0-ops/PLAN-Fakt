@@ -18,43 +18,70 @@ export function opBadge(st: string): BadgeData {
   return badge(st, 'gray');
 }
 
-/** Бейдж отклонения по доходам. */
-export function incDevB(plan: number, fact: number, pending?: boolean): BadgeData {
-  if (!plan) return badge('План не указан', 'gray');
-  if (pending && !fact) return badge('Ожидается', 'gray');
-  const p = (fact / plan) * 100;
-  if (p >= 100) return badge(p > 100 ? 'Выше плана' : 'План выполнен', 'green');
-  if (p >= 90) return badge('Ниже плана', 'yellow');
-  if (p >= 75) return badge('Риск', 'orange');
-  return badge('Критично', 'red');
-}
+/* ── Статусы План-Факта: одна формула на всю систему ──────────────────────
+ *
+ * Шкала — из макета «IT-HONA План-Факт» (решение заказчика 02.08.2026,
+ * выбрано вместо таблицы ТЗ п. 8, с которой макет расходился). Пороги
+ * настраиваемые: приходят из GET /settings, по умолчанию — значения макета.
+ * Зеркало серверной server/src/pf.ts — правьте оба файла. */
 
-/** Бейдж отклонения по расходам (пороги недорасхода из ТЗ). */
-export function expDevB(plan: number, fact: number, pending?: boolean): BadgeData {
+export interface PfThresholds {
+  /** ±норма: до этого отклонение «В норме» (по умолчанию 2%). */
+  norm: number;
+  /** Против плана больше этого — «Критично», до — «Внимание» (10%). */
+  warn: number;
+  /** В свою пользу больше этого — «Проверить план» (25%). */
+  check: number;
+}
+export const PF_DEFAULTS: PfThresholds = { norm: 2, warn: 10, check: 25 };
+
+export type PfDir = 'income' | 'expense';
+
+/** Статус строки план-факта. fact === null — факт не проведён. */
+export function pfStatus(plan: number, fact: number | null, dir: PfDir, th: PfThresholds = PF_DEFAULTS): BadgeData {
+  if (fact === null) return badge('Нет данных', 'gray');
   if (!plan) return badge('План не указан', 'gray');
-  if (pending && !fact) return badge('Нет данных', 'gray');
-  if (fact === plan) return badge('По плану', 'green');
-  if (fact < plan) {
-    const u = ((plan - fact) / plan) * 100;
-    if (u <= 5) return badge('В норме', 'green');
-    if (u <= 20) return badge('Экономия', 'green');
-    return badge('Проверить план', 'yellow');
+  const dev = fact - plan;
+  // Знаменатель по модулю: у строки результата план бывает отрицательным.
+  const pct = Math.abs(dev / plan) * 100;
+  if (pct <= th.norm) return badge('В норме', 'gray');
+  const good = dir === 'income' ? dev > 0 : dev < 0;
+  if (good) {
+    if (pct > th.check) return badge('Проверить план', 'orange');
+    return badge(dir === 'income' ? 'Выше плана' : 'Экономия', 'green');
   }
-  const o = ((fact - plan) / plan) * 100;
-  if (o <= 5) return badge('Внимание', 'yellow');
-  if (o <= 10) return badge('Риск', 'orange');
-  return badge('Перерасход', 'red');
+  return pct > th.warn ? badge('Критично', 'red') : badge('Внимание', 'yellow');
 }
 
-/** Бейдж выполнения плана прибыли. */
-export function profDevB(plan: number, fact: number): BadgeData {
-  if (plan <= 0) return badge('Нет данных', 'gray');
-  if (fact < 0) return badge('Убыток', 'red');
-  const p = (fact / plan) * 100;
-  if (p >= 100) return badge('План выполнен', 'green');
-  if (p >= 85) return badge('Внимание · ' + pct1(p) + '%', 'yellow');
-  if (p >= 70) return badge('Риск · ' + pct1(p) + '%', 'orange');
-  return badge('Критично', 'red');
+/** Правила легенды «Как считается статус» — из тех же порогов, что формула:
+ *  легенда не может разойтись с поведением. */
+export function pfLegend(th: PfThresholds): Array<{ label: string; rule: string; color: BadgeColor }> {
+  const p = (v: number) => String(v).replace('.', ',') + '%';
+  return [
+    { label: 'В норме', rule: `±${p(th.norm)}`, color: 'gray' },
+    { label: 'Экономия / выше плана', rule: `в свою пользу ${p(th.norm)}–${p(th.check)}`, color: 'green' },
+    { label: 'Внимание', rule: `против плана ${p(th.norm)}–${p(th.warn)}`, color: 'yellow' },
+    { label: 'Критично', rule: `против плана больше ${p(th.warn)}`, color: 'red' },
+    { label: 'Проверить план', rule: `в свою пользу больше ${p(th.check)}`, color: 'orange' },
+    { label: 'Нет данных', rule: 'факт не проведён', color: 'gray' },
+  ];
+}
+
+/** Бейдж отклонения по доходам. */
+export function incDevB(plan: number, fact: number, pending?: boolean, th?: PfThresholds): BadgeData {
+  return pfStatus(plan, pending && !fact ? null : fact, 'income', th);
+}
+
+/** Бейдж отклонения по расходам. */
+export function expDevB(plan: number, fact: number, pending?: boolean, th?: PfThresholds): BadgeData {
+  return pfStatus(plan, pending && !fact ? null : fact, 'expense', th);
+}
+
+/** Бейдж результата (доходы − расходы): больше — лучше, как у дохода.
+ *  Убыток при плановой прибыли — всегда «Убыток», какой бы ни был процент. */
+export function profDevB(plan: number, fact: number, th?: PfThresholds): BadgeData {
+  if (plan > 0 && fact < 0) return badge('Убыток', 'red');
+  return pfStatus(plan, fact, 'income', th);
 }
 
 export interface DevInfo { devF: string; devPctF: string; devFg: string }

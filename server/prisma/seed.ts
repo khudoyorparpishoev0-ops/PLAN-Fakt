@@ -288,7 +288,8 @@ async function seedPlanFact() {
     };
     await prisma.plan.upsert({
       where: { externalRef: `plan:${r.n}` },
-      update: planData,
+      // deletedAt: null — повторный seed восстанавливает строку после clean:demo
+      update: { ...planData, deletedAt: null },
       create: { externalRef: `plan:${r.n}`, ...planData },
     });
     if (r.fact > 0) {
@@ -301,7 +302,7 @@ async function seedPlanFact() {
         articleId: artId, projectId: projId,
         counterpartyId: await counterpartyId(r.party),
       };
-      await prisma.operation.upsert({ where: { externalRef: r.n }, update: data, create: { externalRef: r.n, ...data } });
+      await prisma.operation.upsert({ where: { externalRef: r.n }, update: { ...data, deletedAt: null }, create: { externalRef: r.n, ...data } });
     }
   }
   for (const r of EXPENSES) {
@@ -314,7 +315,8 @@ async function seedPlanFact() {
     };
     await prisma.plan.upsert({
       where: { externalRef: `plan:${r.n}` },
-      update: planData,
+      // deletedAt: null — повторный seed восстанавливает строку после clean:demo
+      update: { ...planData, deletedAt: null },
       create: { externalRef: `plan:${r.n}`, ...planData },
     });
     if (r.fact > 0) {
@@ -327,7 +329,7 @@ async function seedPlanFact() {
         articleId: artId, projectId: projId,
         counterpartyId: await counterpartyId(r.payee),
       };
-      await prisma.operation.upsert({ where: { externalRef: r.n }, update: data, create: { externalRef: r.n, ...data } });
+      await prisma.operation.upsert({ where: { externalRef: r.n }, update: { ...data, deletedAt: null }, create: { externalRef: r.n, ...data } });
     }
   }
 }
@@ -367,7 +369,7 @@ async function seedProjectBaselines() {
       };
       await prisma.operation.upsert({
         where: { externalRef: `base:${p.id}:${suffix}` },
-        update: data,
+        update: { ...data, deletedAt: null },
         create: { externalRef: `base:${p.id}:${suffix}`, ...data },
       });
     };
@@ -376,7 +378,7 @@ async function seedProjectBaselines() {
       const data = { articleId: artId, projectId: projId, period: PERIOD, amountDirams: dirams(amount) };
       await prisma.plan.upsert({
         where: { externalRef: `base:${p.id}:${suffix}` },
-        update: data,
+        update: { ...data, deletedAt: null },
         create: { externalRef: `base:${p.id}:${suffix}`, ...data },
       });
     };
@@ -404,7 +406,7 @@ async function seedOperationsJournal() {
       projectId: await projectId(project),
       counterpartyId: await counterpartyId(party),
     };
-    await prisma.operation.upsert({ where: { externalRef: `ops:${i}` }, update: data, create: { externalRef: `ops:${i}`, ...data } });
+    await prisma.operation.upsert({ where: { externalRef: `ops:${i}` }, update: { ...data, deletedAt: null }, create: { externalRef: `ops:${i}`, ...data } });
   }
 }
 
@@ -446,7 +448,7 @@ async function seedRequests() {
     for (const a of req.attachments) {
       await prisma.attachment.upsert({
         where: { requestId_fileName: { requestId: row.id, fileName: a.fileName } },
-        update: { kind: a.kind },
+        update: { kind: a.kind, deletedAt: null },
         create: { requestId: row.id, kind: a.kind, fileName: a.fileName },
       });
     }
@@ -517,7 +519,11 @@ async function seedStage2() {
     const exists = await prisma.stockMove.findFirst({
       where: { goodId: good.id, comment: 'Входящий остаток склада' },
     });
-    if (exists) continue;
+    if (exists) {
+      // Восстановление после clean:demo — повторный сид возвращает демо-данные
+      if (exists.deletedAt) await prisma.stockMove.update({ where: { id: exists.id }, data: { deletedAt: null } });
+      continue;
+    }
     await prisma.stockMove.create({
       data: {
         goodId: good.id, type: 'in', qty: new Prisma.Decimal(qty),
@@ -531,6 +537,16 @@ async function seedStage2() {
   const supplier = await prisma.counterparty.findFirst({ where: { name: '«ТаджТехСнаб»' } });
   const cable = await prisma.good.findFirst({ where: { name: 'Кабель силовой ВВГ 3×2,5' } });
   const dealExists = await prisma.deal.findUnique({ where: { number: 'СД-001' } });
+  if (dealExists?.deletedAt) {
+    // Восстановление демо-сделки после clean:demo — вместе со всем деревом,
+    // которое очистка помечала удалённым (позиции, поставки, вложения, склад)
+    await prisma.deal.update({ where: { id: dealExists.id }, data: { deletedAt: null } });
+    await prisma.dealPosition.updateMany({ where: { dealId: dealExists.id }, data: { deletedAt: null } });
+    await prisma.delivery.updateMany({ where: { dealId: dealExists.id }, data: { deletedAt: null } });
+    await prisma.deliveryPosition.updateMany({ where: { delivery: { dealId: dealExists.id } }, data: { deletedAt: null } });
+    await prisma.attachment.updateMany({ where: { dealId: dealExists.id }, data: { deletedAt: null } });
+    await prisma.stockMove.updateMany({ where: { dealId: dealExists.id }, data: { deletedAt: null } });
+  }
   if (!dealExists) {
     await prisma.deal.create({
       data: {
@@ -629,7 +645,10 @@ async function seedStage2() {
   ];
   for (const t of tasks) {
     const exists = await prisma.task.findFirst({ where: { title: t.title } });
-    if (exists) continue;
+    if (exists) {
+      if (exists.deletedAt) await prisma.task.update({ where: { id: exists.id }, data: { deletedAt: null } });
+      continue;
+    }
     await prisma.task.create({
       data: {
         title: t.title, assigneeId: t.assignee, authorId: admin.id,

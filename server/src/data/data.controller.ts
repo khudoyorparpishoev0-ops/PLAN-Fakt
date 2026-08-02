@@ -1,7 +1,8 @@
 import {
   Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString, Length, Matches, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import type { AuthRequest } from '../auth/auth.types';
 import { JwtAuthGuard, PasswordChangeGuard, Roles, RolesGuard } from '../auth/guards';
 import { DataService, REF_KINDS, type RefKind } from './data.service';
@@ -47,10 +48,31 @@ export class PatchProjectDto {
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) end?: string;
 }
 
+export class PfThresholdsDto {
+  @IsNumber({}, { message: 'norm — число (процент)' })
+  @Min(0) @Max(100)
+  norm!: number;
+
+  @IsNumber({}, { message: 'warn — число (процент)' })
+  @Min(0) @Max(100)
+  warn!: number;
+
+  @IsNumber({}, { message: 'check — число (процент)' })
+  @Min(0) @Max(100)
+  check!: number;
+}
+
 export class UpdateSettingsDto {
+  @IsOptional()
   @IsNumber({}, { message: 'kmRate — число (сомони за км)' })
   @Min(0, { message: 'Ставка не может быть отрицательной' })
-  kmRate!: number;
+  kmRate?: number;
+
+  /** Пороги статусов План-Факта, проценты (решение заказчика: настраиваемые). */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PfThresholdsDto)
+  pf?: PfThresholdsDto;
 }
 
 export class AddRateDto {
@@ -199,7 +221,7 @@ export class DataController {
   @Patch('settings')
   @Roles('admin')
   updateSettings(@Body() dto: UpdateSettingsDto) {
-    return this.data.updateKmRate(dto.kmRate);
+    return this.data.updateSettings(dto);
   }
 
   @Get('rates')

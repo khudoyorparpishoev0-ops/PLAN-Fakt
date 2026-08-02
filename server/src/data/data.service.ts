@@ -3,6 +3,7 @@ import { Prisma, type ArticleType, type ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
 import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
+import { PF_DEFAULTS, pfStatusLabel, pfValidate, type PfThresholds } from '../pf';
 import type { CreateOperationDto, OperationFilters } from './operations.dto';
 
 /** Виды справочников с общим CRUD. */
@@ -361,7 +362,8 @@ export class DataService {
   }> {
     const dFrom = from ? new Date(from + 'T00:00:00Z') : undefined;
     const dTo = to ? new Date(to + 'T00:00:00Z') : undefined;
-    const { incomes, expenses } = await this.planFactRows(dFrom, dTo);
+    const th = await this.pfThresholds();
+    const { incomes, expenses } = await this.planFactRows(dFrom, dTo, th);
 
     // Прибыль предыдущего периода той же длины — для «К прошлому периоду»
     let prevProfitFact: number | null = null;
@@ -380,7 +382,7 @@ export class DataService {
 
   /** Строки план-факта: планы (+ факт-операции по externalRef) и плановые
    *  операции из одобренных заявок (`req:<номер>`, сторно схлопывается). */
-  private async planFactRows(from?: Date, to?: Date): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
+  private async planFactRows(from?: Date, to?: Date, th: PfThresholds = PF_DEFAULTS): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
     const plans = await this.prisma.plan.findMany({
       where: {
         deletedAt: null,
@@ -403,6 +405,8 @@ export class DataService {
     for (const p of plans) {
       const n = p.externalRef!.slice('plan:'.length);
       const fact = factByRef.get(n);
+      const planTjs = somoni(p.amountDirams)!;
+      const factTjs = fact ? somoni(fact.amountTjsDirams)! : 0;
       const row: PlanFactRow = {
         n,
         cat: p.article.name,
@@ -410,9 +414,12 @@ export class DataService {
         party: fact?.counterparty?.name ?? '—',
         pdate: dateStr(p.planDate),
         fdate: dateStr(p.factDate),
-        plan: somoni(p.amountDirams)!,
-        fact: fact ? somoni(fact.amountTjsDirams)! : 0,
-        status: p.statusLabel ?? '—',
+        plan: planTjs,
+        fact: factTjs,
+        // Статус ВЫЧИСЛЯЕТСЯ, не хранится (README 5.1): сохранённая подпись
+        // statusLabel — рудимент прототипа, где статусы были проставлены руками
+        // и конфликтовали между собой.
+        status: pfStatusLabel(planTjs, fact ? factTjs : null, p.article.type === 'income' ? 'income' : 'expense', th),
         resp: p.responsibleName ?? '—',
         pending: !fact,
         ...(p.reason ? { reason: p.reason } : {}),
@@ -871,20 +878,45 @@ export class DataService {
 
   /* ── Настройки, курсы, аудит ──────────────────────────────────────────── */
 
-  /** Настройки: ставка компенсации км (сомони/км; 0 — не задана). */
-  async settings(): Promise<{ kmRate: number }> {
-    const row = await this.prisma.setting.findUnique({ where: { key: 'km_rate' } });
-    return { kmRate: row ? Number(row.value) / 100 : 0 };
+  /** Настройки: ставка компенсации км (сомони/км; 0 — не задана)
+   *  и пороги статусов План-Факта (проценты; решение заказчика 02.08.2026 —
+   *  настраиваемые, поэтому живут в базе, а не в коде). */
+  async settings(): Promise<{ kmRate: number; pf: PfThresholds }> {
+    const rows = await this.prisma.setting.findMany({
+      where: { key: { in: ['km_rate', 'pf_norm', 'pf_warn', 'pf_check'] } },
+    });
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const pct = (key: string, dflt: number) => {
+      const v = Number(map.get(key));
+      return map.has(key) && Number.isFinite(v) ? v : dflt;
+    };
+    return {
+      kmRate: map.has('km_rate') ? Number(map.get('km_rate')) / 100 : 0,
+      pf: {
+        norm: pct('pf_norm', PF_DEFAULTS.norm),
+        warn: pct('pf_warn', PF_DEFAULTS.warn),
+        check: pct('pf_check', PF_DEFAULTS.check),
+      },
+    };
   }
 
-  async updateKmRate(kmRate: number): Promise<{ kmRate: number }> {
-    const value = String(Math.round(kmRate * 100));
-    await this.prisma.setting.upsert({
-      where: { key: 'km_rate' },
-      update: { value },
-      create: { key: 'km_rate', value },
-    });
-    return { kmRate: Math.round(kmRate * 100) / 100 };
+  /** Пороги План-Факта из настроек — для формулы статусов. */
+  private async pfThresholds(): Promise<PfThresholds> {
+    return (await this.settings()).pf;
+  }
+
+  async updateSettings(dto: { kmRate?: number; pf?: PfThresholds }): Promise<{ kmRate: number; pf: PfThresholds }> {
+    const put = async (key: string, value: string) =>
+      this.prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
+    if (dto.kmRate !== undefined) await put('km_rate', String(Math.round(dto.kmRate * 100)));
+    if (dto.pf) {
+      const bad = pfValidate(dto.pf);
+      if (bad) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', bad, 'pf');
+      await put('pf_norm', String(dto.pf.norm));
+      await put('pf_warn', String(dto.pf.warn));
+      await put('pf_check', String(dto.pf.check));
+    }
+    return this.settings();
   }
 
   /** Курсы валют: по каждой валюте — последний курс к TJS. */

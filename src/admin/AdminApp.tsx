@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACC, applyThemeVars, num } from '../theme';
+import { PF_DEFAULTS, type PfThresholds } from '../lib/badges';
 import { savedDensity } from './CompanyTab';
 import type { Expense, Income, Project } from '../data/admin';
 import { computeTotals, initials } from '../lib/compute';
@@ -148,6 +149,11 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
   const [period, setPeriod] = useState<PeriodKind>(DEFAULT_PERIOD);
   const range = useMemo(() => periodRange(period), [period]);
 
+  /** Пороги статусов План-Факта — настраиваемые (решение заказчика 02.08),
+   *  поэтому грузятся с сервера и раздаются экранам, а не зашиты в код. */
+  const [pf, setPf] = useState<PfThresholds>(PF_DEFAULTS);
+  useEffect(() => { api.settings().then(s => setPf(s.pf)).catch(() => {}); }, []);
+
   useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
 
   const loadData = async () => {
@@ -190,7 +196,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
     () => expensesRaw.map(e => ({ ...e, status: expStatuses[e.n] ?? e.status })),
     [expensesRaw, expStatuses],
   );
-  const totals = useMemo(() => computeTotals(incomesRaw, expenses, metrics), [incomesRaw, expenses, metrics]);
+  const totals = useMemo(() => computeTotals(incomesRaw, expenses, metrics, pf), [incomesRaw, expenses, metrics, pf]);
   const projects = useMemo(() => apiProjects.map(toProject), [apiProjects]);
 
   /** Заявки, ждущие решения (Отправлено / На рассмотрении) — «Требует внимания». */
@@ -349,10 +355,10 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
                 />
               )}
               {screen === 'approvals' && <ApprovalsScreen role={user?.role ?? 'director'} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
-              {screen === 'panel' && <PanelScreen role={user?.role ?? 'director'} incomes={incomesRaw} expenses={expenses} totals={totals} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
+              {screen === 'panel' && <PanelScreen role={user?.role ?? 'director'} incomes={incomesRaw} expenses={expenses} totals={totals} pf={pf} pendingReqs={pendingReqs} decideRequest={decideRequest} period={period} setPeriod={setPeriod} projects={apiProjects} goReport={() => setScreen('report')} goExpenses={() => setScreen('expenses')} />}
               {screen === 'incomes' && <OperationsScreen dicts={dicts} projects={apiProjects} openCreate={setOpDrawer} refreshTick={opsTick} onChanged={() => { void loadData(); setNotifyTick(t => t + 1); }} onError={setLoadError} />}
               {screen === 'expenses' && <ExpensesScreen expenses={expenses} totals={totals} pendingCount={pendingReqs.length} goIncomes={() => setScreen('incomes')} openExpense={setSelExp} openCreate={() => setOpDrawer('out')} />}
-              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} periodLabel={range.label} from={range.from} to={range.to} dicts={dicts} projects={apiProjects} onError={setLoadError} />}
+              {screen === 'report' && <ReportScreen incomes={incomesRaw} expenses={expenses} totals={totals} pf={pf} periodLabel={range.label} from={range.from} to={range.to} dicts={dicts} projects={apiProjects} onError={setLoadError} />}
               {screen === 'projects' && <ProjectsScreen projects={projects} toggleArchive={toggleArchive} openProject={setSelProj} onSaved={loadData} onError={setLoadError} />}
               {screen === 'sprav' && <SpravScreen dicts={dicts} onChanged={reloadDicts} />}
               {screen === 'settings' && <SettingsScreen setTab={setTab} setSetTab={setSetTab} user={user} onChangePassword={onChangePassword} />}

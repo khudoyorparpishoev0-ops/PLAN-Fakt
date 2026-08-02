@@ -418,6 +418,12 @@ export interface ApiAssignee {
 
 export interface ApiRate { code: string; name: string; rate: number | null; rateDate: string | null }
 
+/** Настройки: ставка км и пороги статусов План-Факта (проценты). */
+export interface ApiSettings {
+  kmRate: number;
+  pf: { norm: number; warn: number; check: number };
+}
+
 /* ── Этап 2: задачи, закупки, склад, клиенты, планирование, уведомления ─── */
 
 export type TaskStatus = 'open' | 'in_progress' | 'done' | 'canceled';
@@ -772,10 +778,10 @@ export const api = {
   updateRequest: (id: number, payload: UpdateRequestPayload) =>
     authedReq<ApiRequest>(`/requests/${id}`, { method: 'PATCH', body: payload }),
 
-  settings: () => authedReq<{ kmRate: number }>('/settings'),
+  settings: () => authedReq<ApiSettings>('/settings'),
 
-  updateSettings: (kmRate: number) =>
-    authedReq<{ kmRate: number }>('/settings', { method: 'PATCH', body: { kmRate } }),
+  updateSettings: (patch: { kmRate?: number; pf?: ApiSettings['pf'] }) =>
+    authedReq<ApiSettings>('/settings', { method: 'PATCH', body: patch }),
 
   rates: () => authedReq<ApiRate[]>('/rates'),
 

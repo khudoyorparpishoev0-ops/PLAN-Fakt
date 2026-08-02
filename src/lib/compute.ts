@@ -1,7 +1,7 @@
 import type { Expense, Income } from '../data/admin';
 import type { ApiMetrics as Metrics } from './api';
 import { fmt, pct1, sgn } from './format';
-import { badge, profDevB, type BadgeData } from './badges';
+import { badge, profDevB, type BadgeData, type PfThresholds } from './badges';
 
 /** Сквозные агрегаты «план–факт» по доходам/расходам/прибыли + константы панели. */
 export interface Totals {
@@ -41,7 +41,7 @@ function expTotalB(plan: number, fact: number): BadgeData {
 /** Итоги «план–факт» и показатели дашборда.
  *  metrics приходят с сервера (остатки счетов, ожидания, задолженности);
  *  без них (данные ещё грузятся) показываются нули. */
-export function computeTotals(incomes: Income[], expenses: Expense[], metrics?: Metrics | null): Totals {
+export function computeTotals(incomes: Income[], expenses: Expense[], metrics?: Metrics | null, th?: PfThresholds): Totals {
   const incPlan = incomes.reduce((a, r) => a + r.plan, 0), incFact = incomes.reduce((a, r) => a + r.fact, 0);
   const expPlan = expenses.reduce((a, r) => a + r.plan, 0), expFact = expenses.reduce((a, r) => a + r.fact, 0);
   // Защита от деления на ноль (до загрузки данных списки пустые)
@@ -59,7 +59,7 @@ export function computeTotals(incomes: Income[], expenses: Expense[], metrics?: 
     incPlan, incFact, expPlan, expFact, incPct, expPct, profPlan, profFact,
     incB: incTotalB(incPlan, incFact),
     expB: expTotalB(expPlan, expFact),
-    profB: profDevB(profPlan, profFact),
+    profB: profDevB(profPlan, profFact, th),
     incPlanF: fmt(incPlan), incFactF: fmt(incFact), incPctT: pct1(incPct) + '%', incPctW: Math.min(incPct, 100).toFixed(1) + '%',
     incDevF: sgn(incFact - incPlan), incForeF: fmt(m?.incForecast ?? incFact), incRestF: fmt(Math.max(incPlan - incFact, 0)),
     expPlanF: fmt(expPlan), expFactF: fmt(expFact), expPctT: pct1(expPct) + '%', expPctW: Math.min(expPct, 100).toFixed(1) + '%',

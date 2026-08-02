@@ -11,6 +11,12 @@ export function savedDensity(): Density {
   return localStorage.getItem(DENSITY_KEY) === 'compact' ? 'Компактная' : 'Комфортная';
 }
 
+/** Сохранить и применить плотность (общая точка для «Компании» и отчёта). */
+export function saveDensity(d: Density) {
+  localStorage.setItem(DENSITY_KEY, d === 'Компактная' ? 'compact' : 'comfort');
+  applyThemeVars(undefined, d);
+}
+
 const cardS: CSSProperties = {
   background: 'var(--fin-surface)', border: '1px solid var(--fin-border)',
   borderRadius: 12, padding: '20px 22px', maxWidth: 620,
@@ -28,10 +34,7 @@ const rowS: CSSProperties = {
 export default function CompanyTab() {
   const [density, setDensity] = useState<Density>(savedDensity);
 
-  useEffect(() => {
-    localStorage.setItem(DENSITY_KEY, density === 'Компактная' ? 'compact' : 'comfort');
-    applyThemeVars(undefined, density);
-  }, [density]);
+  useEffect(() => { saveDensity(density); }, [density]);
 
   const profile: [string, string][] = [
     ['Название', 'IT-HONA LLC'],
