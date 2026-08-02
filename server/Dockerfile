@@ -19,9 +19,14 @@ RUN cd server && npm ci
 COPY server/tsconfig.json ./server/
 COPY server/prisma ./server/prisma
 COPY server/src ./server/src
-# Фикстуры фронтенда — источник данных для seed
+COPY server/scripts ./server/scripts
+# Фикстуры фронтенда — источник данных для seed и очистки демо-данных.
+# theme.ts тоже нужен: из него фикстуры берут цвета статусов (C).
+# Любой новый импорт за пределы этого среза ломает seed внутри контейнера,
+# поэтому ниже стоит проверка scripts/verify-image-imports.ts.
 COPY src/data ./src/data
 COPY src/lib ./src/lib
+COPY src/theme.ts ./src/theme.ts
 
 # generate выполняется ПОСЛЕ копирования schema.prisma с binaryTargets;
 # сразу проверяем, что движок под Debian/OpenSSL 3 скачан
@@ -38,11 +43,16 @@ WORKDIR /app/server
 COPY --from=build /app/server/node_modules ./node_modules
 COPY --from=build /app/server/dist ./dist
 COPY --from=build /app/server/prisma ./prisma
+COPY --from=build /app/server/scripts ./scripts
 COPY --from=build /app/server/package.json ./package.json
 COPY --from=build /app/src /app/src
 
 # Контроль: движок под этот рантайм реально попал в финальный образ
 RUN test -f node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
+
+# Контроль: срез фронтенда полный — иначе `npm run seed` упадёт на деплое,
+# уже после миграций, и не доедет до установки резервных копий
+RUN npm run verify:imports
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
