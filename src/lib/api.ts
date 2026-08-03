@@ -832,6 +832,10 @@ export const api = {
   updateUser: (id: number, payload: { name?: string; phone?: string; role?: RoleCode; active?: boolean }) =>
     authedReq<ApiUser>(`/users/${id}`, { method: 'PATCH', body: payload }),
 
+  /** Сброс пароля администратором: временный пароль показывается один раз. */
+  resetUserPassword: (id: number) =>
+    authedReq<{ tempPassword: string }>(`/users/${id}/reset-password`, { method: 'POST' }),
+
   /** Загрузка файла вложения (JPG/PNG/PDF до 10 МБ) → ключ хранилища. */
   upload: async (file: File): Promise<UploadedRef> => {
     const form = new FormData();

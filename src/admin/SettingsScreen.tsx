@@ -130,6 +130,19 @@ export default function SettingsScreen(props: SettingsScreenProps) {
     }
   };
 
+  /** Сброс пароля: пользователь забыл свой. Временный пароль показывается
+   *  один раз (та же плашка, что при создании), при входе — обязательная смена. */
+  const resetPassword = async (u: ApiUser) => {
+    if (!window.confirm(`Сбросить пароль для ${u.email}? Старый пароль перестанет действовать сразу.`)) return;
+    try {
+      const r = await api.resetUserPassword(u.id);
+      setTempPwd({ email: u.email, password: r.tempPassword });
+      void loadUsers();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Не удалось сбросить пароль');
+    }
+  };
+
   /* ── Общие настройки: ставка км + пороги статусов План-Факта ── */
   const [kmRateStr, setKmRateStr] = useState('');
   const [pfStr, setPfStr] = useState<Record<'norm' | 'warn' | 'check', string>>({ norm: '', warn: '', check: '' });
@@ -381,7 +394,7 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </div>
             {tempPwd && (
               <div style={{ background: 'var(--fin-plus-soft)', border: '1px solid var(--fin-plus-soft)', borderRadius: 10, padding: '11px 14px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.6 }}>
-                Пользователь <b>{tempPwd.email}</b> создан. Временный пароль (показывается один раз, при входе потребуется смена):
+                Временный пароль для <b>{tempPwd.email}</b> (показывается один раз, при входе потребуется смена):
                 {' '}<b style={{ fontFamily: "'IBM Plex Sans',monospace" }}>{tempPwd.password}</b>
                 <span onClick={() => setTempPwd(null)} style={{ float: 'right', cursor: 'pointer', color: 'var(--fin-plus)', fontWeight: 700 }}>✕</span>
               </div>
@@ -405,7 +418,18 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                         <Badge b={u.b} />
                         {u.temp && <div style={{ fontSize: 10.5, color: 'var(--fin-warn)', marginTop: 3 }}>временный пароль</div>}
                       </td>
-                      <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid var(--fin-divider)' }}>
+                      <td style={{ padding: '10px 16px 10px 12px', borderBottom: '1px solid var(--fin-divider)', whiteSpace: 'nowrap' }}>
+                        <span
+                          data-user-reset={u.id}
+                          title="Выдать временный пароль вместо забытого"
+                          onClick={() => void resetPassword(users.find(x => x.id === u.id)!)}
+                          className="hv-soft"
+                          style={{
+                            display: 'inline-block', borderRadius: 8, padding: '5px 11px', marginRight: 8,
+                            fontSize: 12, fontWeight: 600, border: '1px solid var(--fin-border)',
+                            color: 'var(--fin-text-2)', cursor: 'pointer',
+                          }}
+                        >Сбросить пароль</span>
                         <span
                           data-user-block={u.id}
                           title={u.locked ? 'Единственного администратора отключить нельзя' : undefined}

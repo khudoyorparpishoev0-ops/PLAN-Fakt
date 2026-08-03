@@ -125,6 +125,27 @@ export class UsersController {
     return { user, tempPassword };
   }
 
+  /** Сброс пароля администратором: пользователь забыл свой. Временный
+   *  пароль показывается один раз, при входе — обязательная смена (как при
+   *  создании). Старый пароль перестаёт действовать сразу. */
+  @Post(':id/reset-password')
+  @Roles('admin')
+  async resetPassword(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, email: true },
+    });
+    if (!user) throw new HttpException({ code: 'not_found', message: 'Пользователь не найден' }, HttpStatus.NOT_FOUND);
+    const tempPassword = randomBytes(9).toString('base64url');
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: await bcrypt.hash(tempPassword, 10), mustChangePassword: true },
+    });
+    // В аудит — только факт сброса; сам пароль не пишется никуда
+    await this.audit(req.user!.sub, id, 'reset_password', { email: user.email });
+    return { tempPassword };
+  }
+
   @Patch(':id')
   @Roles('admin')
   async update(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
