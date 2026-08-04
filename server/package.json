@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:expense": "tsx check/expense-rule.ts",
     "check:export": "tsx check/export-format.ts",
+    "check:planfact": "tsx check/planfact-consistency.ts",
     "clean:demo": "tsx scripts/clean-demo.ts",
     "verify:imports": "tsx scripts/verify-image-imports.ts"
   },

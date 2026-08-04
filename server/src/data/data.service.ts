@@ -390,50 +390,112 @@ export class DataService {
   /** Строки план-факта: планы (+ факт-операции по externalRef) и плановые
    *  операции из одобренных заявок (`req:<номер>`, сторно схлопывается). */
   private async planFactRows(from?: Date, to?: Date, th: PfThresholds = PF_DEFAULTS, includeArchived = true): Promise<{ incomes: PlanFactRow[]; expenses: PlanFactRow[] }> {
-    const plans = await this.prisma.plan.findMany({
-      where: {
-        deletedAt: null,
-        externalRef: { startsWith: 'plan:' },
-        // Период плана — первый день месяца; для «Года» попадают все месяцы года
-        ...(from || to ? { period: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
-      },
-      include: { article: true, project: true },
-      orderBy: { externalRef: 'asc' },
-    });
-    const refs = plans.map((p) => p.externalRef!.slice('plan:'.length));
-    const factOps = await this.prisma.operation.findMany({
-      where: { deletedAt: null, externalRef: { in: refs } },
-      include: { counterparty: true },
-    });
-    const factByRef = new Map(factOps.map((o) => [o.externalRef!, o]));
+    /* План-факт строится из ЖИВЫХ данных, а не из сидовых ключей.
+     *
+     * Раньше сюда попадали только планы с externalRef «plan:…» (их ставил
+     * сид), а факт подтягивался по совпадению externalRef операции с хвостом
+     * плана. На демо-базе это работало, а на боевой — нет: операция, заведённая
+     * в журнале, и план, заведённый в «Планировании», ключей не имеют. Деньги
+     * со счёта списывались (карточка «Деньги» считает по операциям напрямую),
+     * а расходы и план-факт оставались нулевыми. Найдено заказчиком 04.08.2026
+     * на первой реальной операции.
+     *
+     * Теперь строка план-факта — агрегат по паре (статья, проект):
+     *   план  = сумма плановых строк за период (любых: сетка, сид, base);
+     *   факт  = сумма подтверждённых НЕплановых операций in/out со статьёй.
+     * Плановые операции одобренных заявок (req:) остаются отдельными
+     * строками — это обещания оплаты, а не факт.
+     *
+     * Переводы (type=move) и корректировки в план-факт не попадают: факт
+     * фильтруется по type in/out. Неподтверждённая операция — не факт
+     * (и в остаток счёта она тоже не входит): обе карточки считают
+     * по одному правилу.
+     */
+    const period = from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined;
+
+    const [plans, factOps] = await Promise.all([
+      this.prisma.plan.findMany({
+        where: { deletedAt: null, ...(period ? { period } : {}) },
+        include: { article: true, project: true },
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.operation.findMany({
+        where: {
+          deletedAt: null, isPlan: false, status: 'confirmed',
+          type: { in: ['in', 'out'] }, articleId: { not: null },
+          ...(period ? { date: period } : {}),
+        },
+        include: { article: true, project: true, counterparty: true },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+
+    interface Agg {
+      article: { id: number; name: string; type: string };
+      proj: string | null;
+      plan: bigint; fact: bigint;
+      pdate: Date | null; fdate: Date | null;
+      party: string | null; resp: string | null; reason: string | null;
+    }
+    const byKey = new Map<string, Agg>();
+    const keyOf = (articleId: number, projectName: string | null) => `${articleId}|${projectName ?? ''}`;
+    const agg = (articleId: number, article: Agg['article'], projectName: string | null): Agg => {
+      const key = keyOf(articleId, projectName);
+      let a = byKey.get(key);
+      if (!a) {
+        a = { article, proj: projectName, plan: 0n, fact: 0n, pdate: null, fdate: null, party: null, resp: null, reason: null };
+        byKey.set(key, a);
+      }
+      return a;
+    };
+
+    for (const p of plans) {
+      if (!includeArchived && p.project?.archived) continue;
+      if (p.article.type !== 'income' && p.article.type !== 'expense') continue;
+      const a = agg(p.articleId, p.article, p.project?.name ?? null);
+      a.plan += p.amountDirams;
+      if (p.planDate && (!a.pdate || p.planDate < a.pdate)) a.pdate = p.planDate;
+      if (!a.resp && p.responsibleName) a.resp = p.responsibleName;
+      if (!a.reason && p.reason) a.reason = p.reason;
+    }
+    for (const o of factOps) {
+      if (!includeArchived && o.project?.archived) continue;
+      const art = o.article!;
+      if (art.type !== 'income' && art.type !== 'expense') continue;
+      // Доверяем типу статьи: доходная статья копит поступления, расходная — выплаты
+      if ((art.type === 'income') !== (o.type === 'in')) continue;
+      const a = agg(o.articleId!, art, o.project?.name ?? null);
+      a.fact += o.amountTjsDirams; // сторно в базе с минусом — схлопывается само
+      if (!a.fdate || o.date > a.fdate) a.fdate = o.date;
+      if (o.counterparty?.name) a.party = o.counterparty.name;
+    }
 
     const incomes: PlanFactRow[] = [];
     const expenses: PlanFactRow[] = [];
-    for (const p of plans) {
-      if (!includeArchived && p.project?.archived) continue;
-      const n = p.externalRef!.slice('plan:'.length);
-      const fact = factByRef.get(n);
-      const planTjs = somoni(p.amountDirams)!;
-      const factTjs = fact ? somoni(fact.amountTjsDirams)! : 0;
+    for (const a of byKey.values()) {
+      const plan = somoni(a.plan)!;
+      const fact = somoni(a.fact)!;
+      if (plan === 0 && fact === 0) continue; // пустая пара — нечего показывать
+      const dir = a.article.type === 'income' ? 'income' : 'expense';
       const row: PlanFactRow = {
-        n,
-        cat: p.article.name,
-        proj: p.project?.name ?? 'Без проекта',
-        party: fact?.counterparty?.name ?? '—',
-        pdate: dateStr(p.planDate),
-        fdate: dateStr(p.factDate),
-        plan: planTjs,
-        fact: factTjs,
-        // Статус ВЫЧИСЛЯЕТСЯ, не хранится (README 5.1): сохранённая подпись
-        // statusLabel — рудимент прототипа, где статусы были проставлены руками
-        // и конфликтовали между собой.
-        status: pfStatusLabel(planTjs, fact ? factTjs : null, p.article.type === 'income' ? 'income' : 'expense', th),
-        resp: p.responsibleName ?? '—',
-        pending: !fact,
-        ...(p.reason ? { reason: p.reason } : {}),
+        n: `${a.article.id}·${a.proj ?? '—'}`,
+        cat: a.article.name,
+        proj: a.proj ?? 'Без проекта',
+        party: a.party ?? '—',
+        pdate: dateStr(a.pdate),
+        fdate: dateStr(a.fdate),
+        plan,
+        fact,
+        // Статья без плана, но с фактом — ПОКАЗЫВАЕТСЯ (статус «План не
+        // указан»): скрыть её значило бы потерять реальный расход из отчёта
+        status: pfStatusLabel(plan, fact === 0 ? null : fact, dir, th),
+        resp: a.resp ?? '—',
+        pending: fact === 0,
       };
-      (p.article.type === 'income' ? incomes : expenses).push(row);
+      (dir === 'income' ? incomes : expenses).push(row);
     }
+    incomes.sort((x, y) => y.plan - x.plan || y.fact - x.fact);
+    expenses.sort((x, y) => y.plan - x.plan || y.fact - x.fact);
 
     // Плановые операции из одобренных заявок; пара op + storno даёт net 0 —
     // строка остаётся с планом 0 и статусом «Сторнировано»
