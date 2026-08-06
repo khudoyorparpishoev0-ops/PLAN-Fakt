@@ -218,8 +218,19 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   const trips = reqs.filter(r => r.kind === 'trip').map(toTrip);
   const cars = reqs.filter(r => r.kind === 'auto').map(toCar);
   const monthly = monthlyStats(reqs);
-  // Проекты для селектов форм — активные («В работе», не в архиве)
-  const formProjects = projects.filter(p => p.status === 'work' && !p.archived);
+  /* Проекты для селектов форм: всё, кроме архива и завершённых.
+   *
+   * Раньше здесь был фильтр status === 'work', и это создавало тупик:
+   * статус проекта ВЫЧИСЛЯЕТСЯ по наличию фактических платежей
+   * (data.service: hasFact ? 'work' : 'plan'), а первый платёж приходит
+   * как раз из заявки. Новый проект навсегда оставался «Плановым» и в
+   * форме не появлялся — заявку на него было не подать. Замечено
+   * заказчиком 06.08.2026 на проекте «ИТ-Хона».
+   *
+   * Плановые проекты в списке нужны и по сути: подготовка (аванс
+   * поставщику, разрешения, мобилизация) оплачивается до того, как
+   * проект формально пошёл в работу. */
+  const formProjects = projects.filter(p => !p.archived && p.status !== 'done');
 
   /** Создание заявки: POST /api/requests, новая строка — в начало списка. */
   const createRequest = async (payload: CreateRequestPayload): Promise<boolean> => {
