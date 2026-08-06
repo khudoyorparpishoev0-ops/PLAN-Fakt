@@ -172,6 +172,8 @@ export interface ApiRequest {
   km: number | null;
   category: string | null;
   counterparty: string | null;
+  /** Срочность заявки: low | normal | high. */
+  priority: ReqPriority;
   date: string; // YYYY-MM-DD
   author: string;
   decidedBy: string | null;
@@ -190,6 +192,9 @@ export interface UploadedRef {
   size?: number;
 }
 
+/** Срочность заявки — те же значения, что у задач. */
+export type ReqPriority = 'low' | 'normal' | 'high';
+
 export interface CreateRequestPayload {
   kind: ApiReqKind;
   projectId?: number;
@@ -199,6 +204,7 @@ export interface CreateRequestPayload {
   km?: number;
   category?: string;
   counterpartyName?: string;
+  priority?: ReqPriority;
   attachment?: UploadedRef;
 }
 

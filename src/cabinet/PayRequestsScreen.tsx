@@ -2,7 +2,7 @@ import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
 import { api, ApiError, type ApiProject, type CreateRequestPayload, type UploadedRef } from '../lib/api';
-import { dirB, ownB, type PayReq } from '../data/cabinet';
+import { dirB, ownB, PRIORITY_LABEL, type PayReq, type ReqPriorityCode } from '../data/cabinet';
 import { useIsMobile } from '../lib/responsive';
 
 export interface PayRequestsScreenProps {
@@ -135,6 +135,21 @@ export const TH_CAB: CSSProperties = { padding: '11px 14px', fontSize: 10.5, fon
 export const TD_CAB: CSSProperties = { padding: '13px 14px', borderBottom: '1px solid var(--fin-divider)' };
 
 /** Статус-бейдж кабинета (gap 6, паддинг 3px 10px — прототип). */
+/** Метка срочной заявки — общая для кабинета и очереди директора.
+ *  Показывается только у «Срочно»: пометка на каждой строке перестаёт
+ *  выделять что-либо. */
+export function PriorityChip({ compact }: { compact?: boolean } = {}) {
+  return (
+    <span data-priority-chip style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 7,
+      padding: compact ? '1px 6px' : '2px 7px', borderRadius: 99,
+      background: 'var(--fin-minus-soft)', color: 'var(--fin-minus)',
+      fontSize: compact ? 10.5 : 11, fontWeight: 700, letterSpacing: '.02em',
+      verticalAlign: 'middle', whiteSpace: 'nowrap',
+    }}>Срочно</span>
+  );
+}
+
 export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: string } }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 99, fontSize: 11.5, fontWeight: 600, color: b.fg, background: b.bg, whiteSpace: 'nowrap' }}>
@@ -150,6 +165,7 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
   const [amountStr, setAmountStr] = useState('');
   const [name, setName] = useState('');
   const [contragent, setContragent] = useState('');
+  const [priority, setPriority] = useState<ReqPriorityCode>('normal');
   const [doc, setDoc] = useState<UploadedRef | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -164,10 +180,12 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
       kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
       amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')),
       counterpartyName: contragent.trim() || undefined,
+      // Обычную срочность не шлём: сервер и так ставит её по умолчанию
+      ...(priority !== 'normal' ? { priority } : {}),
       attachment: doc ?? undefined,
     });
     setBusy(false);
-    if (ok) { setProject(''); setAmountStr(''); setName(''); setContragent(''); setDoc(null); }
+    if (ok) { setProject(''); setAmountStr(''); setName(''); setContragent(''); setPriority('normal'); setDoc(null); }
   };
 
   return (
@@ -216,7 +234,17 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
               </datalist>
             </div>
             <div>
-              <label style={FORM_LABEL}>5) Документ (опционально)</label>
+              {/* Срочность: директор разбирает очередь сверху вниз, и «Срочно»
+                  поднимает заявку — поэтому выбор в форме, а не отдельным экраном */}
+              <label style={FORM_LABEL}>5) Срочность</label>
+              <select data-pay-priority value={priority} onChange={(e) => setPriority(e.target.value as ReqPriorityCode)} style={{ ...INPUT44, padding: '0 10px' }}>
+                <option value="normal">{PRIORITY_LABEL.normal}</option>
+                <option value="high">{PRIORITY_LABEL.high}</option>
+                <option value="low">{PRIORITY_LABEL.low}</option>
+              </select>
+            </div>
+            <div>
+              <label style={FORM_LABEL}>6) Документ (опционально)</label>
               <DropZone height={88} label="Загрузить счёт" icon={<CameraIcon />} value={doc} onChange={setDoc} toast={toast} />
             </div>
           </div>
@@ -244,6 +272,7 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
                 <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: 'var(--fin-text-2)', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
                 <td style={{ ...TD_CAB, fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.project}</td>
                 <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>
+                  {r.priority === 'high' && <PriorityChip />}
                   {r.name}
                   {r.contragent && (
                     <div style={{ fontSize: 11.5, fontWeight: 400, color: 'var(--fin-text-4)', marginTop: 2 }}>{r.contragent}</div>

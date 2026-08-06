@@ -64,6 +64,11 @@ export class CreateRequestDto {
   @Length(0, 200)
   counterpartyName?: string;
 
+  /** Срочность для очереди директора (те же значения, что у задач). */
+  @IsOptional()
+  @IsIn(['low', 'normal', 'high'], { message: 'priority: low | normal | high' })
+  priority?: string;
+
   /** Загруженный файл (счёт / фото одометра / чек). */
   @IsOptional()
   @ValidateNested()
@@ -104,6 +109,11 @@ export class UpdateRequestDto {
   @IsString()
   @Length(0, 200)
   counterpartyName?: string;
+
+  /** Срочность для очереди директора (те же значения, что у задач). */
+  @IsOptional()
+  @IsIn(['low', 'normal', 'high'], { message: 'priority: low | normal | high' })
+  priority?: string;
 
   @IsOptional()
   @ValidateNested()

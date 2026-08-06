@@ -510,7 +510,10 @@ model Request {
   currency         Currency?     @relation(fields: [currencyCode], references: [code])
   km               Int? // поездка
   category         String? // авто: Бензин / Ремонт / Мойка / Штраф / Запчасти
-  counterpartyName String?       @map("counterparty_name") // контрагент поездки (текстом, как в форме)
+  counterpartyName String?       @map("counterparty_name") // контрагент (текстом, как в форме)
+  // Срочность для очереди директора: low | normal | high — те же значения,
+  // что у задач, чтобы в системе был один словарь приоритетов.
+  priority         String        @default("normal")
   requestDate      DateTime      @map("request_date") @db.Date
   decisionById     Int?          @map("decision_by_id")
   decisionBy       User?         @relation("RequestDecider", fields: [decisionById], references: [id])

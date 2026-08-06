@@ -4,6 +4,7 @@ import { fmt } from '../lib/format';
 import { badge, type BadgeData } from '../lib/badges';
 import { Badge, Th } from '../components/ui';
 import { useEscapeClose } from '../lib/escape';
+import { PriorityChip } from '../cabinet/PayRequestsScreen';
 import { useIsMobile } from '../lib/responsive';
 import {
   api, ApiError,
@@ -166,10 +167,17 @@ export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsS
   const decided = useMemo(() => rows.filter((r) => r.status === 'approved' || r.status === 'rejected'), [rows]);
 
   const source = tab === 'queue' ? pending : decided;
-  const list = useMemo(
-    () => (kind === 'all' ? source : source.filter((r) => r.kind === kind)),
-    [source, kind],
-  );
+  const list = useMemo(() => {
+    const rowsOf = kind === 'all' ? source : source.filter((r) => r.kind === kind);
+    if (tab !== 'queue') return rowsOf;
+    // Очередь: сначала срочные, внутри одной срочности — кто дольше ждёт.
+    // Решённые не пересортировываются: там важна хронология решений.
+    const rank = (p?: string) => (p === 'high' ? 0 : p === 'low' ? 2 : 1);
+    return [...rowsOf].sort((a, b) => rank(a.priority) - rank(b.priority) || waitDays(b.date) - waitDays(a.date));
+  }, [source, kind, tab]);
+
+  /** Сколько срочных ждёт решения — для строки счётчиков. */
+  const urgentCount = pending.filter((r) => r.priority === 'high').length;
 
   const sel = useMemo(() => rows.find((r) => r.id === selId) ?? null, [rows, selId]);
   const selPending = sel != null && (sel.status === 'sent' || sel.status === 'review');
@@ -265,7 +273,10 @@ export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsS
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,minmax(0,1fr))', gap: 14 }}>
         {[
           { label: 'Ждут решения', value: String(pending.length), unit: pending.length === 1 ? 'заявка' : 'заявок',
-            note: pending.length ? 'Решение принимает директор' : 'Очередь пуста', alarm: false },
+            note: urgentCount
+              ? `Срочных: ${urgentCount} — они наверху списка`
+              : (pending.length ? 'Решение принимает директор' : 'Очередь пуста'),
+            alarm: urgentCount > 0 },
           { label: 'На сумму', value: fmt(pendingSum), unit: 'TJS',
             note: 'Без учёта поездок — они считаются в километрах', alarm: false },
           { label: 'Самая старая', value: String(oldest), unit: oldest === 1 ? 'день' : 'дн.',
@@ -353,7 +364,10 @@ export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsS
                         </td>
                         <td style={cell}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</span>
+                            <span style={{ fontSize: 13.5, fontWeight: 600 }}>
+                              {r.priority === 'high' && <PriorityChip compact />}
+                              {r.name}
+                            </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                               <Badge b={badge(KIND_LABEL[r.kind], KIND_TONE[r.kind])} fs={11} pad="2px 8px" dot={0} />
                               <span style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>
@@ -482,6 +496,9 @@ function DetailPanel({ req, summary, busy, canDecide, rejectOpen, reason, onOpen
   if (req.kind === 'trip') fields.push({ k: 'Пробег', v: `${fmt(req.km ?? 0)} км` });
   if (req.kind === 'auto' && req.category) fields.push({ k: 'Категория', v: req.category });
   if (req.counterparty) fields.push({ k: 'Контрагент', v: req.counterparty });
+  if (req.priority && req.priority !== 'normal') {
+    fields.push({ k: 'Срочность', v: req.priority === 'high' ? 'Срочно' : 'Может подождать' });
+  }
 
   return (
     <div style={{ background: 'var(--fin-surface)', border: '1px solid var(--fin-border)', borderRadius: 12, overflow: 'hidden' }}>

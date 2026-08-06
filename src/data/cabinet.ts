@@ -34,22 +34,32 @@ export function cabProjB(status: 'plan' | 'work' | 'done'): BadgeData {
 /** dbId — первичный ключ заявки в БД (нужен для вызовов API); attId — id
  *  вложения (открытие файла); storno — заявка сторнирована директором.
  *  У fixture-строк (используются только сидом БД) эти поля отсутствуют. */
+/** Срочность заявки. Значения те же, что у задач, — один словарь на систему.
+ *  Подписи разные: у заявки директор реагирует на слово «Срочно», а не
+ *  на абстрактный «Высокий». */
+export type ReqPriorityCode = 'low' | 'normal' | 'high';
+export const PRIORITY_LABEL: Record<ReqPriorityCode, string> = {
+  low: 'Может подождать', normal: 'Обычная', high: 'Срочно',
+};
+
 export interface PayReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; name: string; amount: number;
   /** Кому платим. Необязателен: бывают оплаты без внешнего получателя. */
   contragent?: string;
+  priority?: ReqPriorityCode;
   currency: string; status: ReqStatus; doc?: string;
 }
 export interface TripReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; goal: string; km: number;
-  contragent: string; status: ReqStatus; photo: string;
+  contragent: string; priority?: ReqPriorityCode; status: ReqStatus; photo: string;
 }
 export type CarCategory = 'Бензин' | 'Ремонт' | 'Мойка' | 'Штраф' | 'Запчасти';
 export interface CarReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; category: CarCategory; amount: number;
+  priority?: ReqPriorityCode;
   currency: string; status: ReqStatus; receipt?: string;
 }
 

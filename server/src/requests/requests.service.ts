@@ -50,6 +50,8 @@ export interface RequestDto {
   km: number | null;
   category: string | null;
   counterparty: string | null;
+  /** Срочность: low | normal | high — по ней очередь директора ставит срочные наверх. */
+  priority: string;
   date: string;
   author: string;
   decidedBy: string | null;
@@ -91,6 +93,7 @@ export class RequestsService {
       km: r.km,
       category: r.category,
       counterparty: r.counterpartyName,
+      priority: r.priority,
       date: dateStr(r.requestDate)!,
       author: r.author.name,
       decidedBy: r.decisionBy?.name ?? null,
@@ -189,6 +192,7 @@ export class RequestsService {
             km: dto.km ?? null,
             category: dto.category ?? null,
             counterpartyName: dto.counterpartyName?.trim() || null,
+            priority: dto.priority ?? 'normal',
             requestDate: todayUtc(),
             attachments: dto.attachment
               ? {
@@ -247,6 +251,7 @@ export class RequestsService {
         ...(dto.km !== undefined ? { km: dto.km } : {}),
         ...(dto.category !== undefined ? { category: dto.category } : {}),
         ...(dto.counterpartyName !== undefined ? { counterpartyName: dto.counterpartyName.trim() || null } : {}),
+        ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         // Повторная отправка сбрасывает прежнее решение директора
         ...(dto.resend
           ? { status: 'sent' as Status, decisionById: null, decisionAt: null, decisionComment: null, requestDate: todayUtc() }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ACC, num } from '../theme';
 import { fmt } from '../lib/format';
 import type { ApiProject, CreateRequestPayload, UploadedRef } from '../lib/api';
-import { dirB, ownB, type CarCategory, type CarReq, type TripReq } from '../data/cabinet';
+import { dirB, ownB, PRIORITY_LABEL, type CarCategory, type CarReq, type ReqPriorityCode, type TripReq } from '../data/cabinet';
 import {
   CabBadge, CameraIcon, DropZone, FORM_LABEL, INPUT44, projectIdOf, projectOptions,
   ReceiptIcon, Select44, SubmitBtn, TD_CAB, TH_CAB,
@@ -44,6 +44,7 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
   const [goal, setGoal] = useState('');
   const [kmStr, setKmStr] = useState('');
   const [contragent, setContragent] = useState('');
+  const [priority, setPriority] = useState<ReqPriorityCode>('normal');
   const [photo, setPhoto] = useState<UploadedRef | null>(null);
   const [tripBusy, setTripBusy] = useState(false);
 
@@ -56,7 +57,9 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
     setTripBusy(true);
     const ok = await createRequest({
       kind: 'trip', projectId: projectIdOf(tProject), name: goal.trim(), km: parseInt(kmStr.trim(), 10),
-      counterpartyName: contragent.trim() || undefined, attachment: photo ?? undefined,
+      counterpartyName: contragent.trim() || undefined,
+      ...(priority !== 'normal' ? { priority } : {}),
+      attachment: photo ?? undefined,
     });
     setTripBusy(false);
     if (ok) { setTProject(''); setGoal(''); setKmStr(''); setContragent(''); setPhoto(null); }
@@ -129,6 +132,14 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
                 <datalist id="cab-counterparties-trip">
                   {counterparties.map((c) => <option key={c} value={c} />)}
                 </datalist>
+              </div>
+              <div>
+                <label style={FORM_LABEL}>5) Срочность</label>
+                <select data-trip-priority value={priority} onChange={(e) => setPriority(e.target.value as ReqPriorityCode)} style={{ ...INPUT44, padding: '0 10px' }}>
+                  <option value="normal">{PRIORITY_LABEL.normal}</option>
+                  <option value="high">{PRIORITY_LABEL.high}</option>
+                  <option value="low">{PRIORITY_LABEL.low}</option>
+                </select>
               </div>
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!tripValid} onClick={submitTrip} />

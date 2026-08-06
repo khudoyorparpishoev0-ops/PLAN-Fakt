@@ -43,20 +43,21 @@ const attachmentId = (r: ApiRequest): number | undefined =>
 export const toPay = (r: ApiRequest): PayReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project, name: r.name,
-  contragent: r.counterparty ?? undefined,
+  contragent: r.counterparty ?? undefined, priority: r.priority,
   amount: r.amount ?? 0, currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], doc: attachment(r),
 });
 
 export const toTrip = (r: ApiRequest): TripReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project, goal: r.name,
-  km: r.km ?? 0, contragent: r.counterparty ?? '—', status: STATUS_RU[r.status], photo: attachment(r) ?? '',
+  km: r.km ?? 0, contragent: r.counterparty ?? '—', priority: r.priority,
+  status: STATUS_RU[r.status], photo: attachment(r) ?? '',
 });
 
 export const toCar = (r: ApiRequest): CarReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project,
-  category: (r.category ?? r.name) as CarCategory, amount: r.amount ?? 0,
+  category: (r.category ?? r.name) as CarCategory, amount: r.amount ?? 0, priority: r.priority,
   currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], receipt: attachment(r),
 });
 

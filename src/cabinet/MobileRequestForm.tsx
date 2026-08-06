@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { ACC, num } from '../theme';
 import type { ApiProject, CreateRequestPayload, UploadedRef } from '../lib/api';
-import type { CarCategory } from '../data/cabinet';
+import type { CarCategory, ReqPriorityCode } from '../data/cabinet';
 import { CameraIcon, DropZone, ReceiptIcon, projectIdOf } from './PayRequestsScreen';
 
 export interface MobileRequestFormProps {
@@ -105,6 +105,7 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
   const [project, setProject] = useState('');
   const [category, setCategory] = useState('');
   const [counterparty, setCounterparty] = useState('');
+  const [priority, setPriority] = useState<ReqPriorityCode>('normal');
   const [file, setFile] = useState<UploadedRef | null>(null);
   const [sheet, setSheet] = useState<null | 'project' | 'category'>(null);
   const [busy, setBusy] = useState(false);
@@ -139,7 +140,9 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
     const payload: CreateRequestPayload = trip
       ? {
           kind: 'trip', projectId: projectIdOf(project), name: textTrim, km: Math.round(n),
-          counterpartyName: counterparty.trim() || undefined, attachment: file ?? undefined,
+          counterpartyName: counterparty.trim() || undefined,
+          ...(priority !== 'normal' ? { priority } : {}),
+          attachment: file ?? undefined,
         }
       : kind === 'auto'
         ? {
@@ -248,6 +251,26 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
           </datalist>
         </>
       )}
+
+      {/* Срочность: на телефоне переключателем, а не списком — одно касание.
+          «Может подождать» на телефоне не нужен: срочно или обычно. */}
+      <div data-priority-switch style={{ display: 'flex', gap: 8 }}>
+        {([['normal', 'Обычная'], ['high', 'Срочно']] as const).map(([v, label]) => {
+          const on = priority === v;
+          return (
+            <button
+              key={v} type="button" data-priority-btn={v} onClick={() => setPriority(v)}
+              style={{
+                flex: 1, height: TAP_MIN, borderRadius: 12, cursor: 'pointer',
+                border: `1px solid ${on ? (v === 'high' ? 'var(--fin-minus)' : ACC) : 'var(--fin-border)'}`,
+                background: on ? (v === 'high' ? 'var(--fin-minus-soft)' : 'var(--fin-accent-soft)') : 'var(--fin-surface)',
+                color: on ? (v === 'high' ? 'var(--fin-minus)' : ACC) : 'var(--fin-text-3)',
+                fontSize: 14, fontWeight: on ? 700 : 500,
+              }}
+            >{label}</button>
+          );
+        })}
+      </div>
 
       {/* ── Вложение: рамка меняется, когда файл становится обязателен ── */}
       <div style={{
