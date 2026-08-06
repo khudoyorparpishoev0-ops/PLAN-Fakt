@@ -236,6 +236,14 @@ export class DataController {
     return this.data.updateSettings(dto);
   }
 
+  /** Справочник валют с курсами. Доступен и бухгалтеру: без него он не сможет
+   *  выбрать валюту в заявке, а сумма без валюты — это просто цифра. */
+  @Get('currencies')
+  @Roles('admin', 'director', 'accountant')
+  currencies() {
+    return this.data.currencies();
+  }
+
   @Get('rates')
   @Roles('admin', 'director')
   rates() {

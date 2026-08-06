@@ -8,6 +8,8 @@ import {
   ReceiptIcon, Select44, SubmitBtn, TD_CAB, TH_CAB,
 } from './PayRequestsScreen';
 import { useIsMobile } from '../lib/responsive';
+import { BASE_CURRENCY, type CurrencyRow } from '../lib/currency';
+import { CurrencySelect } from '../components/ui';
 
 export interface CarRequestsScreenProps {
   /** true — десктопные формы не показывать: на телефоне их заменяет
@@ -18,6 +20,8 @@ export interface CarRequestsScreenProps {
   projects: ApiProject[];
   /** Имена контрагентов для подсказок при вводе. */
   counterparties?: string[];
+  /** Справочник валют с курсами (GET /currencies). */
+  currencies?: CurrencyRow[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -35,7 +39,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export default function CarRequestsScreen({ trips, cars, projects, counterparties = [], createRequest, toast, hideForm }: CarRequestsScreenProps) {
+export default function CarRequestsScreen({ trips, cars, projects, counterparties = [], currencies = [], createRequest, toast, hideForm }: CarRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
@@ -69,6 +73,7 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
   const [aProject, setAProject] = useState('');
   const [category, setCategory] = useState('');
   const [amountStr, setAmountStr] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [receipt, setReceipt] = useState<UploadedRef | null>(null);
   const [autoBusy, setAutoBusy] = useState(false);
 
@@ -82,10 +87,10 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
     setAutoBusy(true);
     const ok = await createRequest({
       kind: 'auto', projectId: projectIdOf(aProject), name: category, category: category as CarCategory,
-      amount, attachment: receipt ?? undefined,
+      amount, currency, attachment: receipt ?? undefined,
     });
     setAutoBusy(false);
-    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setReceipt(null); }
+    if (ok) { setAProject(''); setCategory(''); setAmountStr(''); setReceipt(null); setCurrency(BASE_CURRENCY); }
   };
 
   return (
@@ -193,16 +198,14 @@ export default function CarRequestsScreen({ trips, cars, projects, counterpartie
                 </Select44>
               </div>
               <div>
-                <label style={FORM_LABEL}>3) Сумма</label>
-                {/* Учёт в одной валюте: вместо выбора — неизменяемая подпись TJS */}
+                <label style={FORM_LABEL}>3) Сумма и валюта</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
                   <input value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0"
                     style={{ ...INPUT44, flex: 1, width: 'auto', ...num }} />
-                  <span style={{
-                    width: 92, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface-alt)',
-                    color: 'var(--fin-text-4)', fontWeight: 600, fontSize: 14, ...num,
-                  }}>TJS</span>
+                  <CurrencySelect
+                    value={currency} onChange={setCurrency} list={currencies} dataAttr="data-car-currency"
+                    style={{ ...INPUT44, width: 168, flex: 'none', padding: '0 8px' }}
+                  />
                 </div>
               </div>
               <div>

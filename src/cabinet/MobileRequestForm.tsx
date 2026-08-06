@@ -3,6 +3,8 @@ import { ACC, num } from '../theme';
 import type { ApiProject, CreateRequestPayload, UploadedRef } from '../lib/api';
 import type { CarCategory, ReqPriorityCode } from '../data/cabinet';
 import { CameraIcon, DropZone, ReceiptIcon, projectIdOf } from './PayRequestsScreen';
+import { BASE_CURRENCY, type CurrencyRow } from '../lib/currency';
+import { CurrencySelect } from '../components/ui';
 
 export interface MobileRequestFormProps {
   /** Вид, с которого форма открывается (задаётся разделом кабинета). */
@@ -10,6 +12,8 @@ export interface MobileRequestFormProps {
   projects: ApiProject[];
   /** Имена контрагентов для подсказок при вводе. */
   counterparties?: string[];
+  /** Справочник валют с курсами (GET /currencies). */
+  currencies?: CurrencyRow[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -98,13 +102,14 @@ function PickSheet({ title, items, value, onPick, onClose }: {
  *  Главное отличие от десктопной формы — подпись кнопки отправки называет
  *  недостающее поле. Серая кнопка без объяснения — самая частая причина
  *  брошенной формы. */
-export default function MobileRequestForm({ initialKind, projects, counterparties = [], createRequest, toast }: MobileRequestFormProps) {
+export default function MobileRequestForm({ initialKind, projects, counterparties = [], currencies = [], createRequest, toast }: MobileRequestFormProps) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [amountStr, setAmountStr] = useState('');
   const [text, setText] = useState('');
   const [project, setProject] = useState('');
   const [category, setCategory] = useState('');
   const [counterparty, setCounterparty] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [priority, setPriority] = useState<ReqPriorityCode>('normal');
   const [file, setFile] = useState<UploadedRef | null>(null);
   const [sheet, setSheet] = useState<null | 'project' | 'category'>(null);
@@ -131,7 +136,7 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
 
   const reset = () => {
     setAmountStr(''); setText(''); setProject('');
-    setCategory(''); setCounterparty(''); setFile(null);
+    setCategory(''); setCounterparty(''); setFile(null); setCurrency(BASE_CURRENCY);
   };
 
   const submit = async () => {
@@ -147,11 +152,11 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
       : kind === 'auto'
         ? {
             kind: 'auto', projectId: projectIdOf(project), name: category,
-            category: category as CarCategory, amount: n, attachment: file ?? undefined,
+            category: category as CarCategory, amount: n, currency, attachment: file ?? undefined,
           }
         : {
             kind: 'payment', projectId: projectIdOf(project), name: textTrim,
-            amount: n, attachment: file ?? undefined,
+            amount: n, currency, attachment: file ?? undefined,
           };
     const ok = await createRequest(payload);
     setBusy(false);
@@ -212,7 +217,20 @@ export default function MobileRequestForm({ initialKind, projects, counterpartie
               ...num, fontSize: 40, fontWeight: 700, color: 'var(--fin-text)', padding: 0, textAlign: 'center',
             }}
           />
-          <span style={{ ...num, fontSize: 18, fontWeight: 600, color: 'var(--fin-text-4)' }}>{trip ? 'км' : 'TJS'}</span>
+          {trip ? (
+            <span style={{ ...num, fontSize: 18, fontWeight: 600, color: 'var(--fin-text-4)' }}>км</span>
+          ) : (
+            /* Валюта единицей измерения суммы: отдельным полем на телефоне
+               она съедает экран, а так остаётся на своём месте и нажимается */
+            <CurrencySelect
+              value={currency} onChange={setCurrency} list={currencies} dataAttr="data-mobile-currency"
+              style={{
+                ...num, fontSize: 18, fontWeight: 600, color: 'var(--fin-text-4)',
+                border: 'none', background: 'transparent', outline: 'none', padding: 0,
+                minWidth: 56, maxWidth: 120, height: TAP_MIN, cursor: 'pointer',
+              }}
+            />
+          )}
         </div>
       </div>
 

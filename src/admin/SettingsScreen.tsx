@@ -3,7 +3,7 @@ import { ACC, SOFT, PLEX, C } from '../theme';
 import { badge, pfLegend, PF_DEFAULTS } from '../lib/badges';
 import { fmt } from '../lib/format';
 import { SETTINGS_NAV } from '../data/admin';
-import { SINGLE_CURRENCY } from '../lib/currency';
+import { BASE_CURRENCY, SINGLE_CURRENCY } from '../lib/currency';
 import RightsMatrix from './RightsMatrix';
 import CompanyTab from './CompanyTab';
 import { initials } from '../lib/compute';
@@ -11,7 +11,7 @@ import {
   api, ApiError, ROLE_LABELS,
   type ApiAuditRow, type ApiRate, type ApiSchedules, type ApiUser, type AuthUser, type RoleCode,
 } from '../lib/api';
-import { Badge, Th, AccentBtn } from '../components/ui';
+import { Badge, Th, AccentBtn, CurrencySelect } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
 
 export interface SettingsScreenProps {
@@ -102,8 +102,7 @@ function CreateUserModal({ onClose, onCreated }: {
 export default function SettingsScreen(props: SettingsScreenProps) {
   const { setTab, setSetTab, user } = props;
   const isMobile = useIsMobile();
-  // Пока валюта одна, курсы не применяются нигде — вкладка скрыта,
-  // но сам экран цел: он вернётся вместе с мультивалютностью.
+  // Вкладка курсов живёт, пока учёт мультивалютный (флаг — общий с сервером).
   const navItems = SETTINGS_NAV.filter(([id]) => !(SINGLE_CURRENCY && id === 'rates'));
   const setNav = navItems.map(([id, t]) => ({
     id, t,
@@ -195,6 +194,9 @@ export default function SettingsScreen(props: SettingsScreenProps) {
   const [rDate, setRDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [rVal, setRVal] = useState('');
   const loadRates = () => api.rates().then(setRates).catch(() => {});
+  /** Валюты с заданным курсом — только они в таблице: показывать все сто
+   *  пятьдесят шесть строк, из которых заполнены три, значит прятать данные. */
+  const ratedRows = rates.filter(r => r.rate != null && r.code !== BASE_CURRENCY);
   useEffect(() => { if (setTab === 'rates') void loadRates(); }, [setTab]);
   const addRate = async () => {
     const v = parseFloat(rVal.trim().replace(',', '.'));
@@ -453,10 +455,14 @@ export default function SettingsScreen(props: SettingsScreenProps) {
             </div>
           </div>
         )}
-        {setTab === 'rates' && !SINGLE_CURRENCY && (
+        {setTab === 'rates' && (
           <div style={{ ...cardS, maxWidth: 720 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Курсы валют</div>
-            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', marginBottom: 16 }}>Курс к сомони на дату. Используется при одобрении валютных заявок и вводе операций.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fin-text-4)', lineHeight: 1.5, marginBottom: 16 }}>
+              Курс к сомони на дату. Применяется при вводе операций и при одобрении валютных заявок:
+              операция сохраняется с курсом на свою дату, поэтому задним числом отчёты не меняются.
+              Доступны все валюты мира — в списке ниже только те, которым курс уже задан.
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 18 }}>
               <thead><tr>
                 <Th style={{ padding: '8px 12px 8px 0' }}>Валюта</Th>
@@ -464,21 +470,27 @@ export default function SettingsScreen(props: SettingsScreenProps) {
                 <Th right style={{ padding: '8px 0 8px 12px' }}>На дату</Th>
               </tr></thead>
               <tbody>
-                {rates.map(r => (
+                {ratedRows.map(r => (
                   <tr key={r.code}>
                     <td style={{ padding: '8px 12px 8px 0', borderBottom: '1px solid var(--fin-divider)', fontSize: 13 }}><b>{r.code}</b> · {r.name}</td>
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 13, textAlign: 'right', fontFamily: PLEX }}>{r.rate != null ? fmt(r.rate) : '—'}</td>
                     <td style={{ padding: '8px 0 8px 12px', borderBottom: '1px solid var(--fin-divider)', fontSize: 12.5, textAlign: 'right', color: 'var(--fin-text-3)', fontFamily: PLEX }}>{r.rateDate ?? '—'}</td>
                   </tr>
                 ))}
+                {ratedRows.length === 0 && (
+                  <tr><td colSpan={3} style={{ padding: '14px 0', fontSize: 12.5, color: 'var(--fin-text-5)' }}>
+                    Курсы пока не заданы — операции ведутся в сомони. Добавьте курс валюте, в которой платите.
+                  </td></tr>
+                )}
               </tbody>
             </table>
             <div style={secHead}>ДОБАВИТЬ КУРС</div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div><div style={lbl}>Валюта</div>
-                <select value={rCur} onChange={e => setRCur(e.target.value)} style={{ ...inp, width: 110, padding: '0 8px' }}>
-                  <option>USD</option><option>EUR</option><option>RUB</option><option>CNY</option>
-                </select>
+                <CurrencySelect
+                  value={rCur} onChange={setRCur} list={rates}
+                  style={{ ...inp, width: 260, padding: '0 8px' }} dataAttr="data-rate-currency"
+                />
               </div>
               <div><div style={lbl}>Дата</div><input type="date" value={rDate} onChange={e => setRDate(e.target.value)} style={{ ...inp, width: 160, fontFamily: PLEX }} /></div>
               <div><div style={lbl}>Курс к TJS</div><input value={rVal} onChange={e => setRVal(e.target.value)} placeholder="10,85" style={{ ...inp, width: 120, textAlign: 'right', fontFamily: PLEX }} /></div>

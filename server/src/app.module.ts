@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
+import { CurrencyService } from './currency.service';
 import { DataController } from './data/data.controller';
 import { DataService } from './data/data.service';
 import { ExportController } from './export/export.controller';
@@ -30,7 +31,7 @@ import { UsersController } from './users/users.controller';
   ],
   providers: [
     PrismaService, AuthService, RequestsService, DataService, StorageService, Stage2Service,
-    ExportService, ExportScheduleService,
+    ExportService, ExportScheduleService, CurrencyService,
   ],
 })
 export class AppModule {}

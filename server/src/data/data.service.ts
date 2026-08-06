@@ -3,6 +3,7 @@ import { Prisma, type ArticleType, type ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
 import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
+import { currencyList, currencyName, isIsoCurrency, roundToCurrency } from '../iso4217';
 import { PF_DEFAULTS, pfStatusLabel, pfValidate, type PfThresholds } from '../pf';
 import type { CreateOperationDto, OperationFilters } from './operations.dto';
 
@@ -81,6 +82,10 @@ export interface OperationRow {
   comment: string | null;
   project: string | null;
   amount: number; // сумма в TJS, сомони (у сторно — с минусом)
+  /** Валюта операции и сумма в ней: журнал считается в сомони, но строка
+   *  в другой валюте должна быть видна без открытия карточки. */
+  currency: string;
+  amountOriginal: number;
 }
 
 function err(status: HttpStatus, code: string, message: string, field?: string): never {
@@ -162,6 +167,10 @@ export class DataService {
         comment: o.comment,
         project: o.project?.name ?? null,
         amount: somoni(o.amountTjsDirams)!,
+        // Валюта операции: журнал ведётся в сомони, но строку в долларах
+        // бухгалтер должен узнавать, не открывая карточку
+        currency: o.currencyCode,
+        amountOriginal: somoni(o.amountDirams)!,
       })),
       total,
     };
@@ -200,7 +209,7 @@ export class DataService {
         rate = rateRow.rate;
       }
     }
-    const amountDirams = BigInt(Math.round(dto.amount * 100));
+    const amountDirams = BigInt(Math.round(roundToCurrency(dto.amount, currency) * 100));
     const amountTjsDirams = BigInt(new Prisma.Decimal(amountDirams.toString()).mul(rate).toFixed(0));
 
     const articleType = dto.type === 'in' ? 'income' : 'expense';
@@ -251,6 +260,7 @@ export class DataService {
       isPlan: op.isPlan, confirmed: op.status === 'confirmed', party: op.counterparty?.name ?? null,
       article: op.article?.name ?? null, comment: op.comment, project: op.project?.name ?? null,
       amount: somoni(op.amountTjsDirams)!,
+      currency: op.currencyCode, amountOriginal: somoni(op.amountDirams)!,
     };
   }
 
@@ -1001,27 +1011,65 @@ export class DataService {
   }
 
   /** Курсы валют: по каждой валюте — последний курс к TJS. */
+  /** Справочник валют: весь ISO 4217, последний курс к сомони и пометка
+   *  «уже в ходу». Раньше здесь был запрос курса на каждую валюту — на пяти
+   *  валютах это было незаметно, на ста пятидесяти шести стало бы 157
+   *  запросами на открытие формы. */
+  async currencies() {
+    const [rows, rateRows, usedOps, usedReqs] = await Promise.all([
+      this.prisma.currency.findMany({ where: { deletedAt: null } }),
+      this.prisma.exchangeRate.findMany({
+        where: { deletedAt: null },
+        orderBy: [{ currencyCode: 'asc' }, { rateDate: 'desc' }],
+      }),
+      this.prisma.operation.groupBy({ by: ['currencyCode'], where: { deletedAt: null } }),
+      this.prisma.request.groupBy({ by: ['currencyCode'], where: { deletedAt: null, currencyCode: { not: null } } }),
+    ]);
+
+    // Первая строка на валюту — самая свежая: сортировка уже это обеспечила
+    const last = new Map<string, (typeof rateRows)[number]>();
+    for (const r of rateRows) if (!last.has(r.currencyCode)) last.set(r.currencyCode, r);
+    const used = new Set<string>([
+      BASE_CURRENCY,
+      ...usedOps.map((o) => o.currencyCode),
+      ...usedReqs.map((r) => r.currencyCode!).filter(Boolean),
+    ]);
+
+    const meta = new Map(currencyList().map((c) => [c.code, c]));
+    return rows
+      .map((c) => {
+        const l = last.get(c.code);
+        return {
+          code: c.code,
+          name: meta.get(c.code)?.name ?? c.name,
+          digits: meta.get(c.code)?.digits ?? 2,
+          rate: l ? Number(l.rate) : c.code === BASE_CURRENCY ? 1 : null,
+          rateDate: l ? dateStr(l.rateDate) : null,
+          // «В ходу» — базовая валюта, валюты уже введённых операций и заявок
+          // и все, кому задан курс: они идут первой группой в селекте
+          used: used.has(c.code) || last.has(c.code),
+        };
+      })
+      .sort((a, b) => Number(b.used) - Number(a.used) || a.name.localeCompare(b.name, 'ru'));
+  }
+
+  /** Совместимость: экран «Курсы валют» ходит сюда. */
   async rates() {
-    const currencies = await this.prisma.currency.findMany({ where: { deletedAt: null }, orderBy: { code: 'asc' } });
-    const out = [];
-    for (const c of currencies) {
-      const last = await this.prisma.exchangeRate.findFirst({
-        where: { currencyCode: c.code, deletedAt: null },
-        orderBy: { rateDate: 'desc' },
-      });
-      out.push({
-        code: c.code,
-        name: c.name,
-        rate: last ? Number(last.rate) : null,
-        rateDate: last ? dateStr(last.rateDate) : null,
-      });
-    }
-    return out;
+    return this.currencies();
   }
 
   async addRate(userId: number, currency: string, date: string, rate: number) {
-    const cur = await this.prisma.currency.findFirst({ where: { code: currency, deletedAt: null } });
-    if (!cur) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Валюта не найдена', 'currency');
+    if (!isIsoCurrency(currency))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', CURRENCY_DISABLED_MESSAGE, 'currency');
+    if (!(rate > 0))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Курс должен быть больше нуля', 'rate');
+    // Строку справочника заводим на месте: наполнение при старте могло не
+    // пройти (нет прав, откат миграции), а курс задавать всё равно нужно
+    await this.prisma.currency.upsert({
+      where: { code: currency },
+      update: { deletedAt: null },
+      create: { code: currency, name: currencyName(currency) },
+    });
     const rateDate = new Date(date + 'T00:00:00Z');
     if (Number.isNaN(rateDate.getTime())) err(HttpStatus.UNPROCESSABLE_ENTITY, 'validation', 'Неверная дата', 'date');
     const value = new Prisma.Decimal(String(rate));

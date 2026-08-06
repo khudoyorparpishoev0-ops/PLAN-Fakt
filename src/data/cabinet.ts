@@ -45,6 +45,8 @@ export const PRIORITY_LABEL: Record<ReqPriorityCode, string> = {
 export interface PayReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; name: string; amount: number;
+  /** Сумма в сомони (пересчёт по курсу на дату); null — курса нет. */
+  amountTjs?: number | null;
   /** Кому платим. Необязателен: бывают оплаты без внешнего получателя. */
   contragent?: string;
   priority?: ReqPriorityCode;
@@ -59,6 +61,7 @@ export type CarCategory = 'Бензин' | 'Ремонт' | 'Мойка' | 'Шт
 export interface CarReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; category: CarCategory; amount: number;
+  amountTjs?: number | null;
   priority?: ReqPriorityCode;
   currency: string; status: ReqStatus; receipt?: string;
 }

@@ -11,6 +11,7 @@ import {
 } from '../lib/api';
 import { toExpense, toIncome } from '../lib/mapping';
 import { DEFAULT_PERIOD, periodRange, type PeriodKind } from '../lib/period';
+import type { CurrencyRow } from '../lib/currency';
 import { TAP, useIsMobile } from '../lib/responsive';
 import { expRow } from '../lib/rows';
 import { Logo } from '../components/ui';
@@ -145,6 +146,12 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
    *  поэтому грузятся с сервера и раздаются экранам, а не зашиты в код. */
   const [pf, setPf] = useState<PfThresholds>(PF_DEFAULTS);
   useEffect(() => { api.settings().then(s => setPf(s.pf)).catch(() => {}); }, []);
+
+  /** Справочник валют с курсами: нужен формам ввода операций и экрану курсов.
+   *  Читается один раз — список ISO не меняется, курсы обновляет reloadCurrencies. */
+  const [currencies, setCurrencies] = useState<CurrencyRow[]>([]);
+  const reloadCurrencies = () => { void api.currencies().then(setCurrencies).catch(() => {}); };
+  useEffect(reloadCurrencies, []);
 
   useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
 
@@ -384,6 +391,7 @@ export default function AdminApp({ user, onLogout, onChangePassword }: AdminAppP
       )}
       {opDrawer && (
         <IncomeDrawer
+          currencies={currencies}
           kind={opDrawer}
           dicts={dicts}
           projects={apiProjects}

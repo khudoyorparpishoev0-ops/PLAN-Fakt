@@ -97,7 +97,6 @@ export default function ExpenseDrawer(props: ExpenseDrawerProps) {
             <div style={detRow}><span style={{ color: 'var(--fin-text-4)' }}>Способ</span><span style={{ fontWeight: 500 }}>Банковский перевод</span></div>
             <div style={detRow}><span style={{ color: 'var(--fin-text-4)' }}>Дата план</span><span style={{ fontWeight: 500, fontFamily: PLEX }}>{sel.pdate + '.2026'}</span></div>
             <div style={detRow}><span style={{ color: 'var(--fin-text-4)' }}>Дата факт</span><span style={{ fontWeight: 500, fontFamily: PLEX }}>{sel.fdate}</span></div>
-            <div style={detRow}><span style={{ color: 'var(--fin-text-4)' }}>Валюта</span><span style={{ fontWeight: 500 }}>TJS — сомони</span></div>
             <div style={detRow}><span style={{ color: 'var(--fin-text-4)' }}>Инициатор</span><span style={{ fontWeight: 500 }}>{sel.resp}</span></div>
           </div>
           {hasReason && (

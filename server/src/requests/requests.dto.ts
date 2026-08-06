@@ -3,6 +3,8 @@ import {
   ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsPositive,
   IsString, Length, Min, ValidateNested,
 } from 'class-validator';
+import { CURRENCY_DISABLED_MESSAGE } from '../currency';
+import { ISO_CURRENCY_CODES } from '../iso4217';
 
 /** Ссылка на загруженный файл (POST /api/uploads → key). */
 export class AttachmentRefDto {
@@ -45,7 +47,7 @@ export class CreateRequestDto {
   amount?: number;
 
   @IsOptional()
-  @IsIn(['TJS', 'USD', 'EUR', 'RUB', 'CNY'])
+  @IsIn(ISO_CURRENCY_CODES as string[], { message: CURRENCY_DISABLED_MESSAGE })
   currency?: string;
 
   /** Километры (поездка), целое > 0. */
@@ -93,7 +95,7 @@ export class UpdateRequestDto {
   amount?: number;
 
   @IsOptional()
-  @IsIn(['TJS', 'USD', 'EUR', 'RUB', 'CNY'])
+  @IsIn(ISO_CURRENCY_CODES as string[], { message: CURRENCY_DISABLED_MESSAGE })
   currency?: string;
 
   @IsOptional()

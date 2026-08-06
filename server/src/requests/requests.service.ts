@@ -3,10 +3,14 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { dateStr, somoni } from '../serialize';
 import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
+import { roundToCurrency } from '../iso4217';
 import type { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
 
 /** Дирамы → сомони (для проверок при правке заявки). */
 const somoniOf = (v: bigint | null): number | undefined => (v == null ? undefined : Number(v) / 100);
+
+/** Курсы валют по коду, отсортированные от свежих к старым. */
+type RateIndex = Map<string, { date: Date; rate: number }[]>;
 
 type Kind = 'payment' | 'trip' | 'auto';
 type Status = 'draft' | 'sent' | 'review' | 'approved' | 'rejected';
@@ -57,6 +61,8 @@ export interface RequestDto {
   decidedBy: string | null;
   decidedAt: string | null;
   decisionComment: string | null;
+  /** Сумма в сомони по курсу на дату заявки; null — курс не задан. */
+  amountTjs: number | null;
   stornoBy: string | null;
   stornoAt: string | null;
   attachments: { id: number; kind: string; fileName: string; hasFile: boolean }[];
@@ -79,7 +85,41 @@ function err(status: HttpStatus, code: string, message: string, field?: string):
 export class RequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private toDto(r: RequestRow): RequestDto {
+  /** Курсы валют, встреченных в списке заявок: одна выборка вместо запроса
+   *  на строку. Ключ — код, значение — курсы по убыванию даты. */
+  private async rateIndex(rows: { currencyCode: string | null }[]): Promise<RateIndex> {
+    const codes = [...new Set(rows.map((r) => r.currencyCode).filter((c): c is string => !!c && c !== BASE_CURRENCY))];
+    if (codes.length === 0) return new Map();
+    const rates = await this.prisma.exchangeRate.findMany({
+      where: { currencyCode: { in: codes }, deletedAt: null },
+      orderBy: [{ currencyCode: 'asc' }, { rateDate: 'desc' }],
+    });
+    const index: RateIndex = new Map();
+    for (const r of rates) {
+      const list = index.get(r.currencyCode) ?? [];
+      list.push({ date: r.rateDate, rate: Number(r.rate) });
+      index.set(r.currencyCode, list);
+    }
+    return index;
+  }
+
+  /** Сумма заявки в сомони по курсу на дату заявки; null — курса ещё нет.
+   *  Складывать доллары с сомони нельзя, поэтому итоги кабинета считаются
+   *  по этому полю, а не по amount. */
+  private tjsOf(amount: number | null | undefined, code: string | null, date: Date, index: RateIndex): number | null {
+    if (amount == null) return null;
+    if (!code || code === BASE_CURRENCY) return amount;
+    const known = index.get(code);
+    const hit = known?.find((r) => r.date <= date) ?? known?.[known.length - 1];
+    return hit ? Math.round(amount * hit.rate * 100) / 100 : null;
+  }
+
+  /** DTO одной заявки — с курсом её валюты (создание, правка, решение). */
+  private async dto(r: RequestRow): Promise<RequestDto> {
+    return this.toDto(r, await this.rateIndex([r]));
+  }
+
+  private toDto(r: RequestRow, rates: RateIndex = new Map()): RequestDto {
     return {
       id: r.id,
       number: r.number,
@@ -90,6 +130,7 @@ export class RequestsService {
       name: r.name,
       amount: somoni(r.amountDirams),
       currency: r.currencyCode,
+      amountTjs: this.tjsOf(somoni(r.amountDirams), r.currencyCode, r.requestDate, rates),
       km: r.km,
       category: r.category,
       counterparty: r.counterpartyName,
@@ -144,7 +185,8 @@ export class RequestsService {
     // сид вставлял фикстуры в обратном порядке, поэтому id не годится
     const suffix = (n: string) => parseInt(n.replace(/\D+/g, ''), 10) || 0;
     rows.sort((a, b) => suffix(b.number) - suffix(a.number) || b.id - a.id);
-    return rows.map((r) => this.toDto(r));
+    const rates = await this.rateIndex(rows);
+    return rows.map((r) => this.toDto(r, rates));
   }
 
   async create(user: { sub: number }, dto: CreateRequestDto): Promise<RequestDto> {
@@ -171,9 +213,10 @@ export class RequestsService {
     if (!currencyAllowed(dto.currency))
       err(HttpStatus.UNPROCESSABLE_ENTITY, 'currency_disabled', CURRENCY_DISABLED_MESSAGE, 'currency');
 
-    const amountDirams = dto.amount != null ? BigInt(Math.round(dto.amount * 100)) : null;
     // У поездки суммы нет — только километры, поэтому валюта не заполняется
     const currency = kind === 'trip' ? null : (dto.currency ?? BASE_CURRENCY);
+    const amountDirams =
+      dto.amount != null ? BigInt(Math.round(roundToCurrency(dto.amount, currency ?? BASE_CURRENCY) * 100)) : null;
 
     // Номер: гонка на unique(number) маловероятна, но повторяем до 3 раз
     for (let attempt = 0; ; attempt++) {
@@ -208,7 +251,7 @@ export class RequestsService {
           },
           include: REQUEST_INCLUDE,
         });
-        const dtoRow = this.toDto(row);
+        const dtoRow = await this.dto(row);
         await this.audit(user.sub, row.id, 'create', undefined, dtoRow as unknown);
         return dtoRow;
       } catch (e) {
@@ -246,7 +289,9 @@ export class RequestsService {
       data: {
         ...(dto.projectId !== undefined ? { projectId: dto.projectId } : {}),
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
-        ...(dto.amount !== undefined ? { amountDirams: BigInt(Math.round(dto.amount * 100)) } : {}),
+        ...(dto.amount !== undefined
+          ? { amountDirams: BigInt(Math.round(roundToCurrency(dto.amount, dto.currency ?? req.currencyCode ?? BASE_CURRENCY) * 100)) }
+          : {}),
         ...(dto.currency !== undefined ? { currencyCode: dto.currency } : {}),
         ...(dto.km !== undefined ? { km: dto.km } : {}),
         ...(dto.category !== undefined ? { category: dto.category } : {}),
@@ -275,7 +320,7 @@ export class RequestsService {
       include: REQUEST_INCLUDE,
     });
     await this.audit(user.sub, id, dto.resend ? 'resend' : 'update', { status: req.status }, dto as unknown);
-    return this.toDto(row);
+    return this.dto(row);
   }
 
   /** Решение директора. Переходы (ТЗ, п. 5): Отправлено → На рассмотрении /
@@ -314,7 +359,7 @@ export class RequestsService {
         include: REQUEST_INCLUDE,
       });
       await this.audit(user.sub, id, 'status_change', { status: from }, { status: to, comment: dto.comment ?? null });
-      return this.toDto(row);
+      return this.dto(row);
     }
 
     // ── Одобрение: плановая операция расхода по проекту (ТЗ, п. 8) ──
@@ -337,7 +382,7 @@ export class RequestsService {
       comment: dto.comment ?? null,
       plannedOperation: `req:${req.number}`,
     });
-    return this.toDto(row);
+    return this.dto(row);
   }
 
   /** Массовое одобрение из очереди директора.
@@ -485,7 +530,7 @@ export class RequestsService {
       stornoOperation: `req:${req.number}:storno`,
       comment: comment ?? null,
     });
-    return this.toDto(row);
+    return this.dto(row);
   }
 
   /** Удаление — только автором и только «Черновик» (ТЗ, п. 5). Мягкое. */

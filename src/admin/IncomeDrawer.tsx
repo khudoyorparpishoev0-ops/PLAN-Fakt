@@ -6,12 +6,16 @@ import {
   type ApiDictionaries, type ApiProject, type CreateOperationPayload,
 } from '../lib/api';
 import { useEscapeClose } from '../lib/escape';
+import { BASE_CURRENCY, rateOf, type CurrencyRow } from '../lib/currency';
+import { CurrencySelect } from '../components/ui';
 
 export interface IncomeDrawerProps {
   /** Вид операции: доход (in) или расход (out). */
   kind: 'in' | 'out';
   dicts: ApiDictionaries | null;
   projects: ApiProject[];
+  /** Справочник валют с курсами (GET /api/currencies). */
+  currencies: CurrencyRow[];
   onClose: () => void;
   /** Операция создана (обновить журнал). */
   onCreated: (msg: string) => void;
@@ -34,7 +38,7 @@ const parseAmount = (s: string): number =>
  *  на плановую сумму (оплата не подтверждена). */
 export default function IncomeDrawer(props: IncomeDrawerProps) {
   useEscapeClose(props.onClose);
-  const { kind, dicts, projects } = props;
+  const { kind, dicts, projects, currencies } = props;
   const income = kind === 'in';
 
   const articles = useMemo(() => {
@@ -49,6 +53,8 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
   const [descr, setDescr] = useState('');
   const [planStr, setPlanStr] = useState('');
   const [factStr, setFactStr] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
+  const [rateStr, setRateStr] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [account, setAccount] = useState('');
   const [comment, setComment] = useState('');
@@ -59,7 +65,14 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
   const factOk = factStr.trim() === '' || parseAmount(factStr) > 0;
   const amount = factStr.trim() !== '' ? parseAmount(factStr) : planStr.trim() !== '' ? parseAmount(planStr) : NaN;
   const isPlan = factStr.trim() === '';
-  const valid = article !== '' && Number.isFinite(amount) && amount > 0 && planOk && factOk && !!date && !busy;
+  const base = currency === BASE_CURRENCY;
+  /** Курс из справочника — подсказка и значение по умолчанию. */
+  const knownRate = rateOf(currencies, currency);
+  const typedRate = rateStr.trim() !== '' ? parseAmount(rateStr) : undefined;
+  const rateValue = base ? 1 : Number.isFinite(typedRate as number) && (typedRate as number) > 0 ? typedRate! : knownRate;
+  const tjsPreview = Number.isFinite(amount) && rateValue != null ? amount * rateValue : null;
+  const valid = article !== '' && Number.isFinite(amount) && amount > 0 && planOk && factOk && !!date
+    && (base || rateValue != null) && !busy;
 
   const submit = async () => {
     if (!valid) return;
@@ -70,6 +83,10 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
       type: kind,
       isPlan,
       amount,
+      currency,
+      // Курс шлём, только если бухгалтер вписал его руками: иначе сервер
+      // возьмёт курс на дату операции, а не сегодняшний из справочника
+      ...(typedRate && typedRate > 0 ? { rate: typedRate } : {}),
       articleName: article,
       projectId: project ? Number(project) : undefined,
       accountId: account ? Number(account) : undefined,
@@ -125,13 +142,42 @@ export default function IncomeDrawer(props: IncomeDrawerProps) {
           </div>
           <div style={{ marginBottom: 14 }}><div style={lbl}>Описание</div><input value={descr} onChange={e => setDescr(e.target.value)} placeholder={income ? 'За что поступают деньги' : 'За что платим'} style={inp} /></div>
           <div style={sec}>СУММЫ</div>
-          {/* Учёт ведётся в одной валюте, поэтому ни выбора валюты, ни курса,
-              ни пересчёта в сомони в форме нет — введённая сумма и есть итог. */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr 1fr', gap: 10, marginBottom: 10 }}>
             <div><div style={lbl}>Плановая сумма</div><input value={planStr} onChange={e => setPlanStr(e.target.value)} placeholder="0" style={{ ...inp, textAlign: 'right', fontFamily: PLEX }} /></div>
-            <div><div style={lbl}>Фактическая сумма</div><input value={factStr} onChange={e => setFactStr(e.target.value)} placeholder="Заполняется при оплате" style={{ ...inp, background: 'var(--fin-surface-alt)', textAlign: 'right', fontFamily: PLEX }} /></div>
+            <div>
+              <div style={lbl}>Валюта</div>
+              <CurrencySelect value={currency} onChange={setCurrency} list={currencies} style={sel} dataAttr="data-op-currency" />
+            </div>
+            <div>
+              <div style={lbl}>Курс к сомони</div>
+              <input
+                value={rateStr} onChange={e => setRateStr(e.target.value)}
+                placeholder={base ? '1,00' : knownRate != null ? fmt(knownRate) : 'курс не задан'}
+                disabled={base}
+                style={{ ...inp, textAlign: 'right', fontFamily: PLEX, ...(base ? { background: 'var(--fin-surface-alt)', color: 'var(--fin-text-5)' } : {}) }}
+              />
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--fin-text-4)', marginBottom: 14 }}>Суммы в сомони (TJS)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
+            <div><div style={lbl}>Фактическая сумма</div><input value={factStr} onChange={e => setFactStr(e.target.value)} placeholder="Заполняется при оплате" style={{ ...inp, background: 'var(--fin-surface-alt)', textAlign: 'right', fontFamily: PLEX }} /></div>
+            <div>
+              <div style={lbl}>Сумма в сомони</div>
+              <input
+                value={tjsPreview != null ? fmt(Math.round(tjsPreview * 100) / 100) : ''}
+                placeholder={base ? 'та же сумма' : 'нужен курс'} disabled
+                style={{ ...inp, background: 'var(--fin-surface-alt)', textAlign: 'right', color: 'var(--fin-text-4)', fontFamily: PLEX }}
+              />
+            </div>
+          </div>
+          {/* Отчёты считаются в сомони, поэтому валютная операция без курса
+              не сохранится: лучше сказать это в форме, чем 422 после отправки */}
+          <div style={{ fontSize: 12, color: base ? 'var(--fin-text-4)' : rateValue != null ? 'var(--fin-text-4)' : 'var(--fin-minus)', marginBottom: 14 }}>
+            {base
+              ? 'Суммы в сомони (TJS)'
+              : rateValue != null
+                ? `В отчёты попадёт сумма в сомони по курсу ${fmt(rateValue)}${knownRate != null && rateStr.trim() === '' ? ' из справочника курсов' : ''}`
+                : `Курс ${currency} к сомони не задан — впишите его здесь или в «Настройки → Курсы валют»`}
+          </div>
           <div style={sec}>ОПЛАТА</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <div><div style={lbl}>Дата операции</div><input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, fontFamily: PLEX }} /></div>

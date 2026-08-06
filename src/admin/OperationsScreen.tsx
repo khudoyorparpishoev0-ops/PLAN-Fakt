@@ -5,6 +5,7 @@ import { api, ApiError, type ApiDictionaries, type ApiOperation, type ApiProject
 import { ruDate } from '../lib/mapping';
 import { CheckRow, Th } from '../components/ui';
 import { useIsMobile } from '../lib/responsive';
+import { BASE_CURRENCY } from '../lib/currency';
 import OperationCard from './OperationCard';
 import ExportDialog from './ExportDialog';
 import { EmptyState, ErrorState, SkeletonTable } from '../components/states';
@@ -232,6 +233,9 @@ export default function OperationsScreen(props: OperationsScreenProps) {
       tag: o.isPlan ? 'План' : o.type === 'in' ? 'Доходы' : 'Расходы',
       sumMain: sign + fmt(whole),
       sumFrac: ',' + String(dirams).padStart(2, '0') + ' TJS',
+      // Журнал считается в сомони; валютная операция подписывается исходной
+      // суммой, иначе «−1 100 TJS» у платежа в 100 USD выглядит опечаткой
+      sumOrig: o.currency && o.currency !== BASE_CURRENCY ? `${fmt(o.amountOriginal)} ${o.currency}` : null,
       sumFg: o.type === 'in' ? 'var(--fin-plus)' : 'var(--fin-minus)',
     };
   });
@@ -510,6 +514,7 @@ export default function OperationsScreen(props: OperationsScreenProps) {
               </span>
             )}
             <span style={{ fontSize: 13, fontWeight: 600, color: r.sumFg, ...num }}>{r.sumMain}<span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--fin-text-5)' }}>{r.sumFrac}</span></span>
+            {r.sumOrig && <div style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--fin-text-5)', ...num }}>{r.sumOrig}</div>}
           </span>
         </td>
       </tr>

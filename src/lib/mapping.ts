@@ -44,7 +44,7 @@ export const toPay = (r: ApiRequest): PayReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project, name: r.name,
   contragent: r.counterparty ?? undefined, priority: r.priority,
-  amount: r.amount ?? 0, currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], doc: attachment(r),
+  amount: r.amount ?? 0, amountTjs: r.amountTjs, currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], doc: attachment(r),
 });
 
 export const toTrip = (r: ApiRequest): TripReq => ({
@@ -57,7 +57,7 @@ export const toTrip = (r: ApiRequest): TripReq => ({
 export const toCar = (r: ApiRequest): CarReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project,
-  category: (r.category ?? r.name) as CarCategory, amount: r.amount ?? 0, priority: r.priority,
+  category: (r.category ?? r.name) as CarCategory, amount: r.amount ?? 0, amountTjs: r.amountTjs, priority: r.priority,
   currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], receipt: attachment(r),
 });
 
@@ -114,7 +114,8 @@ export function monthlyStats(requests: ApiRequest[]): { m: string; sum: number }
   const byMonth = new Map<string, number>();
   for (const r of requests) {
     const key = r.date.slice(0, 7); // YYYY-MM
-    const sum = r.kind === 'trip' ? tripAmount(r.km ?? 0) : r.amount ?? 0;
+    // Суммируем сомони: месяцы с заявками в разных валютах иначе бессмысленны
+    const sum = r.kind === 'trip' ? tripAmount(r.km ?? 0) : r.amountTjs ?? 0;
     byMonth.set(key, (byMonth.get(key) ?? 0) + sum);
   }
   const last = [...byMonth.keys()].sort().pop()!;

@@ -6,6 +6,7 @@ import { Badge, Th } from '../components/ui';
 import { useEscapeClose } from '../lib/escape';
 import { PriorityChip } from '../cabinet/PayRequestsScreen';
 import { useIsMobile } from '../lib/responsive';
+import { BASE_CURRENCY } from '../lib/currency';
 import {
   api, ApiError,
   type ApiProjectSummary, type ApiReqKind, type ApiRequest,
@@ -57,8 +58,9 @@ const waitTone = (d: number): BadgeData => badge(waitText(d), d >= 3 ? 'red' : d
 /** Поездка измеряется километрами, остальное — деньгами. */
 const isTrip = (r: ApiRequest) => r.kind === 'trip';
 const amountOf = (r: ApiRequest) => (isTrip(r) ? (r.km ?? 0) : (r.amount ?? 0));
-const unitOf = (r: ApiRequest) => (isTrip(r) ? 'км' : 'TJS');
-const amountText = (r: ApiRequest) => (isTrip(r) ? `${fmt(r.km ?? 0)} км` : `−${fmt(r.amount ?? 0)}`);
+const unitOf = (r: ApiRequest) => (isTrip(r) ? 'км' : r.currency ?? BASE_CURRENCY);
+const amountText = (r: ApiRequest) =>
+  isTrip(r) ? `${fmt(r.km ?? 0)} км` : `−${fmt(r.amount ?? 0)}${r.currency && r.currency !== BASE_CURRENCY ? ` ${r.currency}` : ''}`;
 
 const statusBadge = (r: ApiRequest): BadgeData => {
   if (r.stornoAt) return badge('Сторнировано', 'gray');
@@ -194,7 +196,9 @@ export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsS
   }, [sel?.projectId, selPending]);
 
   /* Счётчики шапки: сумма считается без поездок — они в километрах. */
-  const pendingSum = pending.reduce((a, r) => a + (r.kind === 'trip' ? 0 : (r.amount ?? 0)), 0);
+  // Итоги очереди — в сомони (amountTjs): в очереди могут лежать заявки
+  // в разных валютах, и их сумма в «цифрах заявок» ничего не значит
+  const pendingSum = pending.reduce((a, r) => a + (r.kind === 'trip' ? 0 : (r.amountTjs ?? 0)), 0);
   const oldest = pending.reduce((a, r) => Math.max(a, waitDays(r.date)), 0);
 
   const checkedIds = useMemo(
@@ -203,7 +207,7 @@ export default function ApprovalsScreen({ onChanged, onError, role }: ApprovalsS
   );
   const checkedSum = pending
     .filter((r) => checked.has(r.id) && r.kind !== 'trip')
-    .reduce((a, r) => a + (r.amount ?? 0), 0);
+    .reduce((a, r) => a + (r.amountTjs ?? 0), 0);
 
   const after = (msg: string, ok = true) => {
     setToast({ text: msg, ok });
@@ -512,6 +516,15 @@ function DetailPanel({ req, summary, busy, canDecide, rejectOpen, reason, onOpen
         <div style={{ ...num, fontSize: 27, fontWeight: 700, letterSpacing: '-.02em' }}>
           {fmt(amountOf(req))} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fin-text-4)' }}>{unitOf(req)}</span>
         </div>
+        {/* Плановая операция создаётся в сомони по курсу на дату заявки —
+            директор должен видеть, какая цифра ляжет в план проекта */}
+        {!isTrip(req) && req.currency && req.currency !== BASE_CURRENCY && (
+          <div style={{ fontSize: 12, color: 'var(--fin-text-4)' }}>
+            {req.amountTjs != null
+              ? `≈ ${fmt(req.amountTjs)} TJS по курсу на дату заявки`
+              : `Курс ${req.currency} к сомони не задан — одобрить нельзя, пока администратор его не внесёт`}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 9, borderBottom: '1px solid var(--fin-divider)' }}>
@@ -686,7 +699,8 @@ function Impact({ req, summary }: { req: ApiRequest; summary: ApiProjectSummary 
   const fact = exp.reduce((a, r) => a + r.fact, 0);
   // Поездка пересчитывается в деньги по ставке компенсации уже на сервере,
   // поэтому её вклад в план тут не показываем — цифра была бы выдуманной.
-  const add = req.kind === 'trip' ? null : (req.amount ?? 0);
+  // В план проекта ложится сумма в сомони, а не цифра из заявки
+  const add = req.kind === 'trip' ? null : req.amountTjs;
   if (add == null) return null;
 
   const pctBefore = plan > 0 ? (fact / plan) * 100 : 0;

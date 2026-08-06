@@ -17,10 +17,12 @@ export default function CabinetProjectsScreen({ pays, trips, cars, projects }: C
   /* Все мои заявки, нормализованные к { project, status, amount, km }.
    * Поездки в деньгах учитываются только при заданной ставке (settings.kmRate);
    * пока ставка не задана — их километры показываются второй строкой. */
+  /* Суммы по проектам — в сомони: заявка может быть в любой валюте мира,
+     и amountTjs с сервера уже пересчитан по курсу на дату заявки. */
   const all: { project: string; status: ReqStatus; amount: number; km: number }[] = [
-    ...pays.map((r) => ({ project: r.project, status: r.status, amount: r.amount, km: 0 })),
+    ...pays.map((r) => ({ project: r.project, status: r.status, amount: r.amountTjs ?? 0, km: 0 })),
     ...trips.map((r) => ({ project: r.project, status: r.status, amount: tripAmount(r.km), km: r.km })),
-    ...cars.map((r) => ({ project: r.project, status: r.status, amount: r.amount, km: 0 })),
+    ...cars.map((r) => ({ project: r.project, status: r.status, amount: r.amountTjs ?? 0, km: 0 })),
   ];
 
   const rows = projects.filter((p) => !p.archived).map((p) => {

@@ -3,6 +3,8 @@
  *  активной сессии и один раз прозрачно обновляет пару токенов по refresh
  *  при 401 (протухший access). */
 
+import type { CurrencyRow } from './currency';
+
 export type RoleCode = 'admin' | 'director' | 'accountant';
 
 export interface AuthUser {
@@ -169,6 +171,9 @@ export interface ApiRequest {
   name: string;
   amount: number | null;
   currency: string | null;
+  /** Сумма в сомони по курсу на дату заявки; null — курс валюты не задан.
+   *  Итоги считаются по нему: складывать доллары с сомони нельзя. */
+  amountTjs: number | null;
   km: number | null;
   category: string | null;
   counterparty: string | null;
@@ -220,15 +225,16 @@ export interface ApiOperation {
   comment: string | null;
   project: string | null;
   amount: number; // TJS, сомони
+  /** Валюта операции и сумма в ней (журнал считается в сомони). */
+  currency: string;
+  amountOriginal: number;
 }
 
 /** Карточка операции (ТЗ, п. 3.2 — клик по строке журнала). */
 export interface ApiOperationCard extends ApiOperation {
   accountId: number | null;
   projectId: number | null;
-  /** Сумма в валюте операции и курс на дату (ТЗ, п. 8). */
-  amountOriginal: number;
-  currency: string;
+  /** Курс на дату операции (ТЗ, п. 8). */
   rate: number;
   rateDate: string | null;
   externalRef: string | null;
@@ -422,7 +428,8 @@ export interface ApiAssignee {
   role: { code: RoleCode; name: string };
 }
 
-export interface ApiRate { code: string; name: string; rate: number | null; rateDate: string | null }
+/** Строка справочника валют (GET /api/currencies и /api/rates). */
+export type ApiRate = CurrencyRow;
 
 /** Настройки: ставка км и пороги статусов План-Факта (проценты). */
 export interface ApiSettings {
@@ -791,6 +798,9 @@ export const api = {
 
   updateSettings: (patch: { kmRate?: number; pf?: ApiSettings['pf'] }) =>
     authedReq<ApiSettings>('/settings', { method: 'PATCH', body: patch }),
+
+  /** Справочник валют с курсами — доступен и бухгалтеру (формы заявок). */
+  currencies: () => authedReq<ApiRate[]>('/currencies'),
 
   rates: () => authedReq<ApiRate[]>('/rates'),
 

@@ -1,4 +1,6 @@
 import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsPositive, IsString, Length, Matches } from 'class-validator';
+import { CURRENCY_DISABLED_MESSAGE } from '../currency';
+import { ISO_CURRENCY_CODES } from '../iso4217';
 
 /** Фильтры журнала операций (ТЗ, п. 9): разбираются из query-строки. */
 export interface OperationFilters {
@@ -37,7 +39,7 @@ export class CreateOperationDto {
   amount!: number;
 
   @IsOptional()
-  @IsIn(['TJS', 'USD', 'EUR', 'RUB', 'CNY'])
+  @IsIn(ISO_CURRENCY_CODES as string[], { message: CURRENCY_DISABLED_MESSAGE })
   currency?: string;
 
   /** Курс к TJS (для не-TJS); если не задан — берётся последний из БД. */

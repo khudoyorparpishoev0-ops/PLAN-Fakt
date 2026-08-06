@@ -13,6 +13,7 @@ import NotifyBell from '../components/NotifyBell';
 import NotificationsScreen, { type NotifyTarget } from '../admin/NotificationsScreen';
 import { CB, type ReqKind, type ReqStatus } from '../data/cabinet';
 import { setKmRate, tripAmount } from '../data/settings';
+import type { CurrencyRow } from '../lib/currency';
 import PayRequestsScreen from './PayRequestsScreen';
 import CarRequestsScreen from './CarRequestsScreen';
 import MobileRequestForm from './MobileRequestForm';
@@ -180,6 +181,8 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   const [projects, setProjects] = useState<ApiProject[]>([]);
   /** Имена контрагентов — подсказки в формах заявок (разнопись плодит двойников). */
   const [counterparties, setCounterparties] = useState<string[]>([]);
+  /** Справочник валют с курсами — в формах заявок выбирается валюта платежа. */
+  const [currencies, setCurrencies] = useState<CurrencyRow[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   /** Сигнал колокольчику перечитать уведомления (после отправки заявки). */
   const [notifyTick, setNotifyTick] = useState(0);
@@ -187,6 +190,7 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
 
   useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
   useEffect(() => { api.counterpartyNames().then(setCounterparties).catch(() => {}); }, []);
+  useEffect(() => { api.currencies().then(setCurrencies).catch(() => {}); }, []);
   useEffect(() => {
     if (toastMsg == null) return;
     const t = setTimeout(() => setToastMsg(null), 3500);
@@ -278,18 +282,23 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   /* ── KPI поверх всех трёх видов заявок (значения считаются из данных).
    *    Поездки в деньгах учитываются только при заданной ставке (settings.kmRate);
    *    иначе одобренные километры показываются отдельно, в подписи карточки. ── */
-  const all: { status: ReqStatus; amount: number; km: number }[] = [
-    ...pays.map(p => ({ status: p.status, amount: p.amount, km: 0 })),
-    ...trips.map(t => ({ status: t.status, amount: tripAmount(t.km), km: t.km })),
-    ...cars.map(c => ({ status: c.status, amount: c.amount, km: 0 })),
+  /* Сумма для итогов — ВСЕГДА в сомони (amountTjs с сервера). Складывать
+     заявку в долларах с заявкой в сомони нельзя, а курса может не быть —
+     такие заявки в сумму не входят и считаются отдельно (noRate). */
+  const all: { status: ReqStatus; amount: number; km: number; noRate: boolean }[] = [
+    ...pays.map(p => ({ status: p.status, amount: p.amountTjs ?? 0, km: 0, noRate: p.amountTjs == null })),
+    ...trips.map(t => ({ status: t.status, amount: tripAmount(t.km), km: t.km, noRate: false })),
+    ...cars.map(c => ({ status: c.status, amount: c.amountTjs ?? 0, km: 0, noRate: c.amountTjs == null })),
   ];
   const count = (st: ReqStatus) => all.filter(r => r.status === st).length;
   const nSent = count('Отправлено'), nPend = count('На рассмотрении'), nRej = count('Отклонено');
   const approvedRows = all.filter(r => r.status === 'Одобрено');
   const approvedSum = approvedRows.reduce((s, r) => s + r.amount, 0);
   const approvedKm = approvedRows.reduce((s, r) => s + (r.amount === 0 ? r.km : 0), 0);
+  const approvedNoRate = approvedRows.filter(r => r.noRate).length;
   const approvedNote = `${approvedRows.length} ${pluralReq(approvedRows.length)} к оплате`
-    + (approvedKm > 0 ? ` · ${fmt(approvedKm)} км` : '');
+    + (approvedKm > 0 ? ` · ${fmt(approvedKm)} км` : '')
+    + (approvedNoRate > 0 ? ` · без курса: ${approvedNoRate}` : '');
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontSize: 14 }}>
@@ -382,7 +391,6 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
             <div style={{ width: 1, height: 22, background: 'var(--fin-border)' }} />
             <div className="hv-soft" style={CHIP}>Проект: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>Все</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
             <div className="hv-soft" style={CHIP}>Статус: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>Все</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
-            <div className="hv-soft" style={CHIP}>Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b> <span style={{ color: 'var(--fin-text-5)' }}>▾</span></div>
             <div style={{ flex: 1 }} />
             <div style={{ position: 'relative' }}>
               <input placeholder="Поиск по заявкам" style={{ width: 230, height: 34, border: '1px solid var(--fin-border)', borderRadius: 8, background: 'var(--fin-surface)', padding: '0 12px 0 34px', fontSize: 12.5, outline: 'none' }} />
@@ -402,12 +410,12 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           {isMobile && (screen === 'pay' || screen === 'car') && (
             <MobileRequestForm
               initialKind={screen === 'pay' ? 'payment' : 'trip'}
-              projects={formProjects} counterparties={counterparties}
+              projects={formProjects} counterparties={counterparties} currencies={currencies}
               createRequest={createRequest} toast={toast}
             />
           )}
-          {screen === 'pay' && <PayRequestsScreen hideForm={isMobile} pays={pays} projects={formProjects} counterparties={counterparties} createRequest={createRequest} toast={toast} />}
-          {screen === 'car' && <CarRequestsScreen hideForm={isMobile} trips={trips} cars={cars} projects={formProjects} counterparties={counterparties} createRequest={createRequest} toast={toast} />}
+          {screen === 'pay' && <PayRequestsScreen hideForm={isMobile} pays={pays} projects={formProjects} counterparties={counterparties} currencies={currencies} createRequest={createRequest} toast={toast} />}
+          {screen === 'car' && <CarRequestsScreen hideForm={isMobile} trips={trips} cars={cars} projects={formProjects} counterparties={counterparties} currencies={currencies} createRequest={createRequest} toast={toast} />}
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
           {screen === 'tasks' && <TasksScreen projects={projects} users={[]} role="accountant" onError={msg => toast(msg)} />}

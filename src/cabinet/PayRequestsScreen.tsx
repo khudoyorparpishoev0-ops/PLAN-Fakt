@@ -4,6 +4,8 @@ import { fmt } from '../lib/format';
 import { api, ApiError, type ApiProject, type CreateRequestPayload, type UploadedRef } from '../lib/api';
 import { dirB, ownB, PRIORITY_LABEL, type PayReq, type ReqPriorityCode } from '../data/cabinet';
 import { useIsMobile } from '../lib/responsive';
+import { BASE_CURRENCY, rateOf, type CurrencyRow } from '../lib/currency';
+import { CurrencySelect } from '../components/ui';
 
 export interface PayRequestsScreenProps {
   /** true — десктопную форму не показывать: на телефоне её заменяет
@@ -13,6 +15,8 @@ export interface PayRequestsScreenProps {
   projects: ApiProject[];
   /** Имена контрагентов для подсказок при вводе (GET /counterparty-names). */
   counterparties?: string[];
+  /** Справочник валют с курсами (GET /currencies). */
+  currencies?: CurrencyRow[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -159,12 +163,13 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 }
 
 
-export default function PayRequestsScreen({ pays, projects, counterparties = [], createRequest, toast, hideForm }: PayRequestsScreenProps) {
+export default function PayRequestsScreen({ pays, projects, counterparties = [], currencies = [], createRequest, toast, hideForm }: PayRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [name, setName] = useState('');
   const [contragent, setContragent] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [priority, setPriority] = useState<ReqPriorityCode>('normal');
   const [doc, setDoc] = useState<UploadedRef | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,6 +177,9 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
   const amountOk = /^\d[\d\s]*([.,]\d{1,2})?$/.test(amountStr.trim()) && parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')) > 0;
   const nameOk = name.trim().length >= 3 && name.trim().length <= 200;
   const valid = project !== '' && amountOk && nameOk && !busy;
+  /* Курса нет — заявку принимаем (её ещё может одобрить не сегодня), но
+     предупреждаем: одобрение без курса упрётся в 422 у директора. */
+  const noRate = currency !== BASE_CURRENCY && rateOf(currencies, currency) == null;
 
   const submit = async () => {
     if (!valid) return;
@@ -179,13 +187,14 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
     const ok = await createRequest({
       kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
       amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')),
+      currency,
       counterpartyName: contragent.trim() || undefined,
       // Обычную срочность не шлём: сервер и так ставит её по умолчанию
       ...(priority !== 'normal' ? { priority } : {}),
       attachment: doc ?? undefined,
     });
     setBusy(false);
-    if (ok) { setProject(''); setAmountStr(''); setName(''); setContragent(''); setPriority('normal'); setDoc(null); }
+    if (ok) { setProject(''); setAmountStr(''); setName(''); setContragent(''); setPriority('normal'); setDoc(null); setCurrency(BASE_CURRENCY); }
   };
 
   return (
@@ -202,17 +211,23 @@ export default function PayRequestsScreen({ pays, projects, counterparties = [],
             </Select44>
           </div>
           <div>
-            <label style={FORM_LABEL}>2) Сумма</label>
-            {/* Учёт в одной валюте: вместо выбора — неизменяемая подпись TJS */}
+            <label style={FORM_LABEL}>2) Сумма и валюта</label>
+            {/* Валюта выбирается: заказчик 06.08.2026 отменил решение 02.
+                Отчёты по-прежнему в сомони — пересчёт идёт по курсу на дату. */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <input value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0"
                 style={{ ...INPUT44, flex: 1, width: 'auto', ...num }} />
-              <span style={{
-                width: 92, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 8, border: '1px solid var(--fin-border)', background: 'var(--fin-surface-alt)',
-                color: 'var(--fin-text-4)', fontWeight: 600, fontSize: 14, ...num,
-              }}>TJS</span>
+              <CurrencySelect
+                value={currency} onChange={setCurrency} list={currencies} dataAttr="data-pay-currency"
+                style={{ ...INPUT44, width: 168, flex: 'none', padding: '0 8px' }}
+              />
             </div>
+            {noRate && (
+              <div style={{ fontSize: 11.5, color: 'var(--fin-warn)', marginTop: 6, lineHeight: 1.4 }}>
+                Курс {currency} к сомони пока не задан. Заявку отправить можно, но одобрить её
+                директор сможет только после того, как администратор внесёт курс.
+              </div>
+            )}
           </div>
           <div>
             <label style={FORM_LABEL}>3) Наименование</label>

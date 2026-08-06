@@ -206,7 +206,7 @@ export class ExportService {
     const stamp = ws.addRow(['Когда', now]);
     stamp.getCell(1).font = { bold: true };
     stamp.getCell(2).numFmt = 'dd.mm.yyyy hh:mm';
-    put('Валюта учёта', `${BASE_CURRENCY} — сомони, без пересчёта`);
+    put('Валюта учёта', `${BASE_CURRENCY} — сомони; валютные операции пересчитаны по курсу на дату`);
     put('Организация', 'IT-HONA LLC');
     put('Архивные проекты', opts?.archived ? 'включены' : 'не включены');
     ws.addRow([]);

@@ -257,10 +257,10 @@ export default function PanelScreen(props: PanelScreenProps) {
         <FilterChip label="Проект" value={fProject} options={projectOptions} onChange={setFProject} />
         <FilterChip label="Категория" value={fCat} options={catOptions} onChange={setFCat} />
         <FilterChip label="Контрагент" value={fParty} options={partyOptions} onChange={setFParty} />
-        {/* Учёт в одной валюте: это не фильтр, а подпись — выпадающего списка
-            здесь быть не должно, иначе чип обещает выбор, которого нет. */}
-        <div style={{ ...chipS, cursor: 'default' }} title="Учёт ведётся в сомони">
-          Валюта: <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b>
+        {/* Операции бывают в любой валюте, но отчёты считаются в сомони —
+            это подпись, а не фильтр: выпадающего списка здесь быть не должно. */}
+        <div style={{ ...chipS, cursor: 'default' }} title="Валютные операции пересчитаны в сомони по курсу на дату операции">
+          Отчёты в <b style={{ color: 'var(--fin-text)', fontWeight: 600 }}>TJS</b>
         </div>
         <FilterChip label="Статус" value={fStatus} options={statusOptions} onChange={setFStatus} />
         {(fProject !== 'Все' || fCat !== 'Все' || fParty !== 'Все' || fStatus !== 'Все') && (

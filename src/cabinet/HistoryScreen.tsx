@@ -367,8 +367,9 @@ export default function HistoryScreen(props: HistoryScreenProps) {
   /* ── Донат: категории поверх всех трёх видов; цвета — из прототипа.
    *    Поездки: при заданной ставке — денежная доля в кольце и % в легенде,
    *    иначе — километры в легенде и без сегмента (в кольце только деньги). ── */
-  const sumPays = filteredPays.reduce((s, r) => s + r.amount, 0);
-  const sumCars = filteredCars.reduce((s, r) => s + r.amount, 0);
+  // В кольцо идут суммы в сомони: валюты заявок могут быть разные
+  const sumPays = filteredPays.reduce((s, r) => s + (r.amountTjs ?? 0), 0);
+  const sumCars = filteredCars.reduce((s, r) => s + (r.amountTjs ?? 0), 0);
   const tripsKm = filteredTrips.reduce((s, r) => s + r.km, 0);
   const tripsMoney = filteredTrips.reduce((s, r) => s + tripAmount(r.km), 0);
   const ringTotal = sumPays + sumCars + tripsMoney;
