@@ -735,6 +735,16 @@ export class DataService {
 
   /** Справочники: статьи (дерево по типам), контрагенты, счета, юрлица,
    *  товары, услуги — с id для форм. */
+  /** Имена контрагентов (подсказки в формах заявок). */
+  async counterpartyNames(): Promise<string[]> {
+    const rows = await this.prisma.counterparty.findMany({
+      where: { deletedAt: null },
+      select: { name: true },
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((r) => r.name);
+  }
+
   async dictionaries() {
     const [articles, counterparties, accounts, entities, goods, services] = await Promise.all([
       this.prisma.article.findMany({ where: { deletedAt: null }, orderBy: { id: 'asc' } }),

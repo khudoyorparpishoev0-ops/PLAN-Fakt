@@ -11,6 +11,8 @@ export interface PayRequestsScreenProps {
   hideForm?: boolean;
   pays: PayReq[];
   projects: ApiProject[];
+  /** Имена контрагентов для подсказок при вводе (GET /counterparty-names). */
+  counterparties?: string[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -142,11 +144,12 @@ export function CabBadge({ b }: { b: { t: string; fg: string; bg: string; dot: s
 }
 
 
-export default function PayRequestsScreen({ pays, projects, createRequest, toast, hideForm }: PayRequestsScreenProps) {
+export default function PayRequestsScreen({ pays, projects, counterparties = [], createRequest, toast, hideForm }: PayRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [project, setProject] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [name, setName] = useState('');
+  const [contragent, setContragent] = useState('');
   const [doc, setDoc] = useState<UploadedRef | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -160,10 +163,11 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
     const ok = await createRequest({
       kind: 'payment', projectId: projectIdOf(project), name: name.trim(),
       amount: parseFloat(amountStr.trim().replace(/\s/g, '').replace(',', '.')),
+      counterpartyName: contragent.trim() || undefined,
       attachment: doc ?? undefined,
     });
     setBusy(false);
-    if (ok) { setProject(''); setAmountStr(''); setName(''); setDoc(null); }
+    if (ok) { setProject(''); setAmountStr(''); setName(''); setContragent(''); setDoc(null); }
   };
 
   return (
@@ -197,9 +201,24 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
             <textarea value={name} onChange={(e) => setName(e.target.value)} maxLength={200} placeholder="За что платим (3–200 символов)"
               style={{ width: '100%', height: 88, border: '1px solid var(--fin-border)', borderRadius: 10, padding: '11px 13px', fontSize: 13.5, background: 'var(--fin-surface)', outline: 'none', resize: 'none', lineHeight: 1.5 }} />
           </div>
-          <div>
-            <label style={FORM_LABEL}>4) Документ (опционально)</label>
-            <DropZone height={88} label="Загрузить счёт" icon={<CameraIcon />} value={doc} onChange={setDoc} toast={toast} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              {/* Кому платим: свободный ввод со подсказками из справочника —
+                  одобрение заявки заводит контрагента, и разнопись плодит двойников */}
+              <label style={FORM_LABEL}>4) Контрагент (получатель)</label>
+              <input
+                data-pay-counterparty list="cab-counterparties" value={contragent}
+                onChange={(e) => setContragent(e.target.value)} maxLength={200}
+                placeholder="Кому платим — необязательно" style={INPUT44}
+              />
+              <datalist id="cab-counterparties">
+                {counterparties.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div>
+              <label style={FORM_LABEL}>5) Документ (опционально)</label>
+              <DropZone height={88} label="Загрузить счёт" icon={<CameraIcon />} value={doc} onChange={setDoc} toast={toast} />
+            </div>
           </div>
         </div>
         <SubmitBtn label="Отправить на утверждение Директору" disabled={!valid} onClick={submit} />
@@ -224,7 +243,12 @@ export default function PayRequestsScreen({ pays, projects, createRequest, toast
               <tr key={r.id} className="hv-row">
                 <td style={{ ...TD_CAB, padding: '13px 20px', fontSize: 12.5, color: 'var(--fin-text-2)', fontFamily: "'IBM Plex Sans',sans-serif", whiteSpace: 'nowrap' }}>{r.date}</td>
                 <td style={{ ...TD_CAB, fontSize: 12.5, color: 'var(--fin-text-2)' }}>{r.project}</td>
-                <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>{r.name}</td>
+                <td style={{ ...TD_CAB, fontSize: 13, fontWeight: 500 }}>
+                  {r.name}
+                  {r.contragent && (
+                    <div style={{ fontSize: 11.5, fontWeight: 400, color: 'var(--fin-text-4)', marginTop: 2 }}>{r.contragent}</div>
+                  )}
+                </td>
                 <td style={{ ...TD_CAB, fontSize: 13, textAlign: 'right', fontWeight: 600, ...num, whiteSpace: 'nowrap' }}>{fmt(r.amount)} {r.currency}</td>
                 <td style={TD_CAB}><CabBadge b={ownB(r.status)} /></td>
                 <td style={{ ...TD_CAB, padding: '13px 20px 13px 14px' }}><CabBadge b={dirB(r.status, r.storno)} /></td>

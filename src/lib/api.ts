@@ -778,6 +778,9 @@ export const api = {
   updateRequest: (id: number, payload: UpdateRequestPayload) =>
     authedReq<ApiRequest>(`/requests/${id}`, { method: 'PATCH', body: payload }),
 
+  /** Имена контрагентов для подсказок в формах заявок (доступно бухгалтеру). */
+  counterpartyNames: () => authedReq<string[]>('/counterparty-names'),
+
   settings: () => authedReq<ApiSettings>('/settings'),
 
   updateSettings: (patch: { kmRate?: number; pf?: ApiSettings['pf'] }) =>

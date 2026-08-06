@@ -178,12 +178,15 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
   const [period, setPeriod] = useState('Месяц');
   const [reqs, setReqs] = useState<ApiRequest[]>([]);
   const [projects, setProjects] = useState<ApiProject[]>([]);
+  /** Имена контрагентов — подсказки в формах заявок (разнопись плодит двойников). */
+  const [counterparties, setCounterparties] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   /** Сигнал колокольчику перечитать уведомления (после отправки заявки). */
   const [notifyTick, setNotifyTick] = useState(0);
   const [pwdModal, setPwdModal] = useState(false);
 
   useEffect(() => { applyThemeVars(undefined, savedDensity()); }, []);
+  useEffect(() => { api.counterpartyNames().then(setCounterparties).catch(() => {}); }, []);
   useEffect(() => {
     if (toastMsg == null) return;
     const t = setTimeout(() => setToastMsg(null), 3500);
@@ -388,11 +391,12 @@ export default function CabinetApp({ user, onLogout, onChangePassword }: Cabinet
           {isMobile && (screen === 'pay' || screen === 'car') && (
             <MobileRequestForm
               initialKind={screen === 'pay' ? 'payment' : 'trip'}
-              projects={formProjects} createRequest={createRequest} toast={toast}
+              projects={formProjects} counterparties={counterparties}
+              createRequest={createRequest} toast={toast}
             />
           )}
-          {screen === 'pay' && <PayRequestsScreen hideForm={isMobile} pays={pays} projects={formProjects} createRequest={createRequest} toast={toast} />}
-          {screen === 'car' && <CarRequestsScreen hideForm={isMobile} trips={trips} cars={cars} projects={formProjects} createRequest={createRequest} toast={toast} />}
+          {screen === 'pay' && <PayRequestsScreen hideForm={isMobile} pays={pays} projects={formProjects} counterparties={counterparties} createRequest={createRequest} toast={toast} />}
+          {screen === 'car' && <CarRequestsScreen hideForm={isMobile} trips={trips} cars={cars} projects={formProjects} counterparties={counterparties} createRequest={createRequest} toast={toast} />}
           {screen === 'history' && <HistoryScreen pays={pays} trips={trips} cars={cars} monthly={monthly} projectNames={formProjects.map(p => p.name)} projects={formProjects} deleteReq={deleteReq} editRequest={editRequest} toast={toast} />}
           {screen === 'projects' && <CabinetProjectsScreen pays={pays} trips={trips} cars={cars} projects={projects} />}
           {screen === 'tasks' && <TasksScreen projects={projects} users={[]} role="accountant" onError={msg => toast(msg)} />}

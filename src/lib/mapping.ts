@@ -43,6 +43,7 @@ const attachmentId = (r: ApiRequest): number | undefined =>
 export const toPay = (r: ApiRequest): PayReq => ({
   id: r.number, dbId: r.id, attId: attachmentId(r), storno: !!r.stornoAt, projectId: r.projectId ?? undefined,
   date: dotDate(r.date), project: r.project, name: r.name,
+  contragent: r.counterparty ?? undefined,
   amount: r.amount ?? 0, currency: r.currency ?? 'TJS', status: STATUS_RU[r.status], doc: attachment(r),
 });
 

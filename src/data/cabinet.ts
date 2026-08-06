@@ -37,6 +37,8 @@ export function cabProjB(status: 'plan' | 'work' | 'done'): BadgeData {
 export interface PayReq {
   id: string; dbId?: number; attId?: number; storno?: boolean; projectId?: number;
   date: string; project: string; name: string; amount: number;
+  /** Кому платим. Необязателен: бывают оплаты без внешнего получателя. */
+  contragent?: string;
   currency: string; status: ReqStatus; doc?: string;
 }
 export interface TripReq {

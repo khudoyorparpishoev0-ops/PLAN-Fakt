@@ -389,9 +389,12 @@ export class RequestsService {
     const amountTjsDirams = BigInt(new Prisma.Decimal(amountDirams.toString()).mul(rate).toFixed(0));
 
     const article = await this.findOrCreateArticle(KIND_ARTICLE[kind]);
+    // Контрагент заявки — отдельным полем операции, а не строкой в комментарии:
+    // иначе в журнале колонка «Контрагент» пустая, фильтр по нему не находит
+    // платёж, и в Excel он не выгружается.
+    const counterparty = await this.findOrCreateCounterparty(req.counterpartyName);
     const commentParts = [`Заявка ${req.number}`, req.name];
     if (kind === 'trip' && req.km) commentParts.push(`${req.km} км`);
-    if (req.counterpartyName) commentParts.push(req.counterpartyName);
 
     return {
       date,
@@ -406,7 +409,20 @@ export class RequestsService {
       comment: commentParts.join(' · '),
       articleId: article.id,
       projectId: req.projectId,
+      counterpartyId: counterparty?.id ?? null,
     };
+  }
+
+  /** Контрагент заявки в справочнике: находим по имени или заводим.
+   *  Регистр и лишние пробелы не должны плодить двойников. */
+  private async findOrCreateCounterparty(rawName: string | null) {
+    const name = rawName?.trim();
+    if (!name) return null;
+    const existing = await this.prisma.counterparty.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' }, deletedAt: null },
+    });
+    if (existing) return existing;
+    return this.prisma.counterparty.create({ data: { name } });
   }
 
   private async findOrCreateArticle(name: string) {

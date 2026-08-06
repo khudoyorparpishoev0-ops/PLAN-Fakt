@@ -311,7 +311,8 @@ function buildDrawerView(kind: ReqKind, row: PayReq | TripReq | CarReq): DrawerV
     return {
       kind, id: r.id, project: r.project, status: r.status, storno: r.storno, title: r.name, date: r.date,
       metricLabel: 'СУММА', metricValue: fmt(r.amount), currencyValue: r.currency,
-      nameLabel: 'Наименование', nameValue: r.name, attachLabel: 'Документ', attachValue: r.doc || '—',
+      nameLabel: 'Наименование', nameValue: r.name, contragent: r.contragent,
+      attachLabel: 'Документ', attachValue: r.doc || '—',
       attId: r.attId, projectId: r.projectId, amount: r.amount,
     };
   }

@@ -8,6 +8,8 @@ export interface MobileRequestFormProps {
   /** Вид, с которого форма открывается (задаётся разделом кабинета). */
   initialKind: Kind;
   projects: ApiProject[];
+  /** Имена контрагентов для подсказок при вводе. */
+  counterparties?: string[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -96,7 +98,7 @@ function PickSheet({ title, items, value, onPick, onClose }: {
  *  Главное отличие от десктопной формы — подпись кнопки отправки называет
  *  недостающее поле. Серая кнопка без объяснения — самая частая причина
  *  брошенной формы. */
-export default function MobileRequestForm({ initialKind, projects, createRequest, toast }: MobileRequestFormProps) {
+export default function MobileRequestForm({ initialKind, projects, counterparties = [], createRequest, toast }: MobileRequestFormProps) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [amountStr, setAmountStr] = useState('');
   const [text, setText] = useState('');
@@ -231,11 +233,20 @@ export default function MobileRequestForm({ initialKind, projects, createRequest
           filled={!!category} onClick={() => setSheet('category')}
         />
       )}
-      {trip && (
-        <input
-          data-counterparty value={counterparty} onChange={(e) => setCounterparty(e.target.value)}
-          placeholder="Контрагент — необязательно" maxLength={200} style={field}
-        />
+      {/* Контрагент нужен и оплате (кому платим), и поездке (к кому ездили);
+          у расхода на авто получатель роли не играет — там важна категория */}
+      {kind !== 'auto' && (
+        <>
+          <input
+            data-counterparty list="mob-counterparties" value={counterparty}
+            onChange={(e) => setCounterparty(e.target.value)}
+            placeholder={trip ? 'Контрагент — необязательно' : 'Кому платим — необязательно'}
+            maxLength={200} style={field}
+          />
+          <datalist id="mob-counterparties">
+            {counterparties.map((c) => <option key={c} value={c} />)}
+          </datalist>
+        </>
       )}
 
       {/* ── Вложение: рамка меняется, когда файл становится обязателен ── */}

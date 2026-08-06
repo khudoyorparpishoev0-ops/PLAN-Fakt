@@ -16,6 +16,8 @@ export interface CarRequestsScreenProps {
   trips: TripReq[];
   cars: CarReq[];
   projects: ApiProject[];
+  /** Имена контрагентов для подсказок при вводе. */
+  counterparties?: string[];
   createRequest: (payload: CreateRequestPayload) => Promise<boolean>;
   toast: (msg: string) => void;
 }
@@ -33,7 +35,7 @@ function SectionTab({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export default function CarRequestsScreen({ trips, cars, projects, createRequest, toast, hideForm }: CarRequestsScreenProps) {
+export default function CarRequestsScreen({ trips, cars, projects, counterparties = [], createRequest, toast, hideForm }: CarRequestsScreenProps) {
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<'trip' | 'expense'>('trip');
 
@@ -119,7 +121,14 @@ export default function CarRequestsScreen({ trips, cars, projects, createRequest
               </div>
               <div>
                 <label style={FORM_LABEL}>4) Контрагент</label>
-                <input value={contragent} onChange={(e) => setContragent(e.target.value)} placeholder="Из справочника или текстом" style={INPUT44} />
+                <input
+                  data-trip-counterparty list="cab-counterparties-trip" value={contragent}
+                  onChange={(e) => setContragent(e.target.value)} maxLength={200}
+                  placeholder="Из справочника или текстом" style={INPUT44}
+                />
+                <datalist id="cab-counterparties-trip">
+                  {counterparties.map((c) => <option key={c} value={c} />)}
+                </datalist>
               </div>
             </div>
             <SubmitBtn label="Отправить Директору" disabled={!tripValid} onClick={submitTrip} />
