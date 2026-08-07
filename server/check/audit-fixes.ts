@@ -11,6 +11,8 @@
  *  директором (удалить отправленную заявку нельзя, ТЗ п. 8).
  */
 
+import { loginFailed } from './login-hint';
+
 const BASE = process.env.API_URL ?? 'http://localhost:3000/api';
 const PW = process.env.SEED_PASSWORD_ADMIN ?? 'Test-12345';
 const ADMIN = { email: 'admin@it-hona.tj', password: PW };
@@ -38,8 +40,11 @@ async function call(path: string, init: (RequestInit & { body?: unknown; token?:
   try { json = text ? JSON.parse(text) : null; } catch { json = text.slice(0, 200); }
   return { status: res.status, json, headers: res.headers };
 }
-const login = async (who: { email: string; password: string }) =>
-  (await call('/auth/login', { method: 'POST', body: who })).json.accessToken as string;
+const login = async (who: { email: string; password: string }): Promise<string> => {
+  const r = await call('/auth/login', { method: 'POST', body: who });
+  if (r.status !== 200) loginFailed(who.email, r.status, JSON.stringify(r.json));
+  return r.json.accessToken as string;
+};
 
 const STAMP = `TEST-QA-${process.pid}`;
 const ART = `TEST-QA статья ${process.pid}`;

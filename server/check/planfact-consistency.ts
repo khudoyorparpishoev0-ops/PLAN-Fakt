@@ -10,6 +10,8 @@
  *  через те же API, что использует интерфейс.
  */
 
+import { loginFailed } from './login-hint';
+
 const BASE = process.env.API_URL ?? 'http://localhost:3000/api';
 const ADMIN = { email: 'admin@it-hona.tj', password: process.env.SEED_PASSWORD_ADMIN ?? 'Test-12345' };
 
@@ -42,7 +44,11 @@ const AMOUNT = 120_500;
 const PLAN = 150_000;
 
 async function main() {
-  token = (await req('/auth/login', { method: 'POST', body: ADMIN })).accessToken;
+  const auth = await fetch(`${BASE}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ADMIN),
+  });
+  if (!auth.ok) loginFailed(ADMIN.email, auth.status, await auth.text());
+  token = ((await auth.json()) as { accessToken: string }).accessToken;
 
   const today = new Date().toISOString().slice(0, 10);
   const y = today.slice(0, 4);

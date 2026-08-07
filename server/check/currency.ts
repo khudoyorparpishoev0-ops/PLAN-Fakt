@@ -14,6 +14,8 @@
  *  печатаются в конце — чтобы след проверки был виден, а не потерян.
  */
 
+import { loginFailed } from './login-hint';
+
 const BASE = process.env.API_URL ?? 'http://localhost:3000/api';
 const ADMIN = { email: 'admin@it-hona.tj', password: process.env.SEED_PASSWORD_ADMIN ?? 'Test-12345' };
 const ACC = { email: 'accountant@it-hona.tj', password: process.env.SEED_PASSWORD_ACCOUNTANT ?? 'Test-12345' };
@@ -41,8 +43,11 @@ async function call(
   return { status: res.status, json: text ? JSON.parse(text) : null };
 }
 
-const login = async (who: { email: string; password: string }) =>
-  (await call('/auth/login', { method: 'POST', body: who })).json.accessToken as string;
+const login = async (who: { email: string; password: string }): Promise<string> => {
+  const r = await call('/auth/login', { method: 'POST', body: who });
+  if (r.status !== 200) loginFailed(who.email, r.status, JSON.stringify(r.json));
+  return r.json.accessToken as string;
+};
 
 const STAMP = `QA-валюта-${process.pid}`;
 /** Курс выбран заведомо не «единица», иначе ошибка пересчёта не видна. */

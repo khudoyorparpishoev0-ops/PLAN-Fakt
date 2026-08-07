@@ -15,6 +15,8 @@
  *
  *  Проверка создаёт свои данные и убирает их за собой. */
 
+import { loginFailed } from './login-hint';
+
 const API = process.env.API ?? 'http://localhost:3000/api';
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@it-hona.tj';
 // В контейнере пароли приходят из /opt/app/.env как SEED_PASSWORD_*,
@@ -63,7 +65,12 @@ async function stockQty(goodId: number): Promise<number> {
 async function main() {
   if (!PASSWORD) throw new Error('Задайте ADMIN_PASSWORD или SEED_PASSWORD_ADMIN — пароль администратора');
 
-  token = (await call('POST', '/auth/login', { email: EMAIL, password: PASSWORD })).accessToken;
+  const auth = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  });
+  if (!auth.ok) loginFailed(EMAIL, auth.status, await auth.text());
+  token = ((await auth.json()) as { accessToken: string }).accessToken;
 
   const projects = await call('GET', '/projects');
   const projectId: number = (projects.rows ?? projects)[0].id;

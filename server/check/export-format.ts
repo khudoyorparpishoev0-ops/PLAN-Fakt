@@ -10,6 +10,8 @@
 
 import * as ExcelJS from 'exceljs';
 
+import { loginFailed } from './login-hint';
+
 const API = process.env.API ?? 'http://localhost:3000/api';
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@it-hona.tj';
 // В контейнере пароли приходят из /opt/app/.env как SEED_PASSWORD_*,
@@ -31,6 +33,7 @@ async function login() {
     body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
   });
   if (!res.ok) throw new Error(`login → ${res.status}`);
+  if (!res.ok) loginFailed(EMAIL, res.status, await res.text());
   token = ((await res.json()) as { accessToken: string }).accessToken;
 }
 
