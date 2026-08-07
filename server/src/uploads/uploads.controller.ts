@@ -14,6 +14,27 @@ import { StorageService } from '../storage.service';
 const MAX_SIZE = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 
+/** Настоящий тип файла — по первым байтам, а не по слову клиента.
+ *
+ *  Аудит 07.08.2026: тип брался из multipart-заголовка, который присылает
+ *  браузер (или кто угодно). Достаточно было отправить .exe с подписью
+ *  «application/pdf», и файл ложился в хранилище как «счёт». Подпись файла
+ *  подделать нельзя, не сделав файл настоящим PDF или картинкой.
+ */
+const SIGNATURES: { mime: string; test: (b: Buffer) => boolean }[] = [
+  { mime: 'application/pdf', test: (b) => b.subarray(0, 5).toString('latin1') === '%PDF-' },
+  { mime: 'image/jpeg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  {
+    mime: 'image/png',
+    test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  },
+];
+
+/** Распознанный тип содержимого либо null. */
+function sniffMime(buf: Buffer): string | null {
+  return SIGNATURES.find((s) => buf.length >= 8 && s.test(buf))?.mime ?? null;
+}
+
 /** Тело запроса «прикрепить файл к операции». */
 export class AttachToOperationDto {
   @IsString()
@@ -50,17 +71,25 @@ export class UploadsController {
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
-    if (!ALLOWED_MIME.has(file.mimetype)) {
+    // Заголовок клиента — лишь заявка о намерениях; решает подпись файла
+    const sniffed = sniffMime(file.buffer);
+    if (!sniffed || !ALLOWED_MIME.has(sniffed)) {
       throw new HttpException(
-        { code: 'unsupported_file_type', message: 'Допустимы только JPG, PNG и PDF', field: 'file' },
+        {
+          code: 'unsupported_file_type',
+          message: 'Допустимы только JPG, PNG и PDF — файл не похож ни на один из них',
+          field: 'file',
+        },
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
     // Имя приходит из multipart в latin1 — восстанавливаем UTF-8 (кириллица)
     const fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const key = this.storage.newKey(fileName);
-    await this.storage.put(key, file.buffer, file.mimetype);
-    return { key, fileName, mime: file.mimetype, size: file.size };
+    // В хранилище кладём распознанный тип: иначе отдача файла подтвердит
+    // клиенту его же выдумку про Content-Type
+    await this.storage.put(key, file.buffer, sniffed);
+    return { key, fileName, mime: sniffed, size: file.size };
   }
 
   /** Прикрепить загруженный файл к операции журнала (ТЗ, п. 10). */

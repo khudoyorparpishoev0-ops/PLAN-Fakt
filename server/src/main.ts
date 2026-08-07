@@ -13,6 +13,24 @@ async function bootstrap() {
   }
   const app = await NestFactory.create(AppModule);
 
+  /* Заголовки безопасности на каждый ответ API.
+   *
+   * Аудит 07.08.2026: API не отдавал ни одного из них. Отдельная библиотека
+   * (helmet) ради пяти строк не нужна — здесь только то, что имеет смысл для
+   * JSON-ответов: запрет угадывать тип содержимого, запрет вставлять ответ в
+   * чужой фрейм и молчание реферера. Заголовки статики — в nginx.
+   */
+  // Express хвастается собой в каждом ответе — версия сервера чужому глазу
+  // ничего не даёт, кроме подсказки, чем именно нас атаковать
+  (app.getHttpAdapter().getInstance() as { disable: (k: string) => void }).disable('x-powered-by');
+  app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    next();
+  });
+
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({

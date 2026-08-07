@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
-import { dateStr, somoni } from '../serialize';
+import { dateStr, moneyFits, MONEY_TOO_BIG_MESSAGE, somoni } from '../serialize';
 import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
 import { roundToCurrency } from '../iso4217';
 import type { ChangeRequestStatusDto, CreateRequestDto, UpdateRequestDto } from './requests.dto';
@@ -215,6 +215,8 @@ export class RequestsService {
 
     // У поездки суммы нет — только километры, поэтому валюта не заполняется
     const currency = kind === 'trip' ? null : (dto.currency ?? BASE_CURRENCY);
+    if (dto.amount != null && !moneyFits(dto.amount))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'amount_too_large', MONEY_TOO_BIG_MESSAGE, 'amount');
     const amountDirams =
       dto.amount != null ? BigInt(Math.round(roundToCurrency(dto.amount, currency ?? BASE_CURRENCY) * 100)) : null;
 
@@ -283,6 +285,8 @@ export class RequestsService {
     }
     if (!currencyAllowed(dto.currency))
       err(HttpStatus.UNPROCESSABLE_ENTITY, 'currency_disabled', CURRENCY_DISABLED_MESSAGE, 'currency');
+    if (dto.amount != null && !moneyFits(dto.amount))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'amount_too_large', MONEY_TOO_BIG_MESSAGE, 'amount');
 
     const row = await this.prisma.request.update({
       where: { id },
@@ -419,6 +423,12 @@ export class RequestsService {
     if (kind === 'trip') {
       const rateSetting = await this.prisma.setting.findUnique({ where: { key: 'km_rate' } });
       const kmRate = BigInt(rateSetting?.value ?? '0');
+      // Без ставки поездка превратилась бы в расход на ноль сомони: заявка
+      // выглядит одобренной, компенсация водителю нигде не учтена, и заметить
+      // это можно только сверкой. Лучше остановить решение и попросить ставку.
+      if (kmRate <= 0n)
+        err(HttpStatus.UNPROCESSABLE_ENTITY, 'km_rate_not_set',
+          'Не задана ставка компенсации за км — задайте её в «Настройках», иначе поездка станет расходом на 0 сомони');
       amountDirams = BigInt(req.km ?? 0) * kmRate;
       currency = 'TJS';
     } else {

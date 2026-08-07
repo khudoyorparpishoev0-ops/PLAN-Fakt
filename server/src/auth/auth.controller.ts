@@ -2,17 +2,30 @@ import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/c
 import { ChangePasswordDto, LoginDto, RefreshDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards';
+import { LoginThrottleGuard, registerFailure, registerSuccess, throttleKey } from './throttle';
 import type { AuthRequest } from './auth.types';
+import type { Request } from 'express';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  /** Вход по email/паролю → access + refresh + пользователь (с ролью). */
+  /** Вход по email/паролю → access + refresh + пользователь (с ролью).
+   *  Неудачные попытки считаются: после восьми подряд вход с этой пары
+   *  «адрес + логин» блокируется на пять минут (см. throttle.ts). */
   @Post('login')
   @HttpCode(200)
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password);
+  @UseGuards(LoginThrottleGuard)
+  async login(@Req() req: Request, @Body() dto: LoginDto) {
+    const key = throttleKey(req);
+    try {
+      const result = await this.auth.login(dto.email, dto.password);
+      registerSuccess(key);
+      return result;
+    } catch (e) {
+      registerFailure(key);
+      throw e;
+    }
   }
 
   /** Новая пара токенов по refresh-токену. */

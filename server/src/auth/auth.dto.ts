@@ -1,6 +1,9 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
+  // Пробелы по краям — след копирования из письма, а не ошибка человека
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsEmail({}, { message: 'Укажите корректный email' })
   email!: string;
 

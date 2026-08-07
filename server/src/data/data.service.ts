@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, type ArticleType, type ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
-import { dateStr, somoni } from '../serialize';
+import { dateStr, moneyFits, MONEY_TOO_BIG_MESSAGE, somoni } from '../serialize';
 import { BASE_CURRENCY, CURRENCY_DISABLED_MESSAGE, currencyAllowed } from '../currency';
 import { currencyList, currencyName, isIsoCurrency, roundToCurrency } from '../iso4217';
 import { PF_DEFAULTS, pfStatusLabel, pfValidate, type PfThresholds } from '../pf';
@@ -209,6 +209,8 @@ export class DataService {
         rate = rateRow.rate;
       }
     }
+    if (!moneyFits(dto.amount))
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'amount_too_large', MONEY_TOO_BIG_MESSAGE, 'amount');
     const amountDirams = BigInt(Math.round(roundToCurrency(dto.amount, currency) * 100));
     const amountTjsDirams = BigInt(new Prisma.Decimal(amountDirams.toString()).mul(rate).toFixed(0));
 

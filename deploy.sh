@@ -330,6 +330,13 @@ server {
     server_name _;
 
     client_max_body_size 12m;
+    server_tokens off;
+
+    # Заголовки безопасности (аудит 07.08.2026). HSTS появится вместе с HTTPS:
+    # на голом http он бесполезен, а после выпуска домена его нужно включить.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

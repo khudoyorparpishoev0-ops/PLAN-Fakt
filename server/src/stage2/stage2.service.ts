@@ -166,7 +166,13 @@ export class Stage2Service {
         amount: somoni(o.amountTjsDirams)!,
         confirmed: o.status === 'confirmed',
       })),
-      paid: somoni(d.payments.reduce((s, o) => s + o.amountTjsDirams, 0n))!,
+      // Оплачено — только подтверждённые ФАКТИЧЕСКИЕ выплаты. Плановая
+      // операция (обещание по одобренной заявке) и неподтверждённая выплата
+      // долг не закрывают: иначе задолженность поставщику обнуляется тем,
+      // что деньги ещё не ушли. Правило то же, что в план-факте.
+      paid: somoni(d.payments
+        .filter((o) => !o.isPlan && o.status === 'confirmed')
+        .reduce((s, o) => s + o.amountTjsDirams, 0n))!,
       // Частичные поставки: полученные от поставщика товары и услуги
       deliveries: d.deliveries.map((v) => ({
         id: v.id,
@@ -315,6 +321,9 @@ export class Stage2Service {
       where: {
         deletedAt: null,
         type: 'out',
+        // Только состоявшиеся выплаты: план и неподтверждённые — не деньги
+        isPlan: false,
+        status: 'confirmed',
         dealId: null,
         ...(deal.counterpartyId ? { counterpartyId: deal.counterpartyId } : {}),
       },
@@ -338,11 +347,17 @@ export class Stage2Service {
     await this.dealOr404(dealId);
     const rows = await this.prisma.operation.findMany({
       where: { id: { in: operationIds }, deletedAt: null },
-      select: { id: true, type: true, dealId: true },
+      select: { id: true, type: true, dealId: true, isPlan: true, status: true },
     });
     const wrongType = rows.filter((o) => o.type !== 'out');
     if (wrongType.length)
       err(HttpStatus.UNPROCESSABLE_ENTITY, 'not_expense', 'К сделке закупки прикрепляются только выплаты', 'ids');
+    // Обещание оплаты — не оплата: плановая операция закрыла бы долг по сделке,
+    // хотя деньги поставщику не ушли (то же правило, что в план-факте)
+    const notPaid = rows.filter((o) => o.isPlan || o.status !== 'confirmed');
+    if (notPaid.length)
+      err(HttpStatus.UNPROCESSABLE_ENTITY, 'not_confirmed_payment',
+        'Прикрепить можно только подтверждённую фактическую выплату — плановая операция долг не закрывает', 'ids');
     const busy = rows.filter((o) => o.dealId != null && o.dealId !== dealId);
     if (busy.length)
       err(HttpStatus.UNPROCESSABLE_ENTITY, 'already_linked', 'Часть операций уже привязана к другой сделке', 'ids');
