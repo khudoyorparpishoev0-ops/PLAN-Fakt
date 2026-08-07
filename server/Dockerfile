@@ -20,6 +20,11 @@ COPY server/tsconfig.json ./server/
 COPY server/prisma ./server/prisma
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
+# Регресс-проверки: они запускаются против УЖЕ РАЗВЁРНУТОГО сервера
+# (`docker compose exec backend npm run check:planfact` и остальные четыре),
+# поэтому должны лежать в образе. Без них команда из чек-листа выпуска
+# не выполняется — обнаружено при первой же попытке проверить боевой сервер.
+COPY server/check ./server/check
 # Фикстуры фронтенда — источник данных для seed и очистки демо-данных.
 # theme.ts тоже нужен: из него фикстуры берут цвета статусов (C).
 # Любой новый импорт за пределы этого среза ломает seed внутри контейнера,
@@ -44,11 +49,16 @@ COPY --from=build /app/server/node_modules ./node_modules
 COPY --from=build /app/server/dist ./dist
 COPY --from=build /app/server/prisma ./prisma
 COPY --from=build /app/server/scripts ./scripts
+COPY --from=build /app/server/check ./check
 COPY --from=build /app/server/package.json ./package.json
 COPY --from=build /app/src /app/src
 
 # Контроль: движок под этот рантайм реально попал в финальный образ
 RUN test -f node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
+
+# Контроль: регресс-проверки на месте — иначе команда из чек-листа выпуска
+# («docker compose exec backend npm run check:audit») упадёт уже на сервере
+RUN test -f check/audit-fixes.ts && test -f check/planfact-consistency.ts
 
 # Контроль: срез фронтенда полный — иначе `npm run seed` упадёт на деплое,
 # уже после миграций, и не доедет до установки резервных копий

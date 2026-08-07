@@ -14,10 +14,24 @@
 
 ## Развёртывание
 
+Команды набирать **полным путём**: ни `check-service.sh`, ни `check:audit`
+в PATH не лежат — это файл в репозитории и npm-скрипт внутри контейнера.
+
 - [ ] `sudo sh /opt/app/app/deploy.sh`
-- [ ] `sh /opt/app/app/deploy/check-service.sh` — 15 проверок
-- [ ] `docker compose exec backend npm run check:audit` — на боевой базе
-      (тест убирает за собой; создаёт данные с пометкой `TEST-QA`)
+- [ ] `sudo sh /opt/app/app/deploy/check-service.sh` — 15 проверок, только чтение
+- [ ] Регресс на боевой базе (**создаёт данные с пометкой `TEST-QA` и убирает
+      их за собой**; отправленные заявки удалить нельзя — они уходят отказом):
+
+```sh
+cd /opt/app
+for c in expense planfact currency export audit; do
+  sudo docker compose exec -T backend npm run check:$c
+done
+```
+
+Пароли проверки берёт из `/opt/app/.env` (`SEED_PASSWORD_ADMIN` и остальные) —
+задавать вручную ничего не нужно.
+
 - [ ] В браузере Ctrl+Shift+R
 
 ## После обновления убедиться

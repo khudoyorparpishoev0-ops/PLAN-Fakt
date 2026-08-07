@@ -12,7 +12,9 @@ import * as ExcelJS from 'exceljs';
 
 const API = process.env.API ?? 'http://localhost:3000/api';
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@it-hona.tj';
-const PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+// В контейнере пароли приходят из /opt/app/.env как SEED_PASSWORD_*,
+// поэтому все пять проверок запускаются одной и той же командой
+const PASSWORD = process.env.ADMIN_PASSWORD ?? process.env.SEED_PASSWORD_ADMIN ?? '';
 
 let token = '';
 let failures = 0;
@@ -59,7 +61,7 @@ function firstDataRow(ws: ExcelJS.Worksheet, headerTitle: string): ExcelJS.Row |
 }
 
 async function main() {
-  if (!PASSWORD) throw new Error('Задайте ADMIN_PASSWORD — пароль администратора');
+  if (!PASSWORD) throw new Error('Задайте ADMIN_PASSWORD или SEED_PASSWORD_ADMIN — пароль администратора');
   await login();
 
   /* ── Журнал операций: полный состав колонок ────────────────────────────── */
